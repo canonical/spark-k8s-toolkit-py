@@ -1,0 +1,38 @@
+name: Build snap and run tests
+
+on:
+  workflow_call
+
+jobs:
+  checks:
+    uses: ./.github/workflows/ci-checks.yaml
+
+  test:
+    name: Unit and Integration Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: true
+      matrix:
+        python-version:
+          - '3.9'
+          - '3.10'
+    needs:
+      - checks
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+      - id: setup-python
+        name: Setup Python
+        uses: actions/setup-python@v2.2.2
+        with:
+          python-version: ${{matrix.python-version}}
+          architecture: x64
+      - id: tests-unit
+        name: Run Unittests
+        run: |
+          make unittest
+      - id: tests-integration
+        name: Run Integration Tests
+        run: |
+          make integration-tests
