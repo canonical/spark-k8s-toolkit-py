@@ -240,11 +240,7 @@ class Defaults:
 
     @property
     def dir_package(self) -> str:
-        return (
-            f"{self.environ.get('SNAP')}"
-            if "SNAP" in self.environ
-            else f"{self.environ.get('HOME')}/python/dist/spark_client"
-        )
+        return os.path.dirname(__file__)
 
     @property
     def template_dir(self) -> str:
