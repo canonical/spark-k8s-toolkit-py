@@ -21,14 +21,14 @@ from lightkube.resources.core_v1 import ServiceAccount as LightKubeServiceAccoun
 from lightkube.resources.rbac_authorization_v1 import Role, RoleBinding
 from lightkube.types import PatchType
 
-from spark_client.domain import (
+from spark8t.domain import (
     Defaults,
     KubernetesResourceType,
     PropertyFile,
     ServiceAccount,
 )
-from spark_client.exceptions import FormatError, NoAccountFound, NoResourceFound
-from spark_client.utils import (
+from spark8t.exceptions import FormatError, NoAccountFound, NoResourceFound
+from spark8t.utils import (
     WithLogging,
     environ,
     filter_none,

@@ -3,8 +3,8 @@ from unittest import TestCase
 
 from parameterized import parameterized
 
-from spark_client.domain import Defaults, PropertyFile, ServiceAccount
-from spark_client.services import (
+from spark8t.domain import Defaults, PropertyFile, ServiceAccount
+from spark8t.services import (
     AbstractServiceAccountRegistry,
     K8sServiceAccountRegistry,
     KubeInterface,

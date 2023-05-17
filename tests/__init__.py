@@ -2,7 +2,7 @@ import os
 import random
 from unittest import TestCase, skipIf
 
-from spark_client.utils import create_dir_if_not_exists  # type: ignore
+from spark8t.utils import create_dir_if_not_exists  # type: ignore
 
 test_path = os.path.dirname(os.path.abspath(__file__))
 

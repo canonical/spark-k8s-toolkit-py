@@ -1,5 +1,5 @@
 import os
 
-from spark_client.domain import Defaults
+from spark8t.domain import Defaults
 
 defaults = Defaults(dict(os.environ))

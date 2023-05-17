@@ -1,4 +1,4 @@
-name: Create a github release for the spark-client Python library
+name: Create a github release for the spark8t Python library
 
 env:
   BRANCH: ${{ github.ref_name }}
@@ -63,8 +63,8 @@ jobs:
         with:
           body_path: ".github/RELEASE-TEMPLATE.md"
           files: |
-            dist/spark_client-${{env.PROJECT_VERSION}}-py3-none-any.whl
-            dist/spark_client-${{env.PROJECT_VERSION}}.tar.gz
+            dist/spark8t-${{env.PROJECT_VERSION}}-py3-none-any.whl
+            dist/spark8t-${{env.PROJECT_VERSION}}.tar.gz
 
   test:
     name: Test Release
@@ -72,7 +72,7 @@ jobs:
     timeout-minutes: 5
     env:
       DOWNLOADS_PATH: "/releases/download"
-      PKG_NAME: spark_client
+      PKG_NAME: spark8t
     needs: autorelease
     steps:
       - id: check-tar-gz

@@ -2,9 +2,9 @@ import logging
 import unittest
 import uuid
 
-from spark_client.domain import Defaults, PropertyFile, ServiceAccount
-from spark_client.services import InMemoryAccountRegistry
-from spark_client.utils import umask_named_temporary_file
+from spark8t.domain import Defaults, PropertyFile, ServiceAccount
+from spark8t.services import InMemoryAccountRegistry
+from spark8t.utils import umask_named_temporary_file
 from tests import TestCase
 
 
@@ -207,9 +207,9 @@ class TestDomain(TestCase):
 
         # test logic
         conf = PropertyFile(props={k: v})
-        with self.assertLogs("spark_client.domain.PropertyFile", level="INFO") as cm:
+        with self.assertLogs("spark8t.domain.PropertyFile", level="INFO") as cm:
             conf.log()
-        self.assertEqual(cm.output, [f"INFO:spark_client.domain.PropertyFile:{k}={v}"])
+        self.assertEqual(cm.output, [f"INFO:spark8t.domain.PropertyFile:{k}={v}"])
 
     def test_in_memory_registry(self):
         """

@@ -13,9 +13,9 @@ from lightkube.resources.rbac_authorization_v1 import Role, RoleBinding
 from lightkube.types import PatchType
 from OpenSSL import crypto
 
-from spark_client.cli import defaults
-from spark_client.domain import KubernetesResourceType, PropertyFile, ServiceAccount
-from spark_client.services import (
+from spark8t.cli import defaults
+from spark8t.domain import KubernetesResourceType, PropertyFile, ServiceAccount
+from spark8t.services import (
     K8sServiceAccountRegistry,
     KubeInterface,
     LightKube,
@@ -1281,7 +1281,7 @@ class TestServices(TestCase):
             k = KubeInterface(kube_config_file=kubeconfig)
             self.assertEqual(k, k.select_by_master(f"https://0.0.0.0:{test_id}"))
 
-    @patch("spark_client.services.KubeInterface")
+    @patch("spark8t.services.KubeInterface")
     def test_k8s_registry_retrieve_account_configurations(self, mock_kube_interface):
         data = {"k": "v"}
         mock_kube_interface.get_secret.return_value = {"data": data}
@@ -1293,7 +1293,7 @@ class TestServices(TestCase):
             data,
         )
 
-    @patch("spark_client.services.KubeInterface")
+    @patch("spark8t.services.KubeInterface")
     def test_k8s_registry_all(self, mock_kube_interface):
         data = {"k": "v"}
         mock_kube_interface.get_secret.return_value = {"data": data}
@@ -1332,7 +1332,7 @@ class TestServices(TestCase):
         self.assertEqual(output[1].namespace, namespace2)
         self.assertEqual(output[1].primary, False)
 
-    @patch("spark_client.services.KubeInterface")
+    @patch("spark8t.services.KubeInterface")
     def test_k8s_registry_set_primary(self, mock_kube_interface):
         data = {"k": "v"}
         mock_kube_interface.get_secret.return_value = {"data": data}
@@ -1398,7 +1398,7 @@ class TestServices(TestCase):
             namespace2,
         )
 
-    @patch("spark_client.services.KubeInterface")
+    @patch("spark8t.services.KubeInterface")
     def test_k8s_registry_create(self, mock_kube_interface):
         data = {"k": "v"}
         mock_kube_interface.get_secret.return_value = {"data": data}
@@ -1523,7 +1523,7 @@ class TestServices(TestCase):
             namespace3,
         )
 
-    @patch("spark_client.services.KubeInterface")
+    @patch("spark8t.services.KubeInterface")
     def test_k8s_registry_delete(self, mock_kube_interface):
         data = {"k": "v"}
         mock_kube_interface.get_secret.return_value = {"data": data}

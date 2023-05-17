@@ -3,10 +3,8 @@ import logging
 import unittest
 from argparse import ArgumentParser
 
-from spark_client.cli.service_account_registry import (
-    create_service_account_registry_parser,
-)
-from spark_client.utils import (
+from spark8t.cli.service_account_registry import create_service_account_registry_parser
+from spark8t.utils import (
     add_config_arguments,
     add_deploy_arguments,
     add_logging_arguments,

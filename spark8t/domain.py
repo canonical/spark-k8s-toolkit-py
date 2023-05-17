@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from spark_client.utils import WithLogging, union
+from spark8t.utils import WithLogging, union
 
 
 class PropertyFile(WithLogging):
