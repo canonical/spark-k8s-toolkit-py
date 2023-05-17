@@ -4,10 +4,10 @@ import logging
 import re
 from typing import Optional
 
-from spark_client.cli import defaults
-from spark_client.domain import ServiceAccount
-from spark_client.services import K8sServiceAccountRegistry, LightKube, SparkInterface
-from spark_client.utils import (
+from spark8t.cli import defaults
+from spark8t.domain import ServiceAccount
+from spark8t.services import K8sServiceAccountRegistry, LightKube, SparkInterface
+from spark8t.utils import (
     add_config_arguments,
     add_logging_arguments,
     k8s_parser,
@@ -45,4 +45,4 @@ if __name__ == "__main__":
         service_account=service_account,
         kube_interface=kube_interface,
         defaults=defaults,
-    ).spark_shell(args.conf, args.properties_file, extra_args)
+    ).pyspark_shell(args.conf, args.properties_file, extra_args)

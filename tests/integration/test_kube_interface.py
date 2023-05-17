@@ -4,9 +4,9 @@ from unittest import TestCase
 
 from parameterized import parameterized
 
-from spark_client.domain import Defaults, KubernetesResourceType, PropertyFile
-from spark_client.services import AbstractKubeInterface, KubeInterface, LightKube
-from spark_client.utils import umask_named_temporary_file
+from spark8t.domain import Defaults, KubernetesResourceType, PropertyFile
+from spark8t.services import AbstractKubeInterface, KubeInterface, LightKube
+from spark8t.utils import umask_named_temporary_file
 
 
 class TestKubeInterface(TestCase):

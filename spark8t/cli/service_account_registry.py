@@ -4,15 +4,11 @@ import logging
 from argparse import ArgumentParser
 from enum import Enum
 
-from spark_client.cli import defaults
-from spark_client.domain import PropertyFile, ServiceAccount
-from spark_client.exceptions import NoAccountFound
-from spark_client.services import (
-    K8sServiceAccountRegistry,
-    LightKube,
-    parse_conf_overrides,
-)
-from spark_client.utils import (
+from spark8t.cli import defaults
+from spark8t.domain import PropertyFile, ServiceAccount
+from spark8t.exceptions import NoAccountFound
+from spark8t.services import K8sServiceAccountRegistry, LightKube, parse_conf_overrides
+from spark8t.utils import (
     add_config_arguments,
     add_logging_arguments,
     k8s_parser,
