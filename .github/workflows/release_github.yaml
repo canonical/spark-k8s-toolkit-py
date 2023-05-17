@@ -1,0 +1,94 @@
+name: Create a github release for the spark-client Python library
+
+env:
+  BRANCH: ${{ github.ref_name }}
+  VERSION: 0.0.1
+
+on:
+  push:
+    # Sequence of patterns matched against refs/tags
+    tags:
+      - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
+
+jobs:
+  code-checks:
+    uses: ./.github/workflows/ci-checks.yaml
+
+  release-checks:
+    name: Checks before pkg build
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: code-checks
+    steps:
+      - id: version-vs-tag-check
+        name: Check if tag version matches project version
+        run: |
+          if [[ "$BRANCH" != "v$VERSION" ]]; then exit 1; fi
+
+  autorelease:
+    name: Release the package on github
+    needs: release-checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: true
+    steps:
+      - id: checkout
+        name: Checkout repo
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ env.BRANCH }}
+          fetch-depth: 0
+      - id: setup-python
+        name: Setup Python
+        uses: actions/setup-python@v2.2.2
+        with:
+          python-version: '3.10'
+          architecture: x64
+      - id: install-environment
+        name: Set up build environment
+        run: |
+          make setup
+      - id: build-package
+        name: Build package
+        run: |
+          poetry build
+      - name: Add version to environment vars
+        run: |
+          echo "PROJECT_VERSION=${{ env.VERSION }}" >> $GITHUB_ENV
+      - name: Create Github Release
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          body_path: ".github/RELEASE-TEMPLATE.md"
+          files: |
+            dist/spark_client-${{env.PROJECT_VERSION}}-py3-none-any.whl
+            dist/spark_client-${{env.PROJECT_VERSION}}.tar.gz
+
+  test:
+    name: Test Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      DOWNLOADS_PATH: "/releases/download"
+      PKG_NAME: spark_client
+    needs: autorelease
+    steps:
+      - id: check-tar-gz
+        name: Check tar.gz package
+        run: |
+          # check if release is now published and available
+          echo "Checking latest available Spark package release v${{env.VERSION}}."
+          STATUSCODE=$(curl --silent --head $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/${{ env.DOWNLOADS_PATH }}/v${{env.VERSION}}/${{env.PKG_NAME}}-${{env.VERSION}}.tar.gz | head -n 1 | cut -d' ' -f2)
+          if  [[ ${STATUSCODE} -ne 200 ]] && [[ ${STATUSCODE} -ne 302 ]]; then exit 1; fi
+      - id: download-package
+        name: Download wheel package
+        run: |
+          # check if release is now published and available
+          echo "Downloading latest available Spark wheel package release v${{env.VERSION}}."
+          wget $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/${{ env.DOWNLOADS_PATH }}/v${{env.VERSION}}/${{env.PKG_NAME}}-${{env.VERSION}}-py3-none-any.whl --no-check-certificate
+      - id: install-package
+        name: Install wheel package file
+        run: |
+          pip install ./${{env.PKG_NAME}}-${{env.VERSION}}-py3-none-any.whl
