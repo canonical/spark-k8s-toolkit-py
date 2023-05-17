@@ -1,4 +1,5 @@
 microk8s status --wait-ready
-microk8s config | tee ~/.kube/config
+export KUBECONFIG=~/.kube/config
+microk8s config | tee $KUBECONFIG
 microk8s.enable dns
 microk8s.enable rbac

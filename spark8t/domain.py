@@ -176,29 +176,36 @@ class Defaults:
         self.environ = environ if environ is not None else {}
 
     @property
-    def spark_folder(self) -> str:
-        """Return the SNAP folder"""
-        return self.environ.get("SNAP", self.environ.get("SPARK_HOME"))
+    def spark_home(self):
+        return self.environ["SPARK_HOME"]
+
+    @property
+    def spark_confs(self):
+        return self.environ.get("SPARK_CONFS", os.path.join(self.spark_home, "conf"))
+
+    @property
+    def spark_user_data(self):
+        return self.environ["SPARK_USER_DATA"]
+
+    @property
+    def kubectl_cmd(self) -> str:
+        """Return default kubectl command."""
+        return self.environ.get("SPARK_KUBECTL", "kubectl")
+
+    @property
+    def kube_config(self) -> str:
+        """Return default kubeconfig to use if not explicitly provided."""
+        return self.environ["KUBECONFIG"]
 
     @property
     def static_conf_file(self) -> str:
-        """Return static config properties file packaged with the client snap."""
-        return f"{self.spark_folder}/conf/spark-defaults.conf"
-
-    @property
-    def dynamic_conf_file(self) -> str:
-        """Return dynamic config properties file generated during client setup."""
-        return f"{self.environ.get('SNAP_USER_DATA', self.environ.get('HOME'))}/spark-defaults.conf"
+        """Return static config properties file packaged with the client artefacts."""
+        return f"{self.spark_confs}/spark-defaults.conf"
 
     @property
     def env_conf_file(self) -> Optional[str]:
         """Return env var provided by user to point to the config properties file with conf overrides."""
         return self.environ.get("SPARK_CLIENT_ENV_CONF")
-
-    @property
-    def snap_temp_folder(self) -> str:
-        """Return /tmp directory as seen by the snap, for user's reference."""
-        return "/tmp/snap.spark-client"
 
     @property
     def service_account(self):
@@ -209,34 +216,20 @@ class Defaults:
         return "defaults"
 
     @property
-    def home_folder(self):
-        return self.environ.get("SNAP_REAL_HOME", self.environ["HOME"])
-
-    @property
-    def kube_config(self) -> str:
-        """Return default kubeconfig to use if not explicitly provided."""
-        return self.environ.get("KUBECONFIG", f"{self.home_folder}/.kube/config")
-
-    @property
-    def kubectl_cmd(self) -> str:
-        """Return default kubectl command."""
-        return f"{self.spark_folder}/kubectl" if "SNAP" in self.environ else "kubectl"
-
-    @property
     def scala_history_file(self):
-        return f"{self.environ.get('SNAP_USER_DATA', self.environ.get('HOME'))}/.scala_history"
+        return f"{self.spark_user_data}/.scala_history"
 
     @property
     def spark_submit(self) -> str:
-        return f"{self.spark_folder}/bin/spark-submit"
+        return f"{self.spark_home}/bin/spark-submit"
 
     @property
     def spark_shell(self) -> str:
-        return f"{self.spark_folder}/bin/spark-shell"
+        return f"{self.spark_home}/bin/spark-shell"
 
     @property
     def pyspark(self) -> str:
-        return f"{self.spark_folder}/bin/pyspark"
+        return f"{self.spark_home}/bin/pyspark"
 
     @property
     def dir_package(self) -> str:
