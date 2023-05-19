@@ -7,7 +7,7 @@ from enum import Enum
 from spark8t.cli import defaults
 from spark8t.domain import PropertyFile, ServiceAccount
 from spark8t.exceptions import NoAccountFound
-from spark8t.services import K8sServiceAccountRegistry, LightKube, parse_conf_overrides
+from spark8t.services import K8sServiceAccountRegistry, KubeInterface, LightKube, parse_conf_overrides
 from spark8t.utils import (
     add_config_arguments,
     add_logging_arguments,
@@ -102,7 +102,11 @@ if __name__ == "__main__":
 
     logging.basicConfig(format="%(message)s", level=args.log_level)
 
-    kube_interface = LightKube(args.kubeconfig or defaults.kube_config, defaults)
+    kube_interface = \
+        LightKube(
+            args.kubeconfig or defaults.kube_config, defaults
+        ) if args.backend == "lightkube" \
+        else KubeInterface(args.kubeconfig or defaults.kube_config, context_name=args.context)
 
     context = args.context or kube_interface.context_name
 
