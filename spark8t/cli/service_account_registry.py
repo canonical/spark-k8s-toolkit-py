@@ -4,22 +4,17 @@ import logging
 from argparse import ArgumentParser
 from enum import Enum
 
-from spark8t.cli import defaults
-from spark8t.domain import PropertyFile, ServiceAccount
-from spark8t.exceptions import NoAccountFound
-from spark8t.services import (
-    K8sServiceAccountRegistry,
-    KubeInterface,
-    LightKube,
-    parse_conf_overrides,
-)
-from spark8t.utils import (
+from spark8t.cli import (
     add_config_arguments,
     add_logging_arguments,
+    get_kube_interface,
     k8s_parser,
     parse_arguments_with,
     spark_user_parser,
 )
+from spark8t.domain import PropertyFile, ServiceAccount
+from spark8t.exceptions import NoAccountFound
+from spark8t.services import K8sServiceAccountRegistry, parse_conf_overrides
 
 
 def build_service_account_from_args(args) -> ServiceAccount:
@@ -105,16 +100,11 @@ if __name__ == "__main__":
         ArgumentParser(description="Spark Client Setup")
     ).parse_args()
 
+    print(type(args))
+
     logging.basicConfig(format="%(message)s", level=args.log_level)
 
-    kube_interface = (
-        LightKube(args.kubeconfig or defaults.kube_config, defaults)
-        if args.backend == "lightkube"
-        else KubeInterface(
-            args.kubeconfig or defaults.kube_config, context_name=args.context
-        )
-    )
-
+    kube_interface = get_kube_interface(args)
     context = args.context or kube_interface.context_name
 
     logging.info(f"Using K8s context: {context}")
