@@ -35,9 +35,7 @@ class TestDomain(TestCase):
         self.assertEqual(defaults.env_conf_file, f"{spark_env_conf_file}")
 
         self.assertEqual(defaults.kube_config, f"{kubeconfig}")
-        self.assertEqual(
-            defaults.scala_history_file, f"{user_data_dir}/.scala_history"
-        )
+        self.assertEqual(defaults.scala_history_file, f"{user_data_dir}/.scala_history")
         self.assertEqual(defaults.kubectl_cmd, kubectl_cmd)
         self.assertEqual(defaults.spark_submit, f"{spark_home}/bin/spark-submit")
         self.assertEqual(defaults.spark_shell, f"{spark_home}/bin/spark-shell")
