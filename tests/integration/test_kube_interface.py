@@ -11,7 +11,9 @@ from spark8t.utils import umask_named_temporary_file
 
 class TestKubeInterface(TestCase):
     kube_interface: AbstractKubeInterface
-    defaults = Defaults(dict(os.environ) | {"SNAP": "/snap/spark-client/current/"})
+    defaults = Defaults(
+        dict(os.environ) | {"KUBECONFIG": f"{os.environ['HOME']}/.kube/config"}
+    )
 
     def get_kube_interface(self):
         return KubeInterface(self.defaults.kube_config)

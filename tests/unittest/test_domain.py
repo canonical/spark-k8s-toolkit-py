@@ -13,40 +13,33 @@ class TestDomain(TestCase):
         """
         Validates defaults passed in as environment.
         """
-        home_var = str(uuid.uuid4())
-        snap_var = str(uuid.uuid4())
-        snap_user_data_dir = str(uuid.uuid4())
-        snap_spark_env_conf_file = str(uuid.uuid4())
-        snap_real_home = str(uuid.uuid4())
+        spark_home = str(uuid.uuid4())
+        user_data_dir = str(uuid.uuid4())
+        spark_env_conf_file = str(uuid.uuid4())
         kubeconfig = str(uuid.uuid4())
+        kubectl_cmd = str(uuid.uuid4())
 
         defaults = Defaults(
             environ={
-                "HOME": home_var,
-                "SNAP": snap_var,
-                "SNAP_USER_DATA": snap_user_data_dir,
-                "SPARK_CLIENT_ENV_CONF": snap_spark_env_conf_file,
-                "SNAP_REAL_HOME": snap_real_home,
+                "SPARK_HOME": spark_home,
+                "SPARK_USER_DATA": user_data_dir,
+                "SPARK_CLIENT_ENV_CONF": spark_env_conf_file,
                 "KUBECONFIG": kubeconfig,
+                "SPARK_KUBECTL": kubectl_cmd,
             }
         )
-        self.assertEqual(defaults.spark_folder, snap_var)
+        self.assertEqual(defaults.spark_home, spark_home)
         self.assertEqual(
-            defaults.static_conf_file, f"{snap_var}/conf/spark-defaults.conf"
+            defaults.static_conf_file, f"{spark_home}/conf/spark-defaults.conf"
         )
-        self.assertEqual(
-            defaults.dynamic_conf_file, f"{snap_user_data_dir}/spark-defaults.conf"
-        )
-        self.assertEqual(defaults.env_conf_file, f"{snap_spark_env_conf_file}")
-        self.assertEqual(defaults.home_folder, f"{snap_real_home}")
+        self.assertEqual(defaults.env_conf_file, f"{spark_env_conf_file}")
+
         self.assertEqual(defaults.kube_config, f"{kubeconfig}")
-        self.assertEqual(
-            defaults.scala_history_file, f"{snap_user_data_dir}/.scala_history"
-        )
-        self.assertEqual(defaults.kubectl_cmd, f"{snap_var}/kubectl")
-        self.assertEqual(defaults.spark_submit, f"{snap_var}/bin/spark-submit")
-        self.assertEqual(defaults.spark_shell, f"{snap_var}/bin/spark-shell")
-        self.assertEqual(defaults.pyspark, f"{snap_var}/bin/pyspark")
+        self.assertEqual(defaults.scala_history_file, f"{user_data_dir}/.scala_history")
+        self.assertEqual(defaults.kubectl_cmd, kubectl_cmd)
+        self.assertEqual(defaults.spark_submit, f"{spark_home}/bin/spark-submit")
+        self.assertEqual(defaults.spark_shell, f"{spark_home}/bin/spark-shell")
+        self.assertEqual(defaults.pyspark, f"{spark_home}/bin/pyspark")
 
     def test_service_account(self):
         """
@@ -180,7 +173,7 @@ class TestDomain(TestCase):
         conf = PropertyFile(props=test_config_w)
 
         with umask_named_temporary_file(
-            mode="w", prefix="spark-client-snap-unittest-", suffix=".test"
+            mode="w", prefix="spark8t-unittest-", suffix=".test"
         ) as t:
             conf.write(t.file)
             t.flush()

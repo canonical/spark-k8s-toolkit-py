@@ -34,6 +34,9 @@ class TestServices(TestCase):
         if not os.path.isfile(self.kubeconfig_file_for_lighkube_unit_tests):
             self.generate_kube_config_file(self.kubeconfig_file_for_lighkube_unit_tests)
 
+    def tearDown(self) -> None:
+        os.remove(self.kubeconfig_file_for_lighkube_unit_tests)
+
     def test_conf_expansion_cli(self):
         home_var = "/this/is/my/home"
 

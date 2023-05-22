@@ -1,3 +1,4 @@
+import os
 import uuid
 from unittest import TestCase
 
@@ -14,7 +15,9 @@ from tests import integration_test
 
 class TestRegistry(TestCase):
     kube_interface: KubeInterface
-    defaults = Defaults()
+    defaults = Defaults(
+        dict(os.environ) | {"KUBECONFIG": f"{os.environ['HOME']}/.kube/config"}
+    )
 
     @classmethod
     def setUpClass(cls) -> None:
