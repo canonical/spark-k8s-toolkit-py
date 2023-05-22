@@ -288,8 +288,11 @@ def k8s_parser(parser: ArgumentParser) -> ArgumentParser:
         "--context", default=None, type=str, help="Kubernetes context to be used"
     )
     parser.add_argument(
-        "--backend", default="kubectl", choices=["kubectl", "lightkube"], type=str,
-        help="Kind of backend to be used for talking to K8s"
+        "--backend",
+        default="kubectl",
+        choices=["kubectl", "lightkube"],
+        type=str,
+        help="Kind of backend to be used for talking to K8s",
     )
     return parser
 

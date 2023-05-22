@@ -6,7 +6,12 @@ from typing import Optional
 
 from spark8t.cli import defaults
 from spark8t.domain import ServiceAccount
-from spark8t.services import K8sServiceAccountRegistry, KubeInterface, LightKube, SparkInterface
+from spark8t.services import (
+    K8sServiceAccountRegistry,
+    KubeInterface,
+    LightKube,
+    SparkInterface,
+)
 from spark8t.utils import (
     add_config_arguments,
     add_deploy_arguments,
@@ -31,11 +36,13 @@ if __name__ == "__main__":
         format="%(asctime)s %(levelname)s %(message)s", level=args.log_level
     )
 
-    kube_interface = \
-        LightKube(
-            args.kubeconfig or defaults.kube_config, defaults
-        ) if args.backend == "lightkube" \
-        else KubeInterface(args.kubeconfig or defaults.kube_config, context_name=args.context)
+    kube_interface = (
+        LightKube(args.kubeconfig or defaults.kube_config, defaults)
+        if args.backend == "lightkube"
+        else KubeInterface(
+            args.kubeconfig or defaults.kube_config, context_name=args.context
+        )
+    )
 
     registry = K8sServiceAccountRegistry(
         kube_interface.select_by_master(re.compile("^k8s://").sub("", args.master))
