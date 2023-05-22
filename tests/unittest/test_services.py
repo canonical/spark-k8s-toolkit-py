@@ -15,6 +15,7 @@ from OpenSSL import crypto
 
 from spark8t.cli import defaults
 from spark8t.domain import KubernetesResourceType, PropertyFile, ServiceAccount
+from spark8t.literals import MANAGED_BY_LABELNAME, PRIMARY_LABELNAME, SPARK8S_LABEL
 from spark8t.services import (
     K8sServiceAccountRegistry,
     KubeInterface,
@@ -336,7 +337,7 @@ class TestServices(TestCase):
         kubeconfig = str(uuid.uuid4())
         username = str(uuid.uuid4())
         namespace = str(uuid.uuid4())
-        secret_name = f"spark-client-sa-conf-{username}"
+        secret_name = f"{SPARK8S_LABEL}-sa-conf-{username}"
         context = str(uuid.uuid4())
         token = str(uuid.uuid4())
         conf_key = str(uuid.uuid4())
@@ -375,7 +376,7 @@ class TestServices(TestCase):
             "kind": "Secret",
             "metadata": {
                 "creationTimestamp": "2022-11-21T07:54:51Z",
-                "name": f"spark-client-sa-conf-{username}",
+                "name": f"{SPARK8S_LABEL}-sa-conf-{username}",
                 "namespace": namespace,
                 "resourceVersion": "292967",
                 "uid": "943b82c3-2891-4332-886c-621ef4f4633f",
@@ -1097,8 +1098,8 @@ class TestServices(TestCase):
                     "metadata": {
                         "creationTimestamp": "2022-11-21T14:32:06Z",
                         "labels": {
-                            "app.kubernetes.io/managed-by": "spark-client",
-                            "app.kubernetes.io/spark-client-primary": "1",
+                            MANAGED_BY_LABELNAME: SPARK8S_LABEL,
+                            PRIMARY_LABELNAME: "1",
                         },
                         "name": f"{username}",
                         "namespace": f"{namespace}",
@@ -1179,8 +1180,8 @@ class TestServices(TestCase):
                     "metadata": {
                         "creationTimestamp": "2022-11-21T14:32:06Z",
                         "labels": {
-                            "app.kubernetes.io/managed-by": "spark-client",
-                            "app.kubernetes.io/spark-client-primary": "1",
+                            MANAGED_BY_LABELNAME: SPARK8S_LABEL,
+                            PRIMARY_LABELNAME: "1",
                         },
                         "name": f"{username}",
                         "namespace": f"{namespace}",
@@ -1258,8 +1259,8 @@ class TestServices(TestCase):
                     "metadata": {
                         "creationTimestamp": "2022-11-21T14:32:06Z",
                         "labels": {
-                            "app.kubernetes.io/managed-by": "spark-client",
-                            "app.kubernetes.io/spark-client-primary": "1",
+                            MANAGED_BY_LABELNAME: SPARK8S_LABEL,
+                            PRIMARY_LABELNAME: "1",
                         },
                         "name": f"{username}",
                         "namespace": f"{namespace}",
@@ -1300,7 +1301,7 @@ class TestServices(TestCase):
 
         name1 = str(uuid.uuid4())
         namespace1 = str(uuid.uuid4())
-        labels11 = K8sServiceAccountRegistry.PRIMARY_LABEL
+        labels11 = PRIMARY_LABELNAME
         labels12 = str(uuid.uuid4())
         name2 = str(uuid.uuid4())
         namespace2 = str(uuid.uuid4())
@@ -1339,7 +1340,7 @@ class TestServices(TestCase):
 
         name1 = str(uuid.uuid4())
         namespace1 = str(uuid.uuid4())
-        labels11 = K8sServiceAccountRegistry.PRIMARY_LABEL
+        labels11 = PRIMARY_LABELNAME
         labels12 = str(uuid.uuid4())
         name2 = str(uuid.uuid4())
         namespace2 = str(uuid.uuid4())
@@ -1373,28 +1374,28 @@ class TestServices(TestCase):
         mock_kube_interface.remove_label.assert_any_call(
             "serviceaccount",
             name1,
-            f"{K8sServiceAccountRegistry.PRIMARY_LABEL}",
+            f"{PRIMARY_LABELNAME}",
             namespace1,
         )
 
         mock_kube_interface.remove_label.assert_any_call(
             "rolebinding",
             f"{name1}-role-binding",
-            f"{K8sServiceAccountRegistry.PRIMARY_LABEL}",
+            f"{PRIMARY_LABELNAME}",
             namespace1,
         )
 
         mock_kube_interface.set_label.assert_any_call(
             "serviceaccount",
             name2,
-            f"{K8sServiceAccountRegistry.PRIMARY_LABEL}=True",
+            f"{PRIMARY_LABELNAME}=True",
             namespace2,
         )
 
         mock_kube_interface.set_label.assert_any_call(
             "rolebinding",
             f"{name2}-role-binding",
-            f"{K8sServiceAccountRegistry.PRIMARY_LABEL}=True",
+            f"{PRIMARY_LABELNAME}=True",
             namespace2,
         )
 
@@ -1405,7 +1406,7 @@ class TestServices(TestCase):
 
         name1 = str(uuid.uuid4())
         namespace1 = str(uuid.uuid4())
-        labels11 = K8sServiceAccountRegistry.PRIMARY_LABEL
+        labels11 = PRIMARY_LABELNAME
         labels12 = str(uuid.uuid4())
         name2 = str(uuid.uuid4())
         namespace2 = str(uuid.uuid4())
@@ -1413,7 +1414,7 @@ class TestServices(TestCase):
         labels22 = str(uuid.uuid4())
         name3 = str(uuid.uuid4())
         namespace3 = str(uuid.uuid4())
-        labels31 = K8sServiceAccountRegistry.PRIMARY_LABEL
+        labels31 = PRIMARY_LABELNAME
         labels32 = str(uuid.uuid4())
         api_server = str(uuid.uuid4())
 
@@ -1484,42 +1485,42 @@ class TestServices(TestCase):
         mock_kube_interface.set_label.assert_any_call(
             KubernetesResourceType.SERVICEACCOUNT,
             name3,
-            f"{K8sServiceAccountRegistry.SPARK_MANAGER_LABEL}=spark-client",
+            f"{MANAGED_BY_LABELNAME}={SPARK8S_LABEL}",
             namespace=namespace3,
         )
 
         mock_kube_interface.set_label.assert_any_call(
             KubernetesResourceType.ROLEBINDING,
             f"{name3}-role-binding",
-            f"{K8sServiceAccountRegistry.SPARK_MANAGER_LABEL}=spark-client",
+            f"{MANAGED_BY_LABELNAME}={SPARK8S_LABEL}",
             namespace=namespace3,
         )
 
         mock_kube_interface.remove_label.assert_any_call(
             KubernetesResourceType.SERVICEACCOUNT,
             name1,
-            f"{K8sServiceAccountRegistry.PRIMARY_LABEL}",
+            f"{PRIMARY_LABELNAME}",
             namespace1,
         )
 
         mock_kube_interface.remove_label.assert_any_call(
             KubernetesResourceType.ROLEBINDING,
             f"{name1}-role-binding",
-            f"{K8sServiceAccountRegistry.PRIMARY_LABEL}",
+            f"{PRIMARY_LABELNAME}",
             namespace1,
         )
 
         mock_kube_interface.set_label.assert_any_call(
             KubernetesResourceType.SERVICEACCOUNT,
             name3,
-            f"{K8sServiceAccountRegistry.PRIMARY_LABEL}=True",
+            f"{PRIMARY_LABELNAME}=True",
             namespace3,
         )
 
         mock_kube_interface.set_label.assert_any_call(
             KubernetesResourceType.ROLEBINDING,
             f"{name3}-role-binding",
-            f"{K8sServiceAccountRegistry.PRIMARY_LABEL}=True",
+            f"{PRIMARY_LABELNAME}=True",
             namespace3,
         )
 
@@ -1552,7 +1553,7 @@ class TestServices(TestCase):
 
         mock_kube_interface.delete.assert_any_call(
             KubernetesResourceType.SECRET,
-            f"spark-client-sa-conf-{name2}",
+            f"{SPARK8S_LABEL}-sa-conf-{name2}",
             namespace=namespace2,
         )
 

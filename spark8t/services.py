@@ -28,6 +28,7 @@ from spark8t.domain import (
     ServiceAccount,
 )
 from spark8t.exceptions import FormatError, NoAccountFound, NoResourceFound
+from spark8t.literals import MANAGED_BY_LABELNAME, PRIMARY_LABELNAME, SPARK8S_LABEL
 from spark8t.utils import (
     WithLogging,
     environ,
@@ -1018,13 +1019,10 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
     def __init__(self, kube_interface: AbstractKubeInterface):
         self.kube_interface = kube_interface
 
-    SPARK_MANAGER_LABEL = "app.kubernetes.io/managed-by"
-    PRIMARY_LABEL = "app.kubernetes.io/spark-client-primary"
-
     def all(self, namespace: Optional[str] = None) -> List["ServiceAccount"]:
         """Return all existing service accounts."""
         service_accounts = self.kube_interface.get_service_accounts(
-            namespace=namespace, labels=[f"{self.SPARK_MANAGER_LABEL}=spark-client"]
+            namespace=namespace, labels=[f"{MANAGED_BY_LABELNAME}={SPARK8S_LABEL}"]
         )
         return [
             self._build_service_account_from_raw(raw["metadata"])
@@ -1033,7 +1031,7 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
 
     @staticmethod
     def _get_secret_name(name):
-        return f"spark-client-sa-conf-{name}"
+        return f"{SPARK8S_LABEL}-sa-conf-{name}"
 
     def _retrieve_account_configurations(
         self, name: str, namespace: str
@@ -1052,7 +1050,7 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
     def _build_service_account_from_raw(self, metadata: Dict[str, Any]):
         name = metadata["name"]
         namespace = metadata["namespace"]
-        primary = self.PRIMARY_LABEL in metadata["labels"]
+        primary = PRIMARY_LABELNAME in metadata["labels"]
 
         return ServiceAccount(
             name=name,
@@ -1076,13 +1074,13 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
             self.kube_interface.remove_label(
                 KubernetesResourceType.SERVICEACCOUNT,
                 primary_account.name,
-                f"{self.PRIMARY_LABEL}",
+                f"{PRIMARY_LABELNAME}",
                 primary_account.namespace,
             )
             self.kube_interface.remove_label(
                 KubernetesResourceType.ROLEBINDING,
                 f"{primary_account.name}-role-binding",
-                f"{self.PRIMARY_LABEL}",
+                f"{PRIMARY_LABELNAME}",
                 primary_account.namespace,
             )
 
@@ -1094,13 +1092,13 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
         self.kube_interface.set_label(
             KubernetesResourceType.SERVICEACCOUNT,
             service_account.name,
-            f"{self.PRIMARY_LABEL}=True",
+            f"{PRIMARY_LABELNAME}=True",
             service_account.namespace,
         )
         self.kube_interface.set_label(
             KubernetesResourceType.ROLEBINDING,
             f"{service_account.name}-role-binding",
-            f"{self.PRIMARY_LABEL}=True",
+            f"{PRIMARY_LABELNAME}=True",
             service_account.namespace,
         )
 
@@ -1139,19 +1137,19 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
         self.kube_interface.set_label(
             KubernetesResourceType.SERVICEACCOUNT,
             service_account.name,
-            f"{self.SPARK_MANAGER_LABEL}=spark-client",
+            f"{MANAGED_BY_LABELNAME}={SPARK8S_LABEL}",
             namespace=service_account.namespace,
         )
         self.kube_interface.set_label(
             KubernetesResourceType.ROLE,
             rolename,
-            f"{self.SPARK_MANAGER_LABEL}=spark-client",
+            f"{MANAGED_BY_LABELNAME}={SPARK8S_LABEL}",
             namespace=service_account.namespace,
         )
         self.kube_interface.set_label(
             KubernetesResourceType.ROLEBINDING,
             rolebindingname,
-            f"{self.SPARK_MANAGER_LABEL}=spark-client",
+            f"{MANAGED_BY_LABELNAME}={SPARK8S_LABEL}",
             namespace=service_account.namespace,
         )
 
