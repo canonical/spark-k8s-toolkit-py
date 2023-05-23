@@ -4,7 +4,7 @@ import logging
 from argparse import ArgumentParser
 from enum import Enum
 
-from spark8t.cli import (
+from spark8t.cli.args import (
     add_config_arguments,
     add_logging_arguments,
     get_kube_interface,

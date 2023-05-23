@@ -4,7 +4,7 @@ import logging
 import re
 from typing import Optional
 
-from spark8t.cli import (
+from spark8t.cli.args import (
     add_config_arguments,
     add_deploy_arguments,
     add_logging_arguments,
