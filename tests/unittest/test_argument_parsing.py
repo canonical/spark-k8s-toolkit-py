@@ -3,7 +3,7 @@ import logging
 import unittest
 from argparse import ArgumentParser
 
-from spark8t.cli.args import (
+from spark8t.cli.params import (
     add_config_arguments,
     add_deploy_arguments,
     add_logging_arguments,
