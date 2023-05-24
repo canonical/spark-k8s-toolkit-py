@@ -4,17 +4,18 @@ import logging
 import re
 from typing import Optional
 
-from spark8t.cli import defaults
-from spark8t.domain import ServiceAccount
-from spark8t.services import K8sServiceAccountRegistry, LightKube, SparkInterface
-from spark8t.utils import (
+from spark8t.cli.params import (
     add_config_arguments,
     add_deploy_arguments,
     add_logging_arguments,
+    defaults,
+    get_kube_interface,
     k8s_parser,
     parse_arguments_with,
     spark_user_parser,
 )
+from spark8t.domain import ServiceAccount
+from spark8t.services import K8sServiceAccountRegistry, SparkInterface
 
 if __name__ == "__main__":
     args, extra_args = parse_arguments_with(
@@ -31,7 +32,7 @@ if __name__ == "__main__":
         format="%(asctime)s %(levelname)s %(message)s", level=args.log_level
     )
 
-    kube_interface = LightKube(args.kubeconfig or defaults.kube_config, defaults)
+    kube_interface = get_kube_interface(args)
 
     registry = K8sServiceAccountRegistry(
         kube_interface.select_by_master(re.compile("^k8s://").sub("", args.master))
