@@ -4,17 +4,16 @@ import logging
 import re
 from typing import Optional
 
-from spark8t.cli.params import (
+from spark8t.domain import ServiceAccount
+from spark8t.lib.params import (
     add_config_arguments,
     add_deploy_arguments,
     add_logging_arguments,
-    defaults,
-    get_kube_interface,
     k8s_parser,
     parse_arguments_with,
     spark_user_parser,
 )
-from spark8t.domain import ServiceAccount
+from spark8t.lib.process_settings import defaults, get_kube_interface
 from spark8t.services import K8sServiceAccountRegistry, SparkInterface
 
 if __name__ == "__main__":
