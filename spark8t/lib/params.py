@@ -1,8 +1,5 @@
-from argparse import ArgumentParser, Namespace
+from argparse import ArgumentParser
 from typing import Callable, List, Optional
-
-from spark8t.cli import defaults
-from spark8t.services import AbstractKubeInterface, KubeInterface, LightKube
 
 
 def parse_arguments_with(
@@ -119,13 +116,3 @@ def add_deploy_arguments(parser: ArgumentParser) -> ArgumentParser:
         choices=["client", "cluster"],
     )
     return parser
-
-
-def get_kube_interface(args: Namespace) -> AbstractKubeInterface:
-    return (
-        LightKube(args.kubeconfig or defaults.kube_config, defaults)
-        if args.backend == "lightkube"
-        else KubeInterface(
-            args.kubeconfig or defaults.kube_config, context_name=args.context
-        )
-    )
