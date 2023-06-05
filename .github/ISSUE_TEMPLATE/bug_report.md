@@ -19,20 +19,10 @@ labels: bug
 
 ## Versions
 
-<!-- Run "lsb_release -sd" -->
+<!-- Run `lsb_release -sd` -->
 Operating system:
 
 ## Log output
-<details>
-<summary> Full log </summary>
-
-<!-- Paste the full log output between the triple backticks (```) -->
-```shell
-
-
-```
-</details>
-
 <!-- (Optional) Copy the logs that are relevant to the bug & paste inside triple backticks below -->
 
 
