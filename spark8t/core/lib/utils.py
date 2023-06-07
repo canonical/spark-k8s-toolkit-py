@@ -55,38 +55,6 @@ levels: LevelsDict = {
 }
 
 
-class WithLogging:
-    """Base class to be used for providing a logger embedded in the class."""
-
-    @property
-    def logger(self) -> Logger:
-        """
-        Create logger.
-        :return: default logger
-        """
-        nameLogger = str(self.__class__).replace("<class '", "").replace("'>", "")
-        return getLogger(nameLogger)
-
-    def logResult(
-        self, msg: Union[Callable[..., str], str], level: StrLevelTypes = "INFO"
-    ) -> Callable[..., Any]:
-        """
-        Return a decorator to allow logging of inputs/outputs.
-        :param msg: message to log
-        :param level: logging level
-        :return: wrapped method
-        """
-
-        def wrap(x: Any) -> Any:
-            if isinstance(msg, str):
-                self.logger.log(levels[level], msg)
-            else:
-                self.logger.log(levels[level], msg(x))
-            return x
-
-        return wrap
-
-
 def union(*dicts: dict) -> dict:
     """
     Return a dictionary that results from the recursive merge of the input dictionaries.
@@ -215,3 +183,32 @@ def environ(*remove, **update):
 
 def listify(value: Any) -> List[str]:
     return [str(v) for v in value] if isinstance(value, list) else [str(value)]
+
+
+def parse_conf_overrides(
+    conf_args: List, environ_vars: Dict = dict(os.environ)
+) -> PropertyFile:
+    """Parse --conf overrides passed to spark-submit
+
+    Args:
+        conf_args: list of all --conf 'k1=v1' type args passed to spark-submit.
+            Note v1 expression itself could be containing '='
+        environ_vars: dictionary with environment variables as key-value pairs
+    """
+    conf_overrides = dict()
+    if conf_args:
+        with environ(*os.environ.keys(), **environ_vars):
+            for c in conf_args:
+                try:
+                    kv = c.split("=")
+                    k = kv[0]
+                    v = "=".join(kv[1:])
+                    conf_overrides[k] = os.path.expandvars(v)
+                except IndexError:
+                    raise FormatError(
+                        "Configuration related arguments parsing error. "
+                        "Please check input arguments and try again."
+                    )
+    return PropertyFile(conf_overrides)
+
+
