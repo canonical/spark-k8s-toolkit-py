@@ -3,7 +3,8 @@ import logging
 import unittest
 from argparse import ArgumentParser
 
-from spark8t.cli.params import (
+from spark8t.cli.service_account_registry import create_service_account_registry_parser
+from spark8t.lib.params import (
     add_config_arguments,
     add_deploy_arguments,
     add_logging_arguments,
@@ -11,7 +12,6 @@ from spark8t.cli.params import (
     parse_arguments_with,
     spark_user_parser,
 )
-from spark8t.cli.service_account_registry import create_service_account_registry_parser
 from tests import TestCase
 
 
