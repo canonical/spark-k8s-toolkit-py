@@ -481,10 +481,6 @@ class TestServices(TestCase):
             {"op": "remove", "path": f"/metadata/labels/{label_key.replace('/', '~1')}"}
         ]
 
-        # for write_call in mock_lightkube_client_patch.call_args_list:
-        #     print('args: {}'.format(write_call[0]))
-        #     print('kwargs: {}'.format(write_call[1]))
-
         mock_lightkube_client_patch.assert_any_call(
             res=LightKubeServiceAccount,
             name=resource_name,
@@ -509,10 +505,6 @@ class TestServices(TestCase):
             {"op": "remove", "path": f"/metadata/labels/{label_key.replace('/', '~1')}"}
         ]
 
-        # for write_call in mock_lightkube_client_patch.call_args_list:
-        #     print('args: {}'.format(write_call[0]))
-        #     print('kwargs: {}'.format(write_call[1]))
-
         mock_lightkube_client_patch.assert_any_call(
             res=Role,
             name=resource_name,
@@ -536,10 +528,6 @@ class TestServices(TestCase):
         patch = [
             {"op": "remove", "path": f"/metadata/labels/{label_key.replace('/', '~1')}"}
         ]
-
-        # for write_call in mock_lightkube_client_patch.call_args_list:
-        #     print('args: {}'.format(write_call[0]))
-        #     print('kwargs: {}'.format(write_call[1]))
 
         mock_lightkube_client_patch.assert_any_call(
             res=RoleBinding,
@@ -800,9 +788,6 @@ class TestServices(TestCase):
                 namespace,
                 **{"from-env-file": "dummy"},
             )
-        # for write_call in mock_lightkube_client_create.call_args_list:
-        #     print('args: {}'.format(write_call[0]))
-        #     print('kwargs: {}'.format(write_call[1]))
 
         mock_lightkube_client_create.assert_any_call(
             obj=mock_created_resource, name=resource_name, namespace=namespace
@@ -1458,9 +1443,6 @@ class TestServices(TestCase):
 
         registry = K8sServiceAccountRegistry(mock_kube_interface)
         self.assertEqual(registry.create(sa3_obj), sa3_obj.id)
-
-        for call in mock_kube_interface.create.call_args_list:
-            print(call)
 
         mock_kube_interface.create.assert_any_call(
             KubernetesResourceType.SERVICEACCOUNT,

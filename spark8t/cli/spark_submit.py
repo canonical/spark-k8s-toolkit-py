@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import logging
 import re
 from typing import Optional
 
@@ -12,6 +11,7 @@ from spark8t.cli.params import (
     get_kube_interface,
     k8s_parser,
     parse_arguments_with,
+    setup_logging,
     spark_user_parser,
 )
 from spark8t.domain import ServiceAccount
@@ -28,9 +28,7 @@ if __name__ == "__main__":
         ]
     ).parse_known_args()
 
-    logging.basicConfig(
-        format="%(asctime)s %(levelname)s %(message)s", level=args.log_level
-    )
+    logger = setup_logging(args, "spark8t.cli.spark_submit")
 
     kube_interface = get_kube_interface(args)
 
