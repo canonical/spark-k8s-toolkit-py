@@ -4,6 +4,7 @@ import logging
 import os
 import unittest
 import uuid
+from unittest import TestCase
 from unittest.mock import patch
 
 import yaml
@@ -22,7 +23,6 @@ from spark8t.services import (
     LightKube,
     parse_conf_overrides,
 )
-from tests import TestCase
 
 
 class TestServices(TestCase):
