@@ -1,11 +1,11 @@
 import logging
 import unittest
 import uuid
+from unittest import TestCase
 
 from spark8t.domain import Defaults, PropertyFile, ServiceAccount
 from spark8t.services import InMemoryAccountRegistry
 from spark8t.utils import umask_named_temporary_file
-from tests import TestCase
 
 
 class TestDomain(TestCase):
