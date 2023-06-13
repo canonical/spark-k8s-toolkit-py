@@ -73,6 +73,7 @@ codespell = "^2.1.0"
 flake8 = ">=4.0.1"
 Flake8-pyproject = ">=1.1.0"
 mypy = ">=0.910"
+pytest-mypy = ">=0.10.3"
 lightkube = ">=0.11"
 
 [tool.poetry.group.unit]
