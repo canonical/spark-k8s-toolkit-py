@@ -7,10 +7,26 @@ from spark8t.domain import PropertyFile, ServiceAccount
 
 @pytest.mark.usefixtures("integration_test")
 @pytest.mark.parametrize(
-    "namespace, user",
-    [("default-namespace", "spark"), ("spark-namespace", "spark-user")],
+    "kubeinterface_name, kuberegistry_name",
+    [
+        ("kubeinterface", "kube_registry"),
+        pytest.param(
+            "lightkubeinterface",
+            "lightkube_registry",
+            marks=pytest.mark.xfail(
+                reason="https://warthogs.atlassian.net/browse/DPE-2131"
+            ),
+        ),
+    ],
 )
-def test_registry_io(namespace, user, kubeinterface, registry):
+@pytest.mark.parametrize(
+    "namespace, user",
+    [("default-a-namespace", "spark"), ("spark-a-namespace", "spark-user")],
+)
+def test_registry_io(kubeinterface_name, kuberegistry_name, namespace, user, request):
+    kubeinterface = request.getfixturevalue(kubeinterface_name)
+    registry = request.getfixturevalue(kuberegistry_name)
+
     kubeinterface.create(resource_type="namespace", resource_name=namespace)
 
     service_account = ServiceAccount(
@@ -23,7 +39,7 @@ def test_registry_io(namespace, user, kubeinterface, registry):
 
     registry.create(service_account)
 
-    assert len(registry.all()) == 1
+    assert len(registry.all(namespace=namespace)) == 1
 
     retrieved_service_account = registry.get(service_account.id)
 
@@ -38,10 +54,28 @@ def test_registry_io(namespace, user, kubeinterface, registry):
 
 @pytest.mark.usefixtures("integration_test")
 @pytest.mark.parametrize(
-    "namespace, username",
-    [("default-namespace", "spark"), ("spark-namespace", "spark-user")],
+    "kubeinterface_name, kuberegistry_name",
+    [
+        ("kubeinterface", "kube_registry"),
+        pytest.param(
+            "lightkubeinterface",
+            "lightkube_registry",
+            marks=pytest.mark.xfail(
+                reason="https://warthogs.atlassian.net/browse/DPE-2131"
+            ),
+        ),
+    ],
 )
-def test_registry_change_primary_account(namespace, username, kubeinterface, registry):
+@pytest.mark.parametrize(
+    "namespace, username",
+    [("default-b-namespace", "spark"), ("spark-b-namespace", "spark-user")],
+)
+def test_registry_change_primary_account(
+    kubeinterface_name, kuberegistry_name, namespace, username, request
+):
+    kubeinterface = request.getfixturevalue(kubeinterface_name)
+    registry = request.getfixturevalue(kuberegistry_name)
+
     kubeinterface.create(resource_type="namespace", resource_name=namespace)
 
     sa1 = ServiceAccount(
@@ -69,7 +103,7 @@ def test_registry_change_primary_account(namespace, username, kubeinterface, reg
 
 
 @pytest.mark.usefixtures("integration_test")
-def test_merge_configurations(registry):
+def test_merge_configurations():
     k1 = str(uuid.uuid4())
     v11 = str(uuid.uuid4())
     v12 = str(uuid.uuid4())
