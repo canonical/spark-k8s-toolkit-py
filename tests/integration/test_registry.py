@@ -1,166 +1,118 @@
-import os
 import uuid
-from unittest import TestCase
 
-from parameterized import parameterized
+import pytest
 
-from spark8t.domain import Defaults, PropertyFile, ServiceAccount
-from spark8t.services import (
-    AbstractServiceAccountRegistry,
-    K8sServiceAccountRegistry,
-    KubeInterface,
+from spark8t.domain import PropertyFile, ServiceAccount
+
+
+@pytest.mark.usefixtures("integration_test")
+@pytest.mark.parametrize(
+    "namespace, user",
+    [("default-namespace", "spark"), ("spark-namespace", "spark-user")],
 )
-from tests import integration_test
+def test_registry_io(namespace, user, kubeinterface, registry):
+    kubeinterface.create(resource_type="namespace", resource_name=namespace)
 
-
-class TestRegistry(TestCase):
-    kube_interface: KubeInterface
-    defaults = Defaults(
-        dict(os.environ) | {"KUBECONFIG": f"{os.environ['HOME']}/.kube/config"}
+    service_account = ServiceAccount(
+        user,
+        namespace,
+        kubeinterface.api_server,
+        primary=True,
+        extra_confs=PropertyFile({"my-key": "my-value"}),
     )
 
-    @classmethod
-    def setUpClass(cls) -> None:
-        cls.kube_interface = KubeInterface(cls.defaults.kube_config)
+    registry.create(service_account)
 
-    def get_registry(self) -> AbstractServiceAccountRegistry:
-        return K8sServiceAccountRegistry(self.kube_interface)
+    assert len(registry.all()) == 1
 
-    def setUp(self) -> None:
-        # Make sure there are no service account before each test is run
-        registry = self.cleanup_registry(self.get_registry())
-        self.assertEqual(len(registry.all()), 0)
+    retrieved_service_account = registry.get(service_account.id)
 
-    def tearDown(self) -> None:
-        # Make sure there are no service account before each test is run
-        registry = self.cleanup_registry(self.get_registry())
-        self.assertEqual(len(registry.all()), 0)
-
-    @staticmethod
-    def cleanup_registry(registry: AbstractServiceAccountRegistry):
-        [registry.delete(account.id) for account in registry.all()]
-        return registry
-
-    @parameterized.expand(
-        [("default-namespace", "spark"), ("spark-namespace", "spark-user")]
+    assert service_account.id == retrieved_service_account.id
+    assert service_account.name == retrieved_service_account.name
+    assert service_account.namespace == retrieved_service_account.namespace
+    assert service_account.primary == retrieved_service_account.primary
+    assert (
+        service_account.extra_confs.props == retrieved_service_account.extra_confs.props
     )
-    @integration_test
-    def test_registry_io(self, namespace, user):
-        registry = self.get_registry()
 
-        self.assertEqual(len(registry.all()), 0)
 
-        self.kube_interface.create(resource_type="namespace", resource_name=namespace)
+@pytest.mark.usefixtures("integration_test")
+@pytest.mark.parametrize(
+    "namespace, username",
+    [("default-namespace", "spark"), ("spark-namespace", "spark-user")],
+)
+def test_registry_change_primary_account(namespace, username, kubeinterface, registry):
+    kubeinterface.create(resource_type="namespace", resource_name=namespace)
 
-        service_account = ServiceAccount(
-            user,
-            namespace,
-            self.kube_interface.api_server,
-            primary=True,
-            extra_confs=PropertyFile({"my-key": "my-value"}),
-        )
-
-        registry.create(service_account)
-
-        self.assertEqual(len(registry.all()), 1)
-
-        retrieved_service_account = registry.get(service_account.id)
-
-        self.assertEqual(service_account.id, retrieved_service_account.id)
-        self.assertEqual(service_account.name, retrieved_service_account.name)
-        self.assertEqual(service_account.namespace, retrieved_service_account.namespace)
-        self.assertEqual(service_account.primary, retrieved_service_account.primary)
-        self.assertEqual(
-            service_account.extra_confs.props,
-            retrieved_service_account.extra_confs.props,
-        )
-
-        registry.delete(service_account.id)
-        self.kube_interface.delete("namespace", namespace)
-
-    @parameterized.expand(
-        [("default-namespace", "spark"), ("spark-namespace", "spark-user")]
+    sa1 = ServiceAccount(
+        f"{username}-1",
+        namespace,
+        kubeinterface.api_server,
+        primary=True,
+        extra_confs=PropertyFile({"k1": "v1"}),
     )
-    @integration_test
-    def test_registry_change_primary_account(self, namespace, username):
-        self.kube_interface.create(resource_type="namespace", resource_name=namespace)
+    sa2 = ServiceAccount(
+        f"{username}-2",
+        namespace,
+        kubeinterface.api_server,
+        primary=False,
+        extra_confs=PropertyFile({"k2": "v2"}),
+    )
+    registry.create(sa1)
+    registry.create(sa2)
 
-        registry = self.get_registry()
-        self.assertEqual(len(registry.all()), 0)
-        sa1 = ServiceAccount(
-            f"{username}-1",
-            namespace,
-            self.kube_interface.api_server,
-            primary=True,
-            extra_confs=PropertyFile({"k1": "v1"}),
-        )
-        sa2 = ServiceAccount(
-            f"{username}-2",
-            namespace,
-            self.kube_interface.api_server,
-            primary=False,
-            extra_confs=PropertyFile({"k2": "v2"}),
-        )
-        registry.create(sa1)
-        registry.create(sa2)
+    assert registry.get_primary().id == sa1.id
 
-        self.assertEqual(registry.get_primary().id, sa1.id)
+    registry.set_primary(sa2.id)
 
-        registry.set_primary(sa2.id)
+    assert registry.get_primary().id == sa2.id
 
-        self.assertEqual(registry.get_primary().id, sa2.id)
 
-        registry.delete(sa1.id)
-        registry.delete(sa2.id)
+@pytest.mark.usefixtures("integration_test")
+def test_merge_configurations(registry):
+    k1 = str(uuid.uuid4())
+    v11 = str(uuid.uuid4())
+    v12 = str(uuid.uuid4())
+    v13 = str(uuid.uuid4())
+    k2 = "spark.driver.extraJavaOptions"
+    v21 = str(uuid.uuid4())
+    v22 = str(uuid.uuid4())
+    v23 = str(uuid.uuid4())
 
-        self.kube_interface.delete("namespace", namespace)
+    props1 = PropertyFile(
+        {k1: v11, k2: f"-Dscala.shell.histfile={v21}", "key1": "value1"}
+    )
+    props2 = PropertyFile(
+        {k1: v12, k2: f"-Dscala.shell.histfile={v22}", "key2": "value2"}
+    )
+    props3 = PropertyFile(
+        {k1: v13, k2: f"-Dscala.shell.histfile={v23}", "key3": "value3"}
+    )
 
-    @integration_test
-    def test_merge_configurations(self):
-        registry = self.get_registry()
-        self.assertEqual(len(registry.all()), 0)
-        k1 = str(uuid.uuid4())
-        v11 = str(uuid.uuid4())
-        v12 = str(uuid.uuid4())
-        v13 = str(uuid.uuid4())
-        k2 = "spark.driver.extraJavaOptions"
-        v21 = str(uuid.uuid4())
-        v22 = str(uuid.uuid4())
-        v23 = str(uuid.uuid4())
+    merged_props = props1 + props2 + props3
 
-        props1 = PropertyFile(
-            {k1: v11, k2: f"-Dscala.shell.histfile={v21}", "key1": "value1"}
-        )
-        props2 = PropertyFile(
-            {k1: v12, k2: f"-Dscala.shell.histfile={v22}", "key2": "value2"}
-        )
-        props3 = PropertyFile(
-            {k1: v13, k2: f"-Dscala.shell.histfile={v23}", "key3": "value3"}
-        )
+    expected_merged_props = PropertyFile(
+        {
+            k1: v13,
+            k2: f" -Dscala.shell.histfile={v23}",
+            "key1": "value1",
+            "key2": "value2",
+            "key3": "value3",
+        }
+    )
 
-        merged_props = props1 + props2 + props3
+    assert merged_props.props == expected_merged_props.props
 
-        expected_merged_props = PropertyFile(
-            {
-                k1: v13,
-                k2: f" -Dscala.shell.histfile={v23}",
-                "key1": "value1",
-                "key2": "value2",
-                "key3": "value3",
-            }
-        )
 
-        self.assertEqual(merged_props.props, expected_merged_props.props)
+@pytest.mark.usefixtures("integration_test")
+def test_kube_interface(kubeinterface):
+    context = str(uuid.uuid4())
+    kubectl_cmd = str(uuid.uuid4())
 
-    @integration_test
-    def test_kube_interface(self):
-        context = str(uuid.uuid4())
-        kubectl_cmd = str(uuid.uuid4())
-
-        k = self.kube_interface.autodetect()
-        self.assertEqual(k.context_name, "microk8s")
-        self.assertEqual(k.cluster.get("server"), "https://127.0.0.1:16443")
-        k2 = k.select_by_master("https://127.0.0.1:16443")
-        self.assertEqual(k2.context_name, "microk8s")
-        self.assertEqual(k.with_context(context).context_name, context)
-        self.assertEqual(k.with_kubectl_cmd(kubectl_cmd).kubectl_cmd, kubectl_cmd)
+    k = kubeinterface.autodetect()
+    assert k.context_name == "microk8s"
+    assert k.cluster.get("server") == "https://127.0.0.1:16443"
+    k2 = k.select_by_master("https://127.0.0.1:16443")
+    assert k2.context_name == "microk8s"
+    assert k.with_context(context).context_name == context
+    assert k.with_kubectl_cmd(kubectl_cmd).kubectl_cmd == kubectl_cmd
