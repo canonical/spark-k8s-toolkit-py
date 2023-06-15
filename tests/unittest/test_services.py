@@ -5,7 +5,7 @@ import os
 import unittest
 import uuid
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import ANY, patch
 
 import yaml
 from lightkube.resources.core_v1 import Secret
@@ -1463,9 +1463,10 @@ class TestServices(TestCase):
             print(call)
 
         mock_kube_interface.create.assert_any_call(
-            KubernetesResourceType.SERVICEACCOUNT,
-            name3,
+            KubernetesResourceType.SECRET_GENERIC,
+            "spark8t-sa-conf-" + name3,
             namespace=namespace3,
+            **{"from-env-file": ANY},
         )
 
         mock_kube_interface.create.assert_any_call(
@@ -1479,10 +1480,10 @@ class TestServices(TestCase):
         )
 
         mock_kube_interface.create.assert_any_call(
-            KubernetesResourceType.ROLEBINDING,
-            f"{name3}-role-binding",
+            KubernetesResourceType.SECRET_GENERIC,
+            "spark8t-sa-conf-" + name3,
             namespace=namespace3,
-            **{"role": f"{name3}-role", "serviceaccount": sa3_obj.id},
+            **{"from-env-file": ANY},
         )
 
         mock_kube_interface.set_label.assert_any_call(
