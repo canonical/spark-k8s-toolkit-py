@@ -334,7 +334,9 @@ class LightKube(AbstractKubeInterface):
             )
         except ApiError as e:
             if e.status.code == 404:
-                raise K8sResourceNotFound(account_id, KubernetesResourceType.SERVICEACCOUNT)
+                raise K8sResourceNotFound(
+                    account_id, KubernetesResourceType.SERVICEACCOUNT
+                )
             raise e
         except Exception as e:
             raise e
