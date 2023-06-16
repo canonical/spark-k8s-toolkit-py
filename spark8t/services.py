@@ -326,17 +326,21 @@ class LightKube(AbstractKubeInterface):
             namespace: namespace where to look for the service account. Default is 'default'
         """
 
-        with io.StringIO() as buffer:
-            codecs.dump_all_yaml(
-                [
-                    self.client.get(
-                        res=LightKubeServiceAccount,
-                        name=account_id,
-                        namespace=namespace,
-                    )
-                ],
-                buffer,
+        try:
+            service_account = self.client.get(
+                res=LightKubeServiceAccount,
+                name=account_id,
+                namespace=namespace,
             )
+        except ApiError as e:
+            if e.status.code == 404:
+                raise K8sResourceNotFound(account_id, KubernetesResourceType.SERVICEACCOUNT)
+            raise e
+        except Exception as e:
+            raise e
+
+        with io.StringIO() as buffer:
+            codecs.dump_all_yaml([service_account], buffer)
             buffer.seek(0)
             return yaml.safe_load(buffer)
 
