@@ -1448,6 +1448,7 @@ class TestServices(TestCase):
             KubernetesResourceType.SERVICEACCOUNT,
             name3,
             namespace=namespace3,
+            username=name3,
         )
 
         mock_kube_interface.create.assert_any_call(
@@ -1464,7 +1465,11 @@ class TestServices(TestCase):
             KubernetesResourceType.ROLEBINDING,
             f"{name3}-role-binding",
             namespace=namespace3,
-            **{"role": f"{name3}-role", "serviceaccount": sa3_obj.id},
+            **{
+                "role": f"{name3}-role",
+                "serviceaccount": sa3_obj.id,
+                "username": name3,
+            },
         )
 
         mock_kube_interface.set_label.assert_any_call(

@@ -519,6 +519,7 @@ class LightKube(AbstractKubeInterface):
                             "resourcename": resource_name,
                             "namespace": namespace,
                         }
+                        | extra_args
                     ),
                 ).__getitem__(0)
         elif resource_type == KubernetesResourceType.ROLE:
@@ -530,6 +531,7 @@ class LightKube(AbstractKubeInterface):
                             "resourcename": resource_name,
                             "namespace": namespace,
                         }
+                        | extra_args
                     ),
                 ).__getitem__(0)
         elif resource_type == KubernetesResourceType.ROLEBINDING:
@@ -541,6 +543,7 @@ class LightKube(AbstractKubeInterface):
                             "resourcename": resource_name,
                             "namespace": namespace,
                         }
+                        | extra_args
                     ),
                 ).__getitem__(0)
         elif (
@@ -844,10 +847,15 @@ class KubeInterface(AbstractKubeInterface):
                 f"create {resource_type} {resource_name}", namespace=None, output="name"
             )
         else:
+            # NOTE: removing 'username' to avoid interference with KUBECONFIG
+            # ERROR: more than one authentication method found for admin; found [token basicAuth], only one is allowed
+            # See for similar:
+            # https://stackoverflow.com/questions/53783871/get-error-more-than-one-authentication-method-found-for-tier-two-user-found
             formatted_extra_args = " ".join(
                 [
                     f"--{k}={v}"
                     for k, values in extra_args.items()
+                    if k != "username"
                     for v in listify(values)
                 ]
             )
@@ -971,7 +979,7 @@ class AbstractServiceAccountRegistry(WithLogging, ABC):
         pass
 
     @abstractmethod
-    def set_primary(self, account_id: str) -> Optional[str]:
+    def set_primary(self, account_id: str, namespace: Optional[str]) -> Optional[str]:
         """Set the primary account to the one related to the provided account id.
 
         Args:
@@ -979,9 +987,9 @@ class AbstractServiceAccountRegistry(WithLogging, ABC):
         """
         pass
 
-    def get_primary(self) -> Optional[ServiceAccount]:
+    def get_primary(self, namespace: Optional[str] = None) -> Optional[ServiceAccount]:
         """Return the primary service account. None is there is no primary service account."""
-        all_accounts = self.all()
+        all_accounts = self.all(namespace)
 
         if len(all_accounts) == 0:
             self.logger.warning("There are no service account available.")
@@ -1060,7 +1068,9 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
             extra_confs=self._retrieve_account_configurations(name, namespace),
         )
 
-    def set_primary(self, account_id: str) -> Optional[str]:
+    def set_primary(
+        self, account_id: str, namespace: Optional[str] = None
+    ) -> Optional[str]:
         """Set the primary account to the one related to the provided account id.
 
         Args:
@@ -1068,7 +1078,7 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
         """
 
         # Relabeling primary
-        primary_account = self.get_primary()
+        primary_account = self.get_primary(namespace)
 
         if primary_account is not None:
             self.kube_interface.remove_label(
@@ -1110,13 +1120,17 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
         Args:
             service_account: ServiceAccount to be stored in the registry
         """
-        rolename = service_account.name + "-role"
-        rolebindingname = service_account.name + "-role-binding"
+        username = service_account.name
+        serviceaccount = service_account.id
+
+        rolename = username + "-role"
+        rolebindingname = username + "-role-binding"
 
         self.kube_interface.create(
             KubernetesResourceType.SERVICEACCOUNT,
-            service_account.name,
+            username,
             namespace=service_account.namespace,
+            **{"username": username},
         )
         self.kube_interface.create(
             KubernetesResourceType.ROLE,
@@ -1131,7 +1145,9 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
             KubernetesResourceType.ROLEBINDING,
             rolebindingname,
             namespace=service_account.namespace,
-            **{"role": rolename, "serviceaccount": service_account.id},
+            role=rolename,
+            serviceaccount=serviceaccount,
+            username=username,
         )
 
         self.kube_interface.set_label(
@@ -1154,12 +1170,12 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
         )
 
         if service_account.primary is True:
-            self.set_primary(service_account.id)
+            self.set_primary(serviceaccount, service_account.namespace)
 
         if len(service_account.extra_confs) > 0:
-            self.set_configurations(service_account.id, service_account.extra_confs)
+            self.set_configurations(serviceaccount, service_account.extra_confs)
 
-        return service_account.id
+        return serviceaccount
 
     def _create_account_configuration(self, service_account: ServiceAccount):
         secret_name = self._get_secret_name(service_account.name)
@@ -1317,7 +1333,7 @@ class InMemoryAccountRegistry(AbstractServiceAccountRegistry):
         """
         return self.cache.pop(account_id).id
 
-    def set_primary(self, account_id: str) -> str:
+    def set_primary(self, account_id: str, namespace: Optional[str] = None) -> str:
         """Set the primary account to the one related to the provided account id.
 
         Args:

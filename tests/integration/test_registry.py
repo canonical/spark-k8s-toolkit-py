@@ -10,13 +10,7 @@ from spark8t.domain import PropertyFile, ServiceAccount
     "kubeinterface_name, kuberegistry_name",
     [
         ("kubeinterface", "kube_registry"),
-        pytest.param(
-            "lightkubeinterface",
-            "lightkube_registry",
-            marks=pytest.mark.xfail(
-                reason="https://warthogs.atlassian.net/browse/DPE-2131"
-            ),
-        ),
+        ("lightkubeinterface", "lightkube_registry"),
     ],
 )
 @pytest.mark.parametrize(
@@ -57,13 +51,7 @@ def test_registry_io(kubeinterface_name, kuberegistry_name, namespace, user, req
     "kubeinterface_name, kuberegistry_name",
     [
         ("kubeinterface", "kube_registry"),
-        pytest.param(
-            "lightkubeinterface",
-            "lightkube_registry",
-            marks=pytest.mark.xfail(
-                reason="https://warthogs.atlassian.net/browse/DPE-2131"
-            ),
-        ),
+        ("lightkubeinterface", "lightkube_registry"),
     ],
 )
 @pytest.mark.parametrize(
@@ -95,11 +83,50 @@ def test_registry_change_primary_account(
     registry.create(sa1)
     registry.create(sa2)
 
-    assert registry.get_primary().id == sa1.id
+    assert registry.get_primary(namespace).id == sa1.id
 
-    registry.set_primary(sa2.id)
+    registry.set_primary(sa2.id, namespace)
 
-    assert registry.get_primary().id == sa2.id
+    assert registry.get_primary(namespace).id == sa2.id
+
+
+@pytest.mark.xfail(
+    reason="[BUG]: No namespace means ALL for KubeInterface, 'default' for LightKube..."
+)
+@pytest.mark.parametrize(
+    "kubeinterface_name, kuberegistry_name",
+    [
+        ("kubeinterface", "kube_registry"),
+        ("lightkubeinterface", "lightkube_registry"),
+    ],
+)
+def test_registry_all(kubeinterface_name, kuberegistry_name, request):
+    kubeinterface = request.getfixturevalue(kubeinterface_name)
+    registry = request.getfixturevalue(kuberegistry_name)
+
+    kubeinterface.create(resource_type="namespace", resource_name="namespace-1")
+    kubeinterface.create(resource_type="namespace", resource_name="namespace-2")
+
+    sa1 = ServiceAccount(
+        "username-1",
+        "namespace-1",
+        kubeinterface.api_server,
+        primary=True,
+        extra_confs=PropertyFile({"k1": "v1"}),
+    )
+    sa2 = ServiceAccount(
+        "username-2",
+        "namespace-2",
+        kubeinterface.api_server,
+        primary=False,
+        extra_confs=PropertyFile({"k2": "v2"}),
+    )
+    registry.create(sa1)
+    registry.create(sa2)
+
+    assert len(registry.all("namespace-1")) == 1
+    assert len(registry.all("namespace-2")) == 1
+    assert len(registry.all()) == 2
 
 
 @pytest.mark.usefixtures("integration_test")
