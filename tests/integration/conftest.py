@@ -56,8 +56,19 @@ def lightkubeinterface(defs_with_kubeconf):
         interface.client.delete(Namespace, name=ns)
 
 
+def _clearnup_registry(registry):
+    [registry.delete(account.id) for account in registry.all()]
+
+
 @pytest.fixture
-def registry(kubeinterface):
+def kube_registry(kubeinterface):
     registry = K8sServiceAccountRegistry(kubeinterface)
     yield registry
-    [registry.delete(account.id) for account in registry.all()]
+    _clearnup_registry(registry)
+
+
+@pytest.fixture
+def lightkube_registry(lightkubeinterface):
+    registry = K8sServiceAccountRegistry(lightkubeinterface)
+    yield registry
+    _clearnup_registry(registry)
