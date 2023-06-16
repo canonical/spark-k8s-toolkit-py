@@ -400,7 +400,9 @@ def test_kube_interface_get_secret(mocker):
         secret_result = k.get_secret(secret_name, namespace)
         assert conf_value == secret_result["data"][conf_key]
 
-    mock_subprocess.assert_any_call(cmd_get_secret, shell=True, stderr=subprocess.STDOUT)
+    mock_subprocess.assert_any_call(
+        cmd_get_secret, shell=True, stderr=subprocess.STDOUT
+    )
 
 
 def test_lightkube_set_label_service_account(mocker, tmp_kubeconf):
