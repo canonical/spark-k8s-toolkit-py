@@ -1,0 +1,20 @@
+version: 1
+disable_existing_loggers: False
+
+formatters:
+  default:
+    format: "%(asctime)s %(levelname)s [%(name)s] (%(threadName)s) (%(funcName)s) %(message)s"
+    datefmt: '%Y-%m-%d %H:%M:%S.000%z'
+
+handlers:
+  console:
+    class: 'logging.StreamHandler'
+    level: 'DEBUG'
+    formatter: 'default'
+    stream: 'ext://sys.stdout'
+
+loggers:
+  '':
+    level: $LOG_LEVEL|"INFO"
+    handlers: [ 'console' ]
+    propagate: False

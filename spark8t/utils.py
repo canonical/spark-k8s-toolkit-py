@@ -1,13 +1,14 @@
 """Module for general logging functionalities and abstractions."""
-
 import errno
 import io
+import json
+import logging
 import os
 import subprocess
 from contextlib import contextmanager
 from copy import deepcopy as copy
 from functools import reduce
-from logging import Logger, getLogger
+from logging import Logger, config, getLogger
 from tempfile import NamedTemporaryFile
 from typing import (
     Any,
@@ -23,6 +24,7 @@ from typing import (
 )
 
 import yaml
+from envyaml import EnvYAML
 
 PathLike = Union[str, "os.PathLike[str]"]
 
@@ -53,6 +55,65 @@ levels: LevelsDict = {
     "DEBUG": 10,
     "NOTSET": 0,
 }
+
+DEFAULT_LOGGING_FILE = os.path.join(
+    os.path.dirname(__file__), "resources", "logging.yaml"
+)
+
+
+def config_from_json(path_to_file: str = DEFAULT_LOGGING_FILE) -> None:
+    """
+    Configure logger from json
+
+    :param path_to_file: path to configuration file
+
+    :type path_to_file: str
+
+    :return: configuration for logger
+    """
+    with open(path_to_file, "rt") as fid:
+        configFile = json.load(fid)
+    config.dictConfig(configFile)
+
+
+def config_from_yaml(path_to_file: str = DEFAULT_LOGGING_FILE) -> None:
+    """
+    Configure logger from yaml
+
+    :param path_to_file: path to configuration file
+
+    :type path_to_file: str
+
+    :return: configuration for logger
+    """
+    config.dictConfig(dict(EnvYAML(path_to_file, strict=False)))
+
+
+def config_from_file(path_to_file: str = DEFAULT_LOGGING_FILE) -> None:
+    """
+    Configure logger from file
+
+    :param path_to_file: path to configuration file
+
+    :type path_to_file: str
+
+    :return: configuration for logger
+    """
+
+    readers = {
+        ".yml": config_from_yaml,
+        ".yaml": config_from_yaml,
+        ".json": config_from_json,
+    }
+
+    _, file_extension = os.path.splitext(path_to_file)
+
+    if file_extension not in readers.keys():
+        raise NotImplementedError(
+            f"Reader for file extension {file_extension} is not supported"
+        )
+
+    return readers[file_extension](path_to_file)
 
 
 class WithLogging:
@@ -85,6 +146,14 @@ class WithLogging:
             return x
 
         return wrap
+
+
+def setup_logging(
+    log_level: str, config_file: Optional[str] = None, logger_name: Optional[str] = None
+) -> logging.Logger:
+    with environ(LOG_LEVEL=log_level) as _:
+        config_from_file(config_file or DEFAULT_LOGGING_FILE)
+    return logging.getLogger(logger_name) if logger_name else logging.root
 
 
 def union(*dicts: dict) -> dict:

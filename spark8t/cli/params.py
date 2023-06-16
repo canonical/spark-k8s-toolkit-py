@@ -1,8 +1,10 @@
+import logging
 from argparse import ArgumentParser, Namespace
 from typing import Callable, List, Optional
 
 from spark8t.cli import defaults
 from spark8t.services import AbstractKubeInterface, KubeInterface, LightKube
+from spark8t.utils import DEFAULT_LOGGING_FILE, config_from_file, environ
 
 
 def parse_arguments_with(
@@ -31,8 +33,12 @@ def add_logging_arguments(parser: ArgumentParser) -> ArgumentParser:
     parser.add_argument(
         "--log-level",
         choices=["INFO", "WARN", "ERROR", "DEBUG"],
-        default="ERROR",
+        default="INFO",
         help="Set the log level of the logging",
+    )
+    parser.add_argument(
+        "--log-conf-file",
+        help="Provide a log configuration file",
     )
 
     return parser
@@ -129,3 +135,11 @@ def get_kube_interface(args: Namespace) -> AbstractKubeInterface:
             args.kubeconfig or defaults.kube_config, context_name=args.context
         )
     )
+
+
+def setup_logging(
+    log_level: str, config_file: Optional[str], logger_name: Optional[str] = None
+) -> logging.Logger:
+    with environ(LOG_LEVEL=log_level) as _:
+        config_from_file(config_file or DEFAULT_LOGGING_FILE)
+    return logging.getLogger(logger_name) if logger_name else logging.root
