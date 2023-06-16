@@ -282,6 +282,34 @@ class TestDomain(TestCase):
         )
         self.assertEqual(registry.get(sa2.id).extra_confs.props, new_props)
 
+    def test_property_removing_conf(self):
+        confs = ["key1=value1", "key2=value2", "key3=value3"]
+
+        prop = PropertyFile(
+            dict(PropertyFile.parse_property_line(line) for line in confs)
+        )
+
+        self.assertFalse("key1" in prop.remove(["key1"]).props)
+
+        self.assertTrue("key3" in prop.remove(["key1", "key2"]).props)
+
+        self.assertDictEqual(prop.props, prop.remove([]).props)
+
+    def test_property_removing_conf_with_pairs(self):
+        confs = ["key1=value1", "key2=value2", "key3=value3"]
+
+        prop = PropertyFile(
+            dict(PropertyFile.parse_property_line(line) for line in confs)
+        )
+
+        self.assertFalse("key1" in prop.remove(["key1=value1"]).props)
+
+        self.assertTrue("key1" in prop.remove(["key1=value2"]).props)
+
+        self.assertFalse("key1" in prop.remove(["key1=value2", "key1=value1"]).props)
+
+        self.assertFalse("key1" in prop.remove(["key1", "key1=value2"]).props)
+
 
 if __name__ == "__main__":
     logging.basicConfig(format="%(asctime)s %(levelname)s %(message)s", level="DEBUG")
