@@ -13,7 +13,7 @@ from spark8t.cli.params import (
     spark_user_parser,
 )
 from spark8t.domain import PropertyFile, ServiceAccount
-from spark8t.exceptions import NoAccountFound
+from spark8t.exceptions import AccountNotFound, PrimaryAccountNotFound
 from spark8t.services import K8sServiceAccountRegistry, parse_conf_overrides
 from spark8t.utils import setup_logging
 
@@ -125,7 +125,7 @@ def main(args: Namespace, logger: Logger):
         service_account_in_registry = registry.get(input_service_account.id)
 
         if service_account_in_registry is None:
-            raise NoAccountFound(input_service_account.id)
+            raise AccountNotFound(input_service_account.id)
 
         account_configuration = (
             service_account_in_registry.configurations
@@ -145,7 +145,7 @@ def main(args: Namespace, logger: Logger):
         service_account_in_registry = registry.get(input_service_account.id)
 
         if service_account_in_registry is None:
-            raise NoAccountFound(input_service_account.id)
+            raise AccountNotFound(input_service_account.id)
 
         registry.set_configurations(
             input_service_account.id,
@@ -158,7 +158,7 @@ def main(args: Namespace, logger: Logger):
         maybe_service_account = registry.get(input_service_account.id)
 
         if maybe_service_account is None:
-            raise NoAccountFound(input_service_account.id)
+            raise AccountNotFound(input_service_account.id)
 
         maybe_service_account.configurations.log(logger.info)
 
@@ -171,7 +171,7 @@ def main(args: Namespace, logger: Logger):
         maybe_service_account = registry.get_primary()
 
         if maybe_service_account is None:
-            raise NoAccountFound()
+            raise PrimaryAccountNotFound()
 
         logger.info(maybe_service_account.id)
 
@@ -194,8 +194,8 @@ if __name__ == "__main__":
     try:
         main(args, logger)
         exit(0)
-    except NoAccountFound:
-        logger.error("No Account Found")
+    except (AccountNotFound, PrimaryAccountNotFound) as e:
+        logger.error(str(e))
         exit(1)
     except Exception as e:
         raise e

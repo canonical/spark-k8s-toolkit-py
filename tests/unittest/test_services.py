@@ -1,6 +1,7 @@
 import base64
 import io
 import os
+import subprocess
 import uuid
 from unittest.mock import patch
 
@@ -399,7 +400,7 @@ def test_kube_interface_get_secret(mocker):
         secret_result = k.get_secret(secret_name, namespace)
         assert conf_value == secret_result["data"][conf_key]
 
-    mock_subprocess.assert_any_call(cmd_get_secret, shell=True, stderr=None)
+    mock_subprocess.assert_any_call(cmd_get_secret, shell=True, stderr=subprocess.STDOUT)
 
 
 def test_lightkube_set_label_service_account(mocker, tmp_kubeconf):
@@ -603,7 +604,7 @@ def test_kube_interface_set_label(mocker):
         k = KubeInterface(kube_config_file=kubeconfig)
         k.set_label(resource_type, resource_name, label, namespace)
 
-    mock_subprocess.assert_any_call(cmd_set_label, shell=True, stderr=None)
+    mock_subprocess.assert_any_call(cmd_set_label, shell=True, stderr=subprocess.STDOUT)
 
 
 def test_lightkube_create_service_account(mocker, tmp_kubeconf):
@@ -915,7 +916,7 @@ def test_kube_interface_create(mocker):
             **{"k1": "v1", "k2": ["v21", "v22"]},
         )
 
-    mock_subprocess.assert_any_call(cmd_create, shell=True, stderr=None)
+    mock_subprocess.assert_any_call(cmd_create, shell=True, stderr=subprocess.STDOUT)
 
 
 def test_kube_interface_delete(mocker):
@@ -976,7 +977,7 @@ def test_kube_interface_delete(mocker):
         k = KubeInterface(kube_config_file=kubeconfig)
         k.delete(resource_type, resource_name, namespace)
 
-    mock_subprocess.assert_any_call(cmd_delete, shell=True, stderr=None)
+    mock_subprocess.assert_any_call(cmd_delete, shell=True, stderr=subprocess.STDOUT)
 
 
 def test_lightkube_get_service_accounts(mocker, tmp_kubeconf):
@@ -1110,7 +1111,7 @@ def test_kube_interface_get_service_accounts(mocker):
         assert sa_list[0].get("metadata").get("name") == username
         assert sa_list[0].get("metadata").get("namespace") == namespace
 
-    mock_subprocess.assert_any_call(cmd_get_sa, shell=True, stderr=None)
+    mock_subprocess.assert_any_call(cmd_get_sa, shell=True, stderr=subprocess.STDOUT)
 
 
 def test_kube_interface_autodetect(mocker):
@@ -1192,7 +1193,7 @@ def test_kube_interface_autodetect(mocker):
         assert ki.context_name == context
         assert ki.kubectl_cmd == kubectl_cmd_str
 
-    mock_subprocess.assert_any_call(cmd_autodetect, shell=True, stderr=None)
+    mock_subprocess.assert_any_call(cmd_autodetect, shell=True, stderr=subprocess.STDOUT)
 
 
 def test_kube_interface_select_by_master(mocker):

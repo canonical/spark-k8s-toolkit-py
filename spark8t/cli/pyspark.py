@@ -15,7 +15,7 @@ from spark8t.cli.params import (
     spark_user_parser,
 )
 from spark8t.domain import ServiceAccount
-from spark8t.exceptions import NoAccountFound
+from spark8t.exceptions import AccountNotFound, PrimaryAccountNotFound
 from spark8t.services import K8sServiceAccountRegistry, SparkInterface
 from spark8t.utils import setup_logging
 
@@ -36,7 +36,9 @@ def main(args: Namespace, logger: Logger):
     )
 
     if service_account is None:
-        raise NoAccountFound()
+        raise AccountNotFound(
+            args.username
+        ) if args.username else PrimaryAccountNotFound()
 
     SparkInterface(
         service_account=service_account,
@@ -55,8 +57,8 @@ if __name__ == "__main__":
     try:
         main(args, logger)
         exit(0)
-    except NoAccountFound:
-        logger.error("No Account Found")
+    except (AccountNotFound, PrimaryAccountNotFound) as e:
+        logger.error(str(e))
         exit(1)
     except Exception as e:
         raise e
