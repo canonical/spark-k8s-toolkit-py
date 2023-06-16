@@ -2,6 +2,7 @@ import argparse
 import logging
 import unittest
 from argparse import ArgumentParser
+from unittest import TestCase
 
 from spark8t.cli.params import (
     add_config_arguments,
@@ -12,7 +13,6 @@ from spark8t.cli.params import (
     spark_user_parser,
 )
 from spark8t.cli.service_account_registry import create_service_account_registry_parser
-from tests import TestCase
 
 
 class TestArgumentParsingPySpark(TestCase):

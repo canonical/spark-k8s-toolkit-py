@@ -1,81 +1,68 @@
-import os
 from time import sleep
-from unittest import TestCase
 
-from parameterized import parameterized
+import pytest
 
-from spark8t.domain import Defaults, KubernetesResourceType, PropertyFile
-from spark8t.services import AbstractKubeInterface, KubeInterface, LightKube
+from spark8t.domain import KubernetesResourceType, PropertyFile
 from spark8t.utils import umask_named_temporary_file
 
 
-class TestKubeInterface(TestCase):
-    kube_interface: AbstractKubeInterface
-    defaults = Defaults(
-        dict(os.environ) | {"KUBECONFIG": f"{os.environ['HOME']}/.kube/config"}
-    )
+@pytest.mark.parametrize(
+    "kubeinterface_name", [("kubeinterface"), ("lightkubeinterface")]
+)
+@pytest.mark.parametrize(
+    "resource_type, resource_name, namespace",
+    [
+        (KubernetesResourceType.NAMESPACE, "spark-namespace", None),
+        (KubernetesResourceType.SERVICEACCOUNT, "spark-sa", "default"),
+    ],
+)
+def test_create_exists_delete(
+    kubeinterface_name, resource_type, resource_name, namespace, request
+):
+    kubeinterface = request.getfixturevalue(kubeinterface_name)
+    kubeinterface.create(resource_type, resource_name, namespace)
 
-    def get_kube_interface(self):
-        return KubeInterface(self.defaults.kube_config)
+    assert kubeinterface.exists(resource_type, resource_name, namespace)
 
-    @parameterized.expand(
-        [
-            (KubernetesResourceType.NAMESPACE, "spark-namespace", None),
-            (KubernetesResourceType.SERVICEACCOUNT, "spark-sa", "default"),
-        ]
-    )
-    # @integration_test
-    def test_create_exists_delete(self, resource_type, resource_name, namespace):
-        k1 = self.get_kube_interface()
+    kubeinterface.delete(resource_type, resource_name, namespace)
 
-        assert not k1.exists(resource_type, resource_name, namespace)
+    if resource_type == KubernetesResourceType.NAMESPACE:
+        sleep(15)
 
-        k1.create(resource_type, resource_name, namespace)
+    assert not kubeinterface.exists(resource_type, resource_name, namespace)
 
-        assert k1.exists(resource_type, resource_name, namespace)
 
-        k1.delete(resource_type, resource_name, namespace)
+@pytest.mark.parametrize(
+    "kubeinterface_name", [("kubeinterface"), ("lightkubeinterface")]
+)
+def test_create_exists_delete_secret(kubeinterface_name, request):
+    secret_name = "my-secret"
+    namespace = "default"
 
-        if resource_type == KubernetesResourceType.NAMESPACE:
-            sleep(15)
+    property_file = PropertyFile({"key": "value"})
 
-        assert not k1.exists(resource_type, resource_name, namespace)
+    kubeinterface = request.getfixturevalue(kubeinterface_name)
 
-    def test_create_exists_delete_secret(self):
-        secret_name = "my-secret"
-        namespace = "default"
+    with umask_named_temporary_file(
+        mode="w", prefix="spark-dynamic-conf-k8s-", suffix=".conf"
+    ) as t:
+        property_file.write(t.file)
 
-        property_file = PropertyFile({"key": "value"})
+        t.flush()
 
-        k1 = self.get_kube_interface()
-
-        assert not k1.exists(
-            KubernetesResourceType.SECRET_GENERIC, secret_name, namespace
+        kubeinterface.create(
+            KubernetesResourceType.SECRET_GENERIC,
+            secret_name,
+            namespace=namespace,
+            **{"from-env-file": str(t.name)},
         )
 
-        with umask_named_temporary_file(
-            mode="w", prefix="spark-dynamic-conf-k8s-", suffix=".conf"
-        ) as t:
-            property_file.write(t.file)
+    assert kubeinterface.exists(
+        KubernetesResourceType.SECRET_GENERIC, secret_name, namespace
+    )
 
-            t.flush()
+    kubeinterface.delete(KubernetesResourceType.SECRET_GENERIC, secret_name, namespace)
 
-            k1.create(
-                KubernetesResourceType.SECRET_GENERIC,
-                secret_name,
-                namespace=namespace,
-                **{"from-env-file": str(t.name)},
-            )
-
-        assert k1.exists(KubernetesResourceType.SECRET_GENERIC, secret_name, namespace)
-
-        k1.delete(KubernetesResourceType.SECRET_GENERIC, secret_name, namespace)
-
-        assert not k1.exists(
-            KubernetesResourceType.SECRET_GENERIC, secret_name, namespace
-        )
-
-
-class TestLightKube(TestKubeInterface):
-    def get_kube_interface(self):
-        return LightKube(self.defaults.kube_config, self.defaults)
+    assert not kubeinterface.exists(
+        KubernetesResourceType.SECRET_GENERIC, secret_name, namespace
+    )
