@@ -9,12 +9,12 @@ from spark8t.cli.params import (
     get_kube_interface,
     k8s_parser,
     parse_arguments_with,
-    setup_logging,
     spark_user_parser,
 )
 from spark8t.domain import PropertyFile, ServiceAccount
 from spark8t.exceptions import NoAccountFound
 from spark8t.services import K8sServiceAccountRegistry, parse_conf_overrides
+from spark8t.utils import setup_logging
 
 
 def build_service_account_from_args(args) -> ServiceAccount:
@@ -100,7 +100,9 @@ if __name__ == "__main__":
         ArgumentParser(description="Spark Client Setup")
     ).parse_args()
 
-    logger = setup_logging(args, "spark8t.cli.service_account_registry")
+    logger = setup_logging(
+        args.log_level, args.log_conf_file, "spark8t.cli.service_account_registry"
+    )
 
     kube_interface = get_kube_interface(args)
     context = args.context or kube_interface.context_name

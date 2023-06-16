@@ -15,6 +15,9 @@ handlers:
 
 loggers:
   '':
-    level: $LOG_LEVEL|"INFO"
+    level: "ERROR"
     handlers: [ 'console' ]
     propagate: False
+
+  'tests':
+    level: $LOG_LEVEL|"INFO"

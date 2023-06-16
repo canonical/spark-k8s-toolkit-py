@@ -21,7 +21,7 @@ if __name__ == "__main__":
         [add_logging_arguments, k8s_parser, spark_user_parser, add_config_arguments]
     ).parse_known_args()
 
-    logger = setup_logging(args, "spark8t.cli.pyspark")
+    logger = setup_logging(args.log_level, args.log_conf_file, "spark8t.cli.pyspark")
 
     kube_interface = get_kube_interface(args)
 

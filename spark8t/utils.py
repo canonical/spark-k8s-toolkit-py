@@ -1,8 +1,8 @@
 """Module for general logging functionalities and abstractions."""
-
 import errno
 import io
 import json
+import logging
 import os
 import subprocess
 from contextlib import contextmanager
@@ -146,6 +146,14 @@ class WithLogging:
             return x
 
         return wrap
+
+
+def setup_logging(
+    log_level: str, config_file: Optional[str] = None, logger_name: Optional[str] = None
+) -> logging.Logger:
+    with environ(LOG_LEVEL=log_level) as _:
+        config_from_file(config_file or DEFAULT_LOGGING_FILE)
+    return logging.getLogger(logger_name) if logger_name else logging.root
 
 
 def union(*dicts: dict) -> dict:

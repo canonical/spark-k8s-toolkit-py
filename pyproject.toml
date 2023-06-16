@@ -35,7 +35,8 @@ follow_imports = "silent"
 [[tool.mypy.overrides]]
 module = [
     "parameterized",
-    "envyaml"
+    "envyaml",
+    "pytest"
 ]
 ignore_missing_imports = true
 

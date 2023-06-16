@@ -33,7 +33,7 @@ def add_logging_arguments(parser: ArgumentParser) -> ArgumentParser:
     parser.add_argument(
         "--log-level",
         choices=["INFO", "WARN", "ERROR", "DEBUG"],
-        default="ERROR",
+        default="INFO",
         help="Set the log level of the logging",
     )
     parser.add_argument(
@@ -137,7 +137,9 @@ def get_kube_interface(args: Namespace) -> AbstractKubeInterface:
     )
 
 
-def setup_logging(args: Namespace, logger_name: Optional[str] = None) -> logging.Logger:
-    with environ(LOG_LEVEL=args.log_level) as _:
-        config_from_file(args.log_conf_file or DEFAULT_LOGGING_FILE)
-    return logging.getLogger(logger_name)
+def setup_logging(
+    log_level: str, config_file: Optional[str], logger_name: Optional[str] = None
+) -> logging.Logger:
+    with environ(LOG_LEVEL=log_level) as _:
+        config_from_file(config_file or DEFAULT_LOGGING_FILE)
+    return logging.getLogger(logger_name) if logger_name else logging.root
