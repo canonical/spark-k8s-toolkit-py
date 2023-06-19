@@ -8,6 +8,7 @@ PYTHON = poetry run
 
 folders := helpers tests
 files := $(shell find . -name "*.py")
+package_name="spark8t"
 
 # Uncomment to store cache installation in the environment
 # package_dir := $(shell python -c 'import site; print(site.getsitepackages()[0])')

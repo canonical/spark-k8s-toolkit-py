@@ -84,7 +84,7 @@ We provide the following functionalities (see related documentation on Discourse
 
 ## Contributing
 
-Canonical welcomes contributions to the `spark8t` toolkit. Please check out our [contributor agreement](https://ubuntu.com/legal/contributors) if you're interested in contributing to the solution.
+Canonical welcomes contributions to the `spark8t` toolkit. Please check out our [guidelines](./CONTRIBUTING.md) if you're interested in contributing to the solution. Also, if you truly enjoy working on open-source projects like this one and you would like to be part of the OSS revolution, please don't forget to check out the [open positions](https://canonical.com/careers/all) we have at [Canonical](https://canonical.com/).  
 
 ## License
 The `spark8t` toolkit is free software, distributed under the Apache Software License, version 2.0. See LICENSE for more information.
