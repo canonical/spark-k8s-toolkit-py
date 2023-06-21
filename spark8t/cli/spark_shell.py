@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 import re
+from argparse import Namespace
+from logging import Logger
 from typing import Optional
 
 from spark8t.cli.params import (
@@ -13,18 +15,12 @@ from spark8t.cli.params import (
     spark_user_parser,
 )
 from spark8t.domain import ServiceAccount
+from spark8t.exceptions import AccountNotFound, PrimaryAccountNotFound
 from spark8t.services import K8sServiceAccountRegistry, SparkInterface
 from spark8t.utils import setup_logging
 
-if __name__ == "__main__":
-    args, extra_args = parse_arguments_with(
-        [add_logging_arguments, k8s_parser, spark_user_parser, add_config_arguments]
-    ).parse_known_args()
 
-    logger = setup_logging(
-        args.log_level, args.log_conf_file, "spark8t.cli.spark_shell"
-    )
-
+def main(args: Namespace, logger: Logger):
     kube_interface = get_kube_interface(args)
 
     registry = K8sServiceAccountRegistry(
@@ -40,10 +36,31 @@ if __name__ == "__main__":
     )
 
     if service_account is None:
-        raise ValueError("Service account provided does not exist.")
+        raise AccountNotFound(
+            args.username
+        ) if args.username else PrimaryAccountNotFound()
 
     SparkInterface(
         service_account=service_account,
         kube_interface=kube_interface,
         defaults=defaults,
     ).spark_shell(args.conf, args.properties_file, extra_args)
+
+
+if __name__ == "__main__":
+    args, extra_args = parse_arguments_with(
+        [add_logging_arguments, k8s_parser, spark_user_parser, add_config_arguments]
+    ).parse_known_args()
+
+    logger = setup_logging(
+        args.log_level, args.log_conf_file, "spark8t.cli.spark_shell"
+    )
+
+    try:
+        main(args, logger)
+        exit(0)
+    except (AccountNotFound, PrimaryAccountNotFound) as e:
+        logger.error(str(e))
+        exit(1)
+    except Exception as e:
+        raise e

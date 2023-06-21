@@ -27,7 +27,7 @@ from spark8t.domain import (
     PropertyFile,
     ServiceAccount,
 )
-from spark8t.exceptions import FormatError, NoAccountFound, NoResourceFound
+from spark8t.exceptions import AccountNotFound, FormatError, K8sResourceNotFound
 from spark8t.literals import MANAGED_BY_LABELNAME, PRIMARY_LABELNAME, SPARK8S_LABEL
 from spark8t.utils import (
     WithLogging,
@@ -247,7 +247,7 @@ class AbstractKubeInterface(WithLogging, metaclass=ABCMeta):
         ]
 
         if len(contexts_for_api_server) == 0:
-            raise NoAccountFound(master)
+            raise AccountNotFound(master)
 
         self.logger.info(
             f"Contexts on api server {master}: {', '.join(contexts_for_api_server)}"
@@ -326,17 +326,23 @@ class LightKube(AbstractKubeInterface):
             namespace: namespace where to look for the service account. Default is 'default'
         """
 
-        with io.StringIO() as buffer:
-            codecs.dump_all_yaml(
-                [
-                    self.client.get(
-                        res=LightKubeServiceAccount,
-                        name=account_id,
-                        namespace=namespace,
-                    )
-                ],
-                buffer,
+        try:
+            service_account = self.client.get(
+                res=LightKubeServiceAccount,
+                name=account_id,
+                namespace=namespace,
             )
+        except ApiError as e:
+            if e.status.code == 404:
+                raise K8sResourceNotFound(
+                    account_id, KubernetesResourceType.SERVICEACCOUNT
+                )
+            raise e
+        except Exception as e:
+            raise e
+
+        with io.StringIO() as buffer:
+            codecs.dump_all_yaml([service_account], buffer)
             buffer.seek(0)
             return yaml.safe_load(buffer)
 
@@ -695,6 +701,12 @@ class KubeInterface(AbstractKubeInterface):
                 executed with no namespace information
             context: context to be used
             output: format for the output of the command. If "yaml" is used, output is returned as a dictionary.
+
+        Raises:
+            CalledProcessError: when the bash command fails and exits with code other than 0
+
+        Returns:
+            Output of the command, either parsed as yaml or string
         """
 
         base_cmd = f"{self.kubectl_cmd} --kubeconfig {self.kube_config_file} "
@@ -711,9 +723,9 @@ class KubeInterface(AbstractKubeInterface):
         return (
             parse_yaml_shell_output(base_cmd)
             if (output is None) or (output == "yaml")
-            else subprocess.check_output(base_cmd, shell=True, stderr=None).decode(
-                "utf-8"
-            )
+            else subprocess.check_output(
+                base_cmd, shell=True, stderr=subprocess.STDOUT
+            ).decode("utf-8")
         )
 
     def get_service_account(
@@ -727,7 +739,14 @@ class KubeInterface(AbstractKubeInterface):
 
         cmd = f"get serviceaccount {account_id} -n {namespace}"
 
-        service_account_raw = self.exec(cmd, namespace=self.namespace)
+        try:
+            service_account_raw = self.exec(cmd, namespace=self.namespace)
+        except subprocess.CalledProcessError as e:
+            if "NotFound" in e.stdout.decode("utf-8"):
+                raise K8sResourceNotFound(
+                    account_id, KubernetesResourceType.SERVICEACCOUNT
+                )
+            raise e
 
         if isinstance(service_account_raw, str):
             raise ValueError(
@@ -778,10 +797,10 @@ class KubeInterface(AbstractKubeInterface):
                 namespace=namespace or self.namespace,
             )
         except Exception:
-            raise NoResourceFound(secret_name)
+            raise K8sResourceNotFound(secret_name, KubernetesResourceType.SECRET)
 
         if secret is None or len(secret) == 0 or isinstance(secret, str):
-            raise NoResourceFound(secret_name)
+            raise K8sResourceNotFound(secret_name, KubernetesResourceType.SECRET)
 
         result = dict()
         for k, v in secret["data"].items():
@@ -929,7 +948,7 @@ class KubeInterface(AbstractKubeInterface):
         ]
 
         if len(contexts_for_api_server) == 0:
-            raise NoAccountFound(master)
+            raise AccountNotFound(master)
 
         self.logger.info(
             f"Contexts on api server {master}: {', '.join(contexts_for_api_server)}"
@@ -1097,7 +1116,7 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
         service_account = self.get(account_id)
 
         if service_account is None:
-            raise NoAccountFound(account_id)
+            raise AccountNotFound(account_id)
 
         self.kube_interface.set_label(
             KubernetesResourceType.SERVICEACCOUNT,
@@ -1274,9 +1293,12 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
 
     def get(self, account_id: str) -> Optional[ServiceAccount]:
         namespace, username = account_id.split(":")
-        service_account_raw = self.kube_interface.get_service_account(
-            username, namespace
-        )
+        try:
+            service_account_raw = self.kube_interface.get_service_account(
+                username, namespace
+            )
+        except K8sResourceNotFound:
+            return None
         return self._build_service_account_from_raw(service_account_raw["metadata"])
 
 
@@ -1340,7 +1362,7 @@ class InMemoryAccountRegistry(AbstractServiceAccountRegistry):
             account_id: account id to be elected as new primary account
         """
         if account_id not in self.cache.keys():
-            raise NoAccountFound(account_id)
+            raise AccountNotFound(account_id)
 
         if any([account.primary for account in self.all()]):
             self.logger.info("Switching primary account")
@@ -1363,13 +1385,13 @@ class InMemoryAccountRegistry(AbstractServiceAccountRegistry):
         """
 
         if account_id not in self.cache.keys():
-            raise NoAccountFound(account_id)
+            raise AccountNotFound(account_id)
 
         self.cache[account_id].extra_confs = configurations
         return account_id
 
     def get(self, account_id: str) -> Optional[ServiceAccount]:
-        return self.cache[account_id]
+        return self.cache.get(account_id)
 
 
 def parse_conf_overrides(

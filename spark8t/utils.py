@@ -243,9 +243,23 @@ def create_dir_if_not_exists(directory: PathLike) -> PathLike:
 
 
 def parse_yaml_shell_output(cmd: str) -> Union[Dict[str, Any], str]:
+    """
+    Execute command and parse output as YAML.
+
+    Args:
+        cmd: string with bash command
+
+    Raises:
+        CalledProcessError: when the bash command fails and exits with code other than 0
+
+    Returns:
+        dictionary representing the output of the command
+    """
     with io.StringIO() as buffer:
         buffer.write(
-            subprocess.check_output(cmd, shell=True, stderr=None).decode("utf-8")
+            subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT).decode(
+                "utf-8"
+            )
         )
         buffer.seek(0)
         return yaml.safe_load(buffer)

@@ -45,6 +45,10 @@ def test_registry_io(kubeinterface_name, kuberegistry_name, namespace, user, req
         service_account.extra_confs.props == retrieved_service_account.extra_confs.props
     )
 
+    # Assert that a non-existing service account id provide None
+    retrieved_service_account = registry.get("non-existing:non-existing")
+    assert retrieved_service_account is None
+
 
 @pytest.mark.usefixtures("integration_test")
 @pytest.mark.parametrize(
