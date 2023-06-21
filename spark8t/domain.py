@@ -149,18 +149,28 @@ class PropertyFile(WithLogging):
         }
         return PropertyFile(union(*[simple_properties, merged_options]))
 
-    def remove(self, keys_to_remove: List[str]) -> "PropertyFile":
+    def remove(self, keys_or_pairs: List[str]) -> "PropertyFile":
         """Remove keys from PropertyFile properties.
 
+        Note that keys may also be in the form k=v. In this case, matching with the value is
+        also done before removing the item.
+
         Args:
-            keys_to_remove: List of keys to be removed from properties.
+            keys_or_pairs: List of keys to be removed from properties.
         """
-        self.props = (
+
+        keys_to_remove = set()
+        for key_or_pair in keys_or_pairs:
+            key, *value_list = key_or_pair.split("=")
+            value = "=".join(value_list) if value_list else None
+            if key in self.props and (not value or self.props[key] == value):
+                keys_to_remove.add(key)
+
+        return PropertyFile(
             {key: self.props[key] for key in self.props if key not in keys_to_remove}
             if keys_to_remove
             else self.props
         )
-        return self
 
 
 class Defaults:
