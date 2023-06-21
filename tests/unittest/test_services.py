@@ -1195,7 +1195,9 @@ def test_kube_interface_autodetect(mocker):
         assert ki.context_name == context
         assert ki.kubectl_cmd == kubectl_cmd_str
 
-    mock_subprocess.assert_any_call(cmd_autodetect, shell=True, stderr=subprocess.STDOUT)
+    mock_subprocess.assert_any_call(
+        cmd_autodetect, shell=True, stderr=subprocess.STDOUT
+    )
 
 
 def test_kube_interface_select_by_master(mocker):
