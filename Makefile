@@ -4,7 +4,7 @@ PYTHON = poetry run
 
 # .PHONY defines parts of the makefile that are not dependant on any specific file
 # This is most often used to store functions
-.PHONY = help setup format build install uninstall checks unittest integration-test clean
+.PHONY: help setup format checks unittests integration-tests clean
 
 folders := helpers tests
 files := $(shell find . -name "*.py")
@@ -38,8 +38,8 @@ help:
 	@echo "  - setup for installing base requirements"
 	@echo "  - format for reformatting files to adhere to PEP8 standards"
 	@echo "  - checks for running format, mypy, lint and tests altogether"
-	@echo "  - unittest for running unittests"
-	@echo "  - integration-test for running integration tests"
+	@echo "  - unittests for running unittests"
+	@echo "  - integration-tests for running integration tests"
 	@echo "  - clean for removing cache file"
 	@echo "------------------------------------"
 
@@ -73,7 +73,7 @@ requirements.txt: poetry.lock pyproject.toml
 format: setup $(files)
 	${PYTHON} tox -e fmt
 
-unittest: setup $(files)
+unit: setup $(files)
 	${PYTHON} tox -e unit
 
 $(checks_tag): $(setup_tag)

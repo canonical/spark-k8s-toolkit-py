@@ -2,7 +2,6 @@ name: Create a github release for the spark8t Python library
 
 env:
   BRANCH: ${{ github.ref_name }}
-  VERSION: 0.0.1
 
 on:
   push:
@@ -11,23 +10,12 @@ on:
       - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
 
 jobs:
-  code-checks:
+
+  code_checks:
     uses: ./.github/workflows/ci-checks.yaml
 
-  release-checks:
+  release_checks:
     name: Checks before pkg build
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    needs: code-checks
-    steps:
-      - id: version-vs-tag-check
-        name: Check if tag version matches project version
-        run: |
-          if [[ "$BRANCH" != "v$VERSION" ]]; then exit 1; fi
-
-  autorelease:
-    name: Release the package on github
-    needs: release-checks
     runs-on: ubuntu-latest
     timeout-minutes: 5
     strategy:
@@ -39,23 +27,71 @@ jobs:
         with:
           ref: ${{ env.BRANCH }}
           fetch-depth: 0
-      - id: setup-python
+      - id: setup_python
         name: Setup Python
         uses: actions/setup-python@v2.2.2
         with:
           python-version: '3.10'
           architecture: x64
-      - id: install-environment
+      - id: install_environment
         name: Set up build environment
         run: |
           make setup
-      - id: build-package
+
+      - id: package_metadata
+        name: Fetch package metadata
+        run: |
+          NAME=$(poetry version | awk '{print $1}')
+          VERSION=$(poetry version | awk '{print $2}')
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - id: version_vs_tag_check
+        name: Check if tag version matches project version
+        run: |
+          VERSION=${{ steps.package_metadata.outputs.version }}
+          BRANCH=${{ env.BRANCH }}
+          if [[ "$BRANCH" != "v$VERSION" ]]; then exit 1; fi
+
+    outputs:
+      package_name: ${{ steps.package_metadata.outputs.name }}
+      package_version: ${{ steps.package_metadata.outputs.version }}
+
+  autorelease:
+    name: Release the package on github
+    needs: [release_checks, code_checks]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: true
+    steps:
+      - id: checkout
+        name: Checkout repo
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ env.BRANCH }}
+          fetch-depth: 0
+      - id: setup_python
+        name: Setup Python
+        uses: actions/setup-python@v2.2.2
+        with:
+          python-version: '3.10'
+          architecture: x64
+      - id: install_environment
+        name: Set up build environment
+        run: |
+          make setup
+      - id: build_package
         name: Build package
         run: |
           poetry build
-      - name: Add version to environment vars
+      - id: artifact_names
+        name: Compute artifact names outputs
         run: |
-          echo "PROJECT_VERSION=${{ env.VERSION }}" >> $GITHUB_ENV
+          _NAME=${{ needs.release_checks.outputs.package_name }}
+          _VERSION=${{ needs.release_checks.outputs.package_version }}
+          echo "wheel=${_NAME}-${_VERSION}-py3-none-any.whl" >> "$GITHUB_OUTPUT"
+          echo "tarball=${_NAME}-${_VERSION}.tar.gz" >> "$GITHUB_OUTPUT"
       - name: Create Github Release
         uses: softprops/action-gh-release@v1
         env:
@@ -63,8 +99,12 @@ jobs:
         with:
           body_path: ".github/RELEASE-TEMPLATE.md"
           files: |
-            dist/spark8t-${{env.PROJECT_VERSION}}-py3-none-any.whl
-            dist/spark8t-${{env.PROJECT_VERSION}}.tar.gz
+            dist/${{ steps.artifact_names.outputs.wheel }}
+            dist/${{ steps.artifact_names.outputs.tarball }}
+    outputs:
+      version: ${{ needs.release_checks.outputs.package_version }}
+      wheel: ${{ steps.artifact_names.outputs.wheel }}
+      tarball: ${{ steps.artifact_names.outputs.tarball }}
 
   test:
     name: Test Release
@@ -72,23 +112,26 @@ jobs:
     timeout-minutes: 5
     env:
       DOWNLOADS_PATH: "/releases/download"
-      PKG_NAME: spark8t
-    needs: autorelease
+    needs: [autorelease]
     steps:
       - id: check-tar-gz
         name: Check tar.gz package
         run: |
           # check if release is now published and available
-          echo "Checking latest available Spark package release v${{env.VERSION}}."
-          STATUSCODE=$(curl --silent --head $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/${{ env.DOWNLOADS_PATH }}/v${{env.VERSION}}/${{env.PKG_NAME}}-${{env.VERSION}}.tar.gz | head -n 1 | cut -d' ' -f2)
+          TARBALL=${{ needs.autorelease.outputs.tarball }}
+          VERSION=${{ needs.autorelease.outputs.version }}
+          echo "Checking latest available Spark package release: ${TARBALL}"
+          STATUSCODE=$(curl --silent --head $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/${{ env.DOWNLOADS_PATH }}/v${VERSION}/${TARBALL} | head -n 1 | cut -d' ' -f2)
           if  [[ ${STATUSCODE} -ne 200 ]] && [[ ${STATUSCODE} -ne 302 ]]; then exit 1; fi
       - id: download-package
         name: Download wheel package
         run: |
           # check if release is now published and available
-          echo "Downloading latest available Spark wheel package release v${{env.VERSION}}."
-          wget $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/${{ env.DOWNLOADS_PATH }}/v${{env.VERSION}}/${{env.PKG_NAME}}-${{env.VERSION}}-py3-none-any.whl --no-check-certificate
+          WHEEL=${{ needs.autorelease.outputs.wheel }}
+          VERSION=${{ needs.autorelease.outputs.version }}
+          echo "Downloading latest available Spark wheel package release ${WHEEL}."
+          wget $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/${{ env.DOWNLOADS_PATH }}/v${VERSION}/${WHEEL} --no-check-certificate
       - id: install-package
         name: Install wheel package file
         run: |
-          pip install ./${{env.PKG_NAME}}-${{env.VERSION}}-py3-none-any.whl
+          pip install ./${{ needs.autorelease.outputs.wheel }}
