@@ -11,8 +11,8 @@ on:
 
 jobs:
 
-  code_checks:
-    uses: ./.github/workflows/ci-checks.yaml
+  tests:
+    uses: ./.github/workflows/ci-tests.yaml
 
   release_checks:
     name: Checks before pkg build
@@ -59,7 +59,7 @@ jobs:
 
   autorelease:
     name: Release the package on github
-    needs: [release_checks, code_checks]
+    needs: [release_checks, tests]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     strategy:
