@@ -73,7 +73,7 @@ requirements.txt: poetry.lock pyproject.toml
 format: setup $(files)
 	${PYTHON} tox -e fmt
 
-unit: setup $(files)
+unittests: setup $(files)
 	${PYTHON} tox -e unit
 
 $(checks_tag): $(setup_tag)
