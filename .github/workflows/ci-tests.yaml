@@ -31,7 +31,7 @@ jobs:
       - id: tests-unit
         name: Run Unittests
         run: |
-          make unittest
+          make unittests
       - id: tests-integration
         name: Run Integration Tests
         run: |
