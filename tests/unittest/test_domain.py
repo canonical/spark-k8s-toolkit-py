@@ -117,10 +117,10 @@ def test_property_empty_lines():
         for conf in confs:
             f.write(f"{conf}\n")
         f.flush()
-        
-        with open(f.name, 'r') as fp:
+
+        with open(f.name, "r") as fp:
             assert len(fp.readlines()) == 5
-        
+
         # read property file from temporary file name
         prop = PropertyFile.read(f.name)
 
