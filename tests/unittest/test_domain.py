@@ -1,4 +1,5 @@
 import logging
+import tempfile
 import uuid
 
 from spark8t.domain import Defaults, PropertyFile, ServiceAccount
@@ -72,36 +73,70 @@ def test_service_account():
     assert sa.configurations.props.get("spark.dummy.property1") == spark_dummy_property1
     assert sa.configurations.props.get("spark.dummy.property2") == spark_dummy_property2
 
-    def test_property_removing_conf(self):
-        confs = ["key1=value1", "key2=value2", "key3=value3"]
 
-        prop = PropertyFile(
-            dict(PropertyFile.parse_property_line(line) for line in confs)
-        )
+def test_property_removing_conf():
+    """
+    Validates removal of configuration options.
+    """
+    confs = ["key1=value1", "key2=value2", "key3=value3"]
 
-        self.assertFalse("key1" in prop.remove(["key1"]).props)
+    prop = PropertyFile(dict(PropertyFile.parse_property_line(line) for line in confs))
 
-        self.assertTrue("key3" in prop.remove(["key1", "key2"]).props)
+    assert "key1" not in prop.remove(["key1"]).props
 
-        self.assertDictEqual(prop.props, prop.remove([]).props)
+    assert "key3" in prop.remove(["key1", "key2"]).props
 
-    def test_property_removing_conf_with_pairs(self):
-        confs = ["key1=value1", "key2=value2", "key3=value3"]
+    assert prop.props == prop.remove([]).props
 
-        prop = PropertyFile(
-            dict(PropertyFile.parse_property_line(line) for line in confs)
-        )
 
-        self.assertFalse("key1" in prop.remove(["key1=value1"]).props)
+def test_property_removing_conf_with_pairs():
+    """
+    Validates the correct removal of property pairs.
+    """
+    confs = ["key1=value1", "key2=value2", "key3=value3"]
 
-        self.assertTrue("key1" in prop.remove(["key1=value2"]).props)
+    prop = PropertyFile(dict(PropertyFile.parse_property_line(line) for line in confs))
 
-        self.assertFalse("key1" in prop.remove(["key1=value2", "key1=value1"]).props)
+    assert "key1" not in prop.remove(["key1=value1"]).props
 
-        self.assertFalse("key1" in prop.remove(["key1", "key1=value2"]).props)
+    assert "key1" in prop.remove(["key1=value2"]).props
+
+    assert "key1" not in prop.remove(["key1=value2", "key1=value1"]).props
+
+    assert "key1" not in prop.remove(["key1", "key1=value2"]).props
+
+
+def test_property_empty_lines():
+    """
+    Validates that empty lines are skipped and configuration is parsed correctly.
+    """
+    confs = ["key1=value1", "", "key2=value2", "key3=value3", ""]
+
+    with tempfile.NamedTemporaryFile(mode="w+t") as f:
+        # write conf file
+        for conf in confs:
+            f.write(f"{conf}\n")
+        f.flush()
+        
+        with open(f.name, 'r') as fp:
+            assert len(fp.readlines()) == 5
+        
+        # read property file from temporary file name
+        prop = PropertyFile.read(f.name)
+
+        assert "key1" not in prop.remove(["key1=value1"]).props
+
+        assert "key1" in prop.remove(["key1=value2"]).props
+
+        assert "key1" not in prop.remove(["key1=value2", "key1=value1"]).props
+
+        assert "key1" not in prop.remove(["key1", "key1=value2"]).props
 
 
 def test_property_file_parsing_from_confs():
+    """
+    Validates parsing of configuration from list.
+    """
     confs = ["key1=value1", "key2=value2"]
 
     prop = PropertyFile(dict(PropertyFile.parse_property_line(line) for line in confs))

@@ -53,6 +53,9 @@ class PropertyFile(WithLogging):
         defaults = dict()
         with open(name) as f:
             for line in f:
+                # skip empty line
+                if len(line.strip()) == 0:
+                    continue
                 key, value = cls.parse_property_line(line)
                 defaults[key] = os.path.expandvars(value)
         return defaults
