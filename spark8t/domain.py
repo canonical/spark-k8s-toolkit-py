@@ -33,6 +33,21 @@ class PropertyFile(WithLogging):
         return key in ["spark.driver.extraJavaOptions"]
 
     @staticmethod
+    def is_line_parsable(line: str) -> bool:
+        """Check if a given line is parsable(not empty or commented).
+
+        Args:
+            line: a line of the configuration
+        """
+        # empty line
+        if len(line.strip()) == 0:
+            return False
+        # commented line
+        elif line.strip().startswith("#"):
+            return False
+        return True
+
+    @staticmethod
     def parse_property_line(line: str) -> Tuple[str, str]:
         prop_assignment = list(filter(None, re.split("=| ", line.strip())))
         prop_key = prop_assignment[0].strip()
@@ -54,7 +69,7 @@ class PropertyFile(WithLogging):
         with open(name) as f:
             for line in f:
                 # skip empty line
-                if len(line.strip()) == 0:
+                if not PropertyFile.is_line_parsable(line):
                     continue
                 key, value = cls.parse_property_line(line)
                 defaults[key] = os.path.expandvars(value)

@@ -110,7 +110,15 @@ def test_property_empty_lines():
     """
     Validates that empty lines are skipped and configuration is parsed correctly.
     """
-    confs = ["key1=value1", "", "key2=value2", "key3=value3", ""]
+    confs = [
+        "key1=value1",
+        "",
+        "key2=value2",
+        "key3=value3",
+        "",
+        "#key4=value4",
+        " #key5=value5",
+    ]
 
     with tempfile.NamedTemporaryFile(mode="w+t") as f:
         # write conf file
@@ -119,7 +127,7 @@ def test_property_empty_lines():
         f.flush()
 
         with open(f.name, "r") as fp:
-            assert len(fp.readlines()) == 5
+            assert len(fp.readlines()) == 7
 
         # read property file from temporary file name
         prop = PropertyFile.read(f.name)
@@ -131,6 +139,14 @@ def test_property_empty_lines():
         assert "key1" not in prop.remove(["key1=value2", "key1=value1"]).props
 
         assert "key1" not in prop.remove(["key1", "key1=value2"]).props
+
+        assert "key4" not in prop.props
+
+        assert "#key4" not in prop.props
+
+        assert "key5" not in prop.props
+
+        assert "#key5" not in prop.props
 
 
 def test_property_file_parsing_from_confs():

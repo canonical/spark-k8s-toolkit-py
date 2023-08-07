@@ -360,7 +360,7 @@ class LightKube(AbstractKubeInterface):
         if labels:
             for entry in labels:
                 # skip empty label
-                if len(entry.strip()) == 0:
+                if not PropertyFile.is_line_parsable(entry):
                     continue
                 k, v = PropertyFile.parse_property_line(entry)
                 labels_to_pass[k] = v
@@ -1465,7 +1465,7 @@ class SparkInterface(WithLogging):
             dict(
                 PropertyFile.parse_property_line(line)
                 for line in confs
-                if len(line.strip()) != 0
+                if PropertyFile.is_line_parsable(line)
             )
         )
 
