@@ -68,7 +68,7 @@ class PropertyFile(WithLogging):
         defaults = dict()
         with open(name) as f:
             for line in f:
-                # skip empty line
+                # skip empty or commented line
                 if not PropertyFile.is_line_parsable(line):
                     continue
                 key, value = cls.parse_property_line(line)

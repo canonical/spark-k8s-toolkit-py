@@ -359,7 +359,6 @@ class LightKube(AbstractKubeInterface):
         labels_to_pass = dict()
         if labels:
             for entry in labels:
-                # skip empty label
                 if not PropertyFile.is_line_parsable(entry):
                     continue
                 k, v = PropertyFile.parse_property_line(entry)
