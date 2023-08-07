@@ -5,7 +5,7 @@
   ],
   "reviewers": ["welpaolo","deusebio"],
   "enabledManagers": ["poetry", "pip_requirements", "github-actions", "regex"],
-  "schedule": ["after 1am and before 2am every saturday"],
+  "schedule": ["after 1am and before 2am on saturday"],
   "timezone": "Etc/UTC",
   "prHourlyLimit": 0,
   "packageRules": [
