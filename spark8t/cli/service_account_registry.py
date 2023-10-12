@@ -112,8 +112,6 @@ def main(args: Namespace, logger: Logger):
             else PropertyFile.empty()
         ) + parse_conf_overrides(args.conf)
 
-        service_account.extra_confs.log(print)
-
         registry.create(service_account)
 
     elif args.action == Actions.DELETE:
