@@ -17,9 +17,14 @@ def serializer():
 
 
 @pytest.mark.parametrize(
-    "input_string", [
-        "spark.*.property", "spark_property", "spark%property", "spark__property", "spark§property",
-        "spark property"
+    "input_string",
+    [
+        "spark.*.property",
+        "spark_property",
+        "spark%property",
+        "spark__property",
+        "spark§property",
+        "spark property",
     ],
 )
 def test_serializer(serializer, input_string):

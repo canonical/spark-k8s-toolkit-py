@@ -130,7 +130,7 @@ class WithLogging:
         return getLogger(nameLogger)
 
     def logResult(
-            self, msg: Union[Callable[..., str], str], level: StrLevelTypes = "INFO"
+        self, msg: Union[Callable[..., str], str], level: StrLevelTypes = "INFO"
     ) -> Callable[..., Any]:
         """
         Return a decorator to allow logging of inputs/outputs.
@@ -150,7 +150,7 @@ class WithLogging:
 
 
 def setup_logging(
-        log_level: str, config_file: Optional[str] = None, logger_name: Optional[str] = None
+    log_level: str, config_file: Optional[str] = None, logger_name: Optional[str] = None
 ) -> logging.Logger:
     with environ(LOG_LEVEL=log_level) as _:
         config_from_file(config_file or DEFAULT_LOGGING_FILE)
@@ -176,9 +176,9 @@ def union(*dicts: dict) -> dict:
         merged = copy(dct)
         for k, v in merge_dct.items():
             if (
-                    k in dct
-                    and isinstance(dct[k], dict)
-                    and isinstance(merge_dct[k], Mapping)
+                k in dct
+                and isinstance(dct[k], dict)
+                and isinstance(merge_dct[k], Mapping)
             ):
                 merged[k] = __dict_merge(dct[k], merge_dct[k])
             else:
@@ -261,6 +261,7 @@ def parse_yaml_shell_output(cmd: str) -> Union[Dict[str, Any], str]:
         buffer.seek(0)
         return yaml.safe_load(buffer)
 
+
 def execute_command_output(cmd: str) -> str:
     """
     Execute command and return the output.
@@ -275,9 +276,9 @@ def execute_command_output(cmd: str) -> str:
         output of the command
     """
     try:
-        output = subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT).decode(
-            "utf-8"
-        )
+        output = subprocess.check_output(
+            cmd, shell=True, stderr=subprocess.STDOUT
+        ).decode("utf-8")
     except subprocess.CalledProcessError as e:
         print(e.stderr)
         print(e.stdout)
@@ -340,13 +341,15 @@ class PercentEncodingSerializer:
         return "".join([self.percent_char] * 2)
 
     def serialize(self, input_string: str) -> str:
-        return quote(input_string) \
-            .replace(self.percent_char, self._double_percent_char) \
+        return (
+            quote(input_string)
+            .replace(self.percent_char, self._double_percent_char)
             .replace("%", self.percent_char)
+        )
 
     def deserialize(self, input_string: str) -> str:
         return unquote(
-            input_string \
-                .replace(self._double_percent_char, self._SPECIAL) \
-                .replace(self.percent_char, "%") \
-                .replace(self._SPECIAL, self.percent_char))
+            input_string.replace(self._double_percent_char, self._SPECIAL)
+            .replace(self.percent_char, "%")
+            .replace(self._SPECIAL, self.percent_char)
+        )
