@@ -8,7 +8,9 @@ requirement = re.compile(r"[-._a-zA-Z0-9]+")
 
 
 def check_compliance(input_string: str) -> bool:
-    return requirement.match(input_string).group() == input_string
+    if match := requirement.match(input_string):
+        return match.group() == input_string
+    return False
 
 
 @pytest.fixture
