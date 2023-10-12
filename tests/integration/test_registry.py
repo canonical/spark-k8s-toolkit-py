@@ -28,7 +28,9 @@ def test_registry_io(kubeinterface_name, kuberegistry_name, namespace, user, req
         namespace,
         kubeinterface.api_server,
         primary=True,
-        extra_confs=PropertyFile({"my-key": "my-value"}),
+        extra_confs=PropertyFile(
+            {"my-key": "my-value", "my-strange-key_*.@.%.$": "my-strange-value_*.@.%.$"}
+        ),
     )
 
     registry.create(service_account)
