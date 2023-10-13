@@ -27,6 +27,7 @@ def serializer():
         "spark__property",
         "spark§property",
         "spark property",
+        "spark%_property"
     ],
 )
 def test_serializer(serializer, input_string):
