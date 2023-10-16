@@ -30,8 +30,10 @@ from spark8t.domain import (
 from spark8t.exceptions import AccountNotFound, FormatError, K8sResourceNotFound
 from spark8t.literals import MANAGED_BY_LABELNAME, PRIMARY_LABELNAME, SPARK8S_LABEL
 from spark8t.utils import (
+    PercentEncodingSerializer,
     WithLogging,
     environ,
+    execute_command_output,
     filter_none,
     listify,
     parse_yaml_shell_output,
@@ -725,9 +727,7 @@ class KubeInterface(AbstractKubeInterface):
         return (
             parse_yaml_shell_output(base_cmd)
             if (output is None) or (output == "yaml")
-            else subprocess.check_output(
-                base_cmd, shell=True, stderr=subprocess.STDOUT
-            ).decode("utf-8")
+            else execute_command_output(base_cmd)
         )
 
     def get_service_account(
@@ -1045,6 +1045,8 @@ class AbstractServiceAccountRegistry(WithLogging, ABC):
 class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
     """Class implementing a ServiceAccountRegistry, based on K8s."""
 
+    _kubernetes_key_serializer = PercentEncodingSerializer("_")
+
     def __init__(self, kube_interface: AbstractKubeInterface):
         self.kube_interface = kube_interface
 
@@ -1074,7 +1076,12 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
         except Exception:
             return PropertyFile.empty()
 
-        return PropertyFile(secret)
+        return PropertyFile(
+            {
+                self._kubernetes_key_serializer.deserialize(key): value
+                for key, value in secret.items()
+            }
+        )
 
     def _build_service_account_from_raw(self, metadata: Dict[str, Any]):
         name = metadata["name"]
@@ -1217,7 +1224,12 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
                 f"Spark dynamic props available for reference at {t.name}\n"
             )
 
-            service_account.extra_confs.write(t.file)
+            PropertyFile(
+                {
+                    self._kubernetes_key_serializer.serialize(key): value
+                    for key, value in service_account.extra_confs.props.items()
+                }
+            ).write(t.file)
 
             t.flush()
 

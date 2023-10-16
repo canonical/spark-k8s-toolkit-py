@@ -22,6 +22,7 @@ from typing import (
     TypeVar,
     Union,
 )
+from urllib.parse import quote, unquote
 
 import yaml
 from envyaml import EnvYAML
@@ -256,13 +257,34 @@ def parse_yaml_shell_output(cmd: str) -> Union[Dict[str, Any], str]:
         dictionary representing the output of the command
     """
     with io.StringIO() as buffer:
-        buffer.write(
-            subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT).decode(
-                "utf-8"
-            )
-        )
+        buffer.write(execute_command_output(cmd))
         buffer.seek(0)
         return yaml.safe_load(buffer)
+
+
+def execute_command_output(cmd: str) -> str:
+    """
+    Execute command and return the output.
+
+    Args:
+        cmd: string with bash command
+
+    Raises:
+        CalledProcessError: when the bash command fails and exits with code other than 0
+
+    Returns:
+        output of the command
+    """
+    try:
+        output = subprocess.check_output(
+            cmd, shell=True, stderr=subprocess.STDOUT
+        ).decode("utf-8")
+    except subprocess.CalledProcessError as e:
+        print(e.stderr)
+        print(e.stdout)
+        raise e
+
+    return output
 
 
 @contextmanager
@@ -298,3 +320,36 @@ def environ(*remove, **update):
 
 def listify(value: Any) -> List[str]:
     return [str(v) for v in value] if isinstance(value, list) else [str(value)]
+
+
+class PercentEncodingSerializer:
+    """This class provides a way to serialize and de-serialize keys to be stored in k8s.
+
+    Keys in kubernetes need to comply with some format (described by the regex '[-._a-zA-Z0-9]+').
+    In order to extend the range of keys that can be stored, we use a serialization based on
+    percent encoding, where % is replaced by _. Underscores are still supported but transformed
+    into a double underscore
+    """
+
+    _SPECIAL = "§"
+
+    def __init__(self, percent_char: str = "_"):
+        self.percent_char = percent_char
+
+    @property
+    def _double_percent_char(self) -> str:
+        return "".join([self.percent_char] * 2)
+
+    def serialize(self, input_string: str) -> str:
+        return (
+            quote(input_string)
+            .replace(self.percent_char, self._double_percent_char)
+            .replace("%", self.percent_char)
+        )
+
+    def deserialize(self, input_string: str) -> str:
+        return unquote(
+            input_string.replace(self._double_percent_char, self._SPECIAL)
+            .replace(self.percent_char, "%")
+            .replace(self._SPECIAL, self.percent_char)
+        )
