@@ -1,5 +1,8 @@
 # spark8t toolkit
 
+[![Release](https://github.com/canonical/spark-k8s-toolkit-py/actions/workflows/release_github.yaml/badge.svg)](https://github.com/canonical/spark-k8s-toolkit-py/actions/workflows/release_github.yaml)
+[![Tests](https://github.com/canonical/spark-k8s-toolkit-py/actions/workflows/ci-tests.yaml/badge.svg?branch=main)](https://github.com/canonical/spark-k8s-toolkit-py/actions/workflows/ci-tests.yaml?query=branch%3Amain)
+
 A set of Python scripts facilitating Spark interactions over Kunernetes, using an OCI image.
 
 ## Description
