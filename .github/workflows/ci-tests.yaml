@@ -1,7 +1,9 @@
-name: Build snap and run tests
+name: Run Tests
 
 on:
-  workflow_call
+  schedule:
+    - cron: '53 0 * * *' # Daily at 00:53 UTC
+  workflow_call:
 
 jobs:
   checks:
