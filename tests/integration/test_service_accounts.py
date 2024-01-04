@@ -37,6 +37,18 @@ def parameterize(permissions):
     return parameters
 
 
+@pytest.fixture(params=["kubectl", "lightkube"])
+def service_account(namespace, request):
+    username = str(uuid.uuid4())
+    backend = request.param
+
+    # Create the service account
+    run_service_account_registry(
+        "create", "--username", username, "--namespace", namespace, "--backend", backend
+    )
+    return username, namespace
+
+
 @pytest.mark.parametrize("backend", ["kubectl", "lightkube"])
 @pytest.mark.parametrize("action, resource", parameterize(ALLOWED_PERMISSIONS))
 def test_create_service_account(namespace, backend, action, resource):
@@ -130,3 +142,69 @@ def test_create_service_account(namespace, backend, action, resource):
     )
     assert rbac_check.returncode == 0
     assert rbac_check.stdout.strip() == "yes"
+
+
+@pytest.mark.parametrize("backend", ["kubectl", "lightkube"])
+@pytest.mark.parametrize("action, resource", parameterize(ALLOWED_PERMISSIONS))
+def test_delete_service_account(service_account, backend, action, resource):
+    username, namespace = service_account
+    role_name = f"{username}-role"
+    role_binding_name = f"{username}-role-binding"
+
+    # Delete the service account
+    run_service_account_registry(
+        "delete", "--username", username, "--namespace", namespace, "--backend", backend
+    )
+
+    # Check if service account has been deleted
+    service_account_result = subprocess.run(
+        ["kubectl", "get", "serviceaccount", username, "-n", namespace, "-o", "json"],
+        capture_output=True,
+        text=True,
+    )
+    assert service_account_result.returncode != 0
+
+    # Check if the role corresponding to the service account has also been deleted
+    role_result = subprocess.run(
+        ["kubectl", "get", "role", role_name, "-n", namespace, "-o", "json"],
+        capture_output=True,
+        text=True,
+    )
+    assert role_result.returncode != 0
+
+    # Check if the associated role binding has been deleted
+    role_binding_result = subprocess.run(
+        [
+            "kubectl",
+            "get",
+            "rolebinding",
+            role_binding_name,
+            "-n",
+            namespace,
+            "-o",
+            "json",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert role_binding_result.returncode != 0
+
+    # Check for RBAC permissions
+    sa_identifier = f"system:serviceaccount:{namespace}:{username}"
+    rbac_check = subprocess.run(
+        [
+            "kubectl",
+            "auth",
+            "can-i",
+            action,
+            resource,
+            "--namespace",
+            namespace,
+            "--as",
+            sa_identifier,
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert rbac_check.returncode != 0
+    assert rbac_check.stdout.strip() == "no"
