@@ -1440,6 +1440,7 @@ def test_k8s_registry_create(mocker):
     mock_kube_interface.set_label.return_value = 0
     mock_kube_interface.remove_label.return_value = 0
     mock_kube_interface.create.return_value = 0
+    mock_kube_interface.exists.return_value = False
 
     registry = K8sServiceAccountRegistry(mock_kube_interface)
     assert registry.create(sa3_obj) == sa3_obj.id
