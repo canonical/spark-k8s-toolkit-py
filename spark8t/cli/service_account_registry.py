@@ -15,6 +15,7 @@ from spark8t.cli.params import (
 from spark8t.domain import PropertyFile, ServiceAccount
 from spark8t.exceptions import (
     AccountNotFound,
+    K8sResourceNotFound,
     PrimaryAccountNotFound,
     ResourceAlreadyExists,
 )

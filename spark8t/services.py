@@ -1330,6 +1330,11 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
         rolename = name + "-role"
         rolebindingname = name + "-role-binding"
 
+        if not self.kube_interface.exists(
+            KubernetesResourceType.SERVICEACCOUNT, name, namespace=namespace
+        ):
+            raise AccountNotFound(name)
+
         try:
             self.kube_interface.delete(
                 KubernetesResourceType.SERVICEACCOUNT, name, namespace=namespace

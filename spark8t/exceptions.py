@@ -41,7 +41,7 @@ class AccountNotFound(ResourceNotFound):
         return self.resource_name
 
     def __str__(self) -> str:
-        return f"Account {self.account} not found"
+        return f"Account {self.account} could not be found."
 
 
 class FormatError(SyntaxError):

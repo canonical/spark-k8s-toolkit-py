@@ -256,6 +256,17 @@ def test_delete_service_account(service_account, backend, action, resource):
 
 
 @pytest.mark.parametrize("backend", VALID_BACKENDS)
+def test_delete_service_account_that_does_not_exist(namespace, backend):
+    username = str(uuid.uuid4())
+
+    stdout, stderr, ret_code = run_service_account_registry(
+        "delete", "--username", username, "--namespace", namespace, "--backend", backend
+    )
+    assert ret_code != 0
+    assert stdout.strip() == f"Account {username} could not be found."
+
+
+@pytest.mark.parametrize("backend", VALID_BACKENDS)
 def test_service_account_get_primary(namespace, backend):
     """Test retrieval of primary service account using the CLI.
 
@@ -283,6 +294,24 @@ def test_service_account_get_primary(namespace, backend):
         "get-primary", "--backend", backend
     )
     assert f"{namespace}:{username}" == stdout.strip()
+
+    # Now create another account, with --primary set again. 
+    # This should effectively make the newly created account the primary account
+    username2 = str(uuid.uuid4())
+    run_service_account_registry(
+        "create",
+        "--username",
+        username2,
+        "--namespace",
+        namespace,
+        "--backend",
+        backend,
+        "--primary",
+    )
+    stdout, stderr, ret_code = run_service_account_registry(
+        "get-primary", "--backend", backend
+    )
+    assert f"{namespace}:{username2}" == stdout.strip()
 
 
 @pytest.mark.parametrize("backend", VALID_BACKENDS)
