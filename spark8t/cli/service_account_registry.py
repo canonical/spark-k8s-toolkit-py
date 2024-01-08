@@ -100,7 +100,7 @@ def main(args: Namespace, logger: Logger):
     kube_interface = get_kube_interface(args)
     context = args.context or kube_interface.context_name
 
-    logger.info(f"Using K8s context: {context}")
+    logger.debug(f"Using K8s context: {context}")
 
     registry = K8sServiceAccountRegistry(kube_interface.with_context(context))
 
@@ -160,7 +160,7 @@ def main(args: Namespace, logger: Logger):
         if maybe_service_account is None:
             raise AccountNotFound(input_service_account.id)
 
-        maybe_service_account.configurations.log(logger.info)
+        maybe_service_account.configurations.log(print)
 
     elif args.action == Actions.CLEAR_CONFIG:
         registry.set_configurations(
@@ -173,13 +173,14 @@ def main(args: Namespace, logger: Logger):
         if maybe_service_account is None:
             raise PrimaryAccountNotFound()
 
-        logger.info(maybe_service_account.id)
+        print(maybe_service_account.id)
 
     elif args.action == Actions.LIST:
         for service_account in registry.all():
-            logger.info(
-                str.expandtabs(f"{service_account.id}\t{service_account.primary}")
-            )
+            print_line = f"{service_account.id}"
+            if service_account.primary:
+                print_line += " (Primary)"
+            print(print_line)
 
 
 if __name__ == "__main__":
