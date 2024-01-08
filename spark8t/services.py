@@ -27,7 +27,12 @@ from spark8t.domain import (
     PropertyFile,
     ServiceAccount,
 )
-from spark8t.exceptions import AccountNotFound, FormatError, K8sResourceNotFound
+from spark8t.exceptions import (
+    AccountNotFound,
+    FormatError,
+    K8sResourceNotFound,
+    ResourceAlreadyExists,
+)
 from spark8t.literals import MANAGED_BY_LABELNAME, PRIMARY_LABELNAME, SPARK8S_LABEL
 from spark8t.utils import (
     PercentEncodingSerializer,
@@ -1174,6 +1179,37 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
 
         rolename = username + "-role"
         rolebindingname = username + "-role-binding"
+
+        # Check if the resources to be created already exist in K8s cluster
+        if self.kube_interface.exists(
+            KubernetesResourceType.SERVICEACCOUNT,
+            username,
+            namespace=service_account.namespace,
+        ):
+            raise ResourceAlreadyExists(
+                "Could not create the service account. "
+                f"A {KubernetesResourceType.SERVICEACCOUNT} with name '{username}' already exists."
+            )
+
+        if self.kube_interface.exists(
+            KubernetesResourceType.ROLE,
+            rolename,
+            namespace=service_account.namespace,
+        ):
+            raise ResourceAlreadyExists(
+                "Could not create the service account. "
+                f"A {KubernetesResourceType.ROLE} with name '{rolename}' already exists."
+            )
+
+        if self.kube_interface.exists(
+            KubernetesResourceType.ROLEBINDING,
+            rolebindingname,
+            namespace=service_account.namespace,
+        ):
+            raise ResourceAlreadyExists(
+                "Could not create the service account. "
+                f"A {KubernetesResourceType.ROLEBINDING} with name '{rolebindingname}' already exists."
+            )
 
         self.kube_interface.create(
             KubernetesResourceType.SERVICEACCOUNT,

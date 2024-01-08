@@ -13,7 +13,11 @@ from spark8t.cli.params import (
     spark_user_parser,
 )
 from spark8t.domain import PropertyFile, ServiceAccount
-from spark8t.exceptions import AccountNotFound, PrimaryAccountNotFound
+from spark8t.exceptions import (
+    AccountNotFound,
+    PrimaryAccountNotFound,
+    ResourceAlreadyExists,
+)
 from spark8t.services import K8sServiceAccountRegistry, parse_conf_overrides
 from spark8t.utils import setup_logging
 
@@ -195,8 +199,8 @@ if __name__ == "__main__":
     try:
         main(args, logger)
         exit(0)
-    except (AccountNotFound, PrimaryAccountNotFound) as e:
-        logger.error(str(e))
+    except (AccountNotFound, PrimaryAccountNotFound, ResourceAlreadyExists) as e:
+        print(str(e))
         exit(1)
     except Exception as e:
         raise e

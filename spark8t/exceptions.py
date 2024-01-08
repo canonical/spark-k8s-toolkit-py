@@ -48,3 +48,7 @@ class FormatError(SyntaxError):
     """Exception to be used when input provided by the user cannot be parsed."""
 
     pass
+
+
+class ResourceAlreadyExists(FileExistsError):
+    pass
