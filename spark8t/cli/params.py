@@ -33,7 +33,7 @@ def add_logging_arguments(parser: ArgumentParser) -> ArgumentParser:
     parser.add_argument(
         "--log-level",
         choices=["INFO", "WARN", "ERROR", "DEBUG"],
-        default="INFO",
+        default="WARN",
         help="Set the log level of the logging",
     )
     parser.add_argument(
