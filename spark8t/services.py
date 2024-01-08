@@ -366,20 +366,35 @@ class LightKube(AbstractKubeInterface):
                 k, v = PropertyFile.parse_property_line(entry)
                 labels_to_pass[k] = v
 
-        if not namespace:
-            namespace = "default"
+        all_namespaces = []
 
-        with io.StringIO() as buffer:
-            codecs.dump_all_yaml(
-                self.client.list(
-                    res=LightKubeServiceAccount,
-                    namespace=namespace,
-                    labels=labels_to_pass,
-                ),
-                buffer,
+        if not namespace:
+            # means all namespaces
+            iterator = self.client.list(
+                res=Namespace,
             )
-            buffer.seek(0)
-            return list(yaml.safe_load_all(buffer))
+            for ns in iterator:
+                all_namespaces.append(ns.metadata.name)
+
+        else:
+            all_namespaces = [namespace, ]
+                
+        result = []
+        for namespace in all_namespaces:
+            with io.StringIO() as buffer:
+                codecs.dump_all_yaml(
+                    self.client.list(
+                        res=LightKubeServiceAccount,
+                        namespace=namespace,
+                        labels=labels_to_pass,
+                    ),
+                    buffer,
+                )
+                buffer.seek(0)
+                result += list(yaml.safe_load_all(buffer))
+        
+        return result
+        
 
     def get_secret(
         self, secret_name: str, namespace: Optional[str] = None
@@ -792,7 +807,6 @@ class KubeInterface(AbstractKubeInterface):
             secret_name: name of the secret
             namespace: namespace where the secret is contained
         """
-
         try:
             secret = self.exec(
                 f"get secret {secret_name} --ignore-not-found",
