@@ -1,7 +1,7 @@
 import json
 import subprocess
-from subprocess import CalledProcessError
 import uuid
+from subprocess import CalledProcessError
 
 import pytest
 
@@ -176,8 +176,11 @@ def test_create_service_account_when_account_already_exists(service_account, bac
         "create", "--username", username, "--namespace", namespace, "--backend", backend
     )
 
-    assert ret_code != 0    
-    assert stdout.strip() == f"Could not create the service account. A serviceaccount with name '{username}' already exists."
+    assert ret_code != 0
+    assert stdout.strip() == (
+        f"Could not create the service account. "
+        f"A serviceaccount with name '{username}' already exists."
+    )
 
 
 @pytest.mark.parametrize("backend", VALID_BACKENDS)
