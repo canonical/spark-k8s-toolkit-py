@@ -1,5 +1,6 @@
 import json
 import subprocess
+from subprocess import CalledProcessError
 import uuid
 
 import pytest
@@ -37,8 +38,11 @@ def run_service_account_registry(*args):
             obtained when the command is run.
     """
     command = ["python3", "-m", "spark8t.cli.service_account_registry", *args]
-    output = subprocess.run(command, check=True, capture_output=True)
-    return output.stdout.decode(), output.stderr.decode(), output.returncode
+    try:
+        output = subprocess.run(command, check=True, capture_output=True)
+        return output.stdout.decode(), output.stderr.decode(), output.returncode
+    except CalledProcessError as e:
+        return e.stdout.decode(), e.stderr.decode(), e.returncode
 
 
 def parameterize(permissions):
@@ -159,6 +163,21 @@ def test_create_service_account(namespace, backend, action, resource):
     )
     assert rbac_check.returncode == 0
     assert rbac_check.stdout.strip() == "yes"
+
+
+@pytest.mark.parametrize("backend", VALID_BACKENDS)
+def test_create_service_account_when_account_already_exists(service_account, backend):
+    """Test creation of service account when a service account having same name already
+    exists in the Kubernetes cluster."""
+    username, namespace = service_account
+
+    # Create the service account with same username again
+    stdout, stderr, ret_code = run_service_account_registry(
+        "create", "--username", username, "--namespace", namespace, "--backend", backend
+    )
+
+    assert ret_code != 0    
+    assert stdout.strip() == f"Could not create the service account. A serviceaccount with name '{username}' already exists."
 
 
 @pytest.mark.parametrize("backend", VALID_BACKENDS)
