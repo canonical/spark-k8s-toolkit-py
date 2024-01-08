@@ -6,6 +6,16 @@ import pytest
 
 from spark8t.literals import MANAGED_BY_LABELNAME, SPARK8S_LABEL
 
+VALID_BACKENDS = [
+    "kubectl",
+    "lightkube",
+]
+
+ALLOWED_PERMISSIONS = {
+    "pods": ["create", "get", "list", "watch", "delete"],
+    "configmaps": ["create", "get", "list", "watch", "delete"],
+    "services": ["create", "get", "list", "watch", "delete"],
+}
 
 @pytest.fixture
 def namespace():
@@ -20,14 +30,7 @@ def namespace():
 def run_service_account_registry(*args):
     command = ["python3", "-m", "spark8t.cli.service_account_registry", *args]
     output = subprocess.run(command, check=True, capture_output=True)
-    return output.stdout, output.stderr
-
-
-ALLOWED_PERMISSIONS = {
-    "pods": ["create", "get", "list", "watch", "delete"],
-    "configmaps": ["create", "get", "list", "watch", "delete"],
-    "services": ["create", "get", "list", "watch", "delete"],
-}
+    return output.stdout.decode(), output.stderr.decode(), output.returncode
 
 
 def parameterize(permissions):
@@ -37,7 +40,7 @@ def parameterize(permissions):
     return parameters
 
 
-@pytest.fixture(params=["kubectl", "lightkube"])
+@pytest.fixture(params=VALID_BACKENDS)
 def service_account(namespace, request):
     username = str(uuid.uuid4())
     backend = request.param
@@ -49,7 +52,7 @@ def service_account(namespace, request):
     return username, namespace
 
 
-@pytest.mark.parametrize("backend", ["kubectl", "lightkube"])
+@pytest.mark.parametrize("backend", VALID_BACKENDS)
 @pytest.mark.parametrize("action, resource", parameterize(ALLOWED_PERMISSIONS))
 def test_create_service_account(namespace, backend, action, resource):
     """Test creation of service account using the CLI.
@@ -144,7 +147,7 @@ def test_create_service_account(namespace, backend, action, resource):
     assert rbac_check.stdout.strip() == "yes"
 
 
-@pytest.mark.parametrize("backend", ["kubectl", "lightkube"])
+@pytest.mark.parametrize("backend", VALID_BACKENDS)
 @pytest.mark.parametrize("action, resource", parameterize(ALLOWED_PERMISSIONS))
 def test_delete_service_account(service_account, backend, action, resource):
     username, namespace = service_account
@@ -208,3 +211,156 @@ def test_delete_service_account(service_account, backend, action, resource):
     )
     assert rbac_check.returncode != 0
     assert rbac_check.stdout.strip() == "no"
+
+
+
+@pytest.mark.parametrize("backend", VALID_BACKENDS)
+def test_service_account_get_primary(namespace, backend):
+    username = str(uuid.uuid4())
+
+    # Create a new service account with --primary option provided
+    run_service_account_registry(
+        "create", "--username", username, "--namespace", namespace, "--backend", backend, "--primary"
+    )
+
+    # Attempt to get primary service account
+    stdout, stderr, ret_code = run_service_account_registry("get-primary", "--backend", backend)  
+    assert f"{namespace}:{username}" == stdout.strip()
+
+
+@pytest.mark.parametrize("backend", VALID_BACKENDS)
+def test_service_accounts_listing(namespace, backend):
+
+    usernames = [
+        str(uuid.uuid4()),
+        str(uuid.uuid4()),
+        str(uuid.uuid4()),
+    ]
+
+    for username in usernames:
+        run_service_account_registry(
+            "create", "--username", username, "--namespace", namespace, "--backend", backend
+        )
+    
+    # List the service accounts
+    stdout, stderr, ret_code = run_service_account_registry("list", "--backend", backend)  
+    actual_output_lines = stdout.split("\n")
+    expected_outout_lines = [f"{namespace}:{username}" for username in usernames]
+
+    for line in expected_outout_lines:
+        assert line in actual_output_lines
+
+
+@pytest.mark.parametrize("backend", VALID_BACKENDS)
+def test_service_account_get_config(service_account, backend):    
+    username, namespace = service_account
+    stdout, stderr, ret_code = run_service_account_registry(
+        "get-config", "--username", username, "--namespace", namespace, "--backend", backend
+    )
+    actual_configs = set(stdout.splitlines())
+    expected_configs = {
+        f"spark.kubernetes.authenticate.driver.serviceAccountName={username}",
+        f"spark.kubernetes.namespace={namespace}"
+    }
+    assert actual_configs == expected_configs
+
+
+@pytest.mark.parametrize("backend", VALID_BACKENDS)
+def test_service_account_add_config(service_account, backend):    
+    username, namespace = service_account
+
+    stdout, stderr, ret_code = run_service_account_registry(
+        "get-config", "--username", username, "--namespace", namespace, "--backend", backend
+    )
+    original_configs = set(stdout.splitlines())
+
+    config_to_add = "foo=bar"
+
+    # Add a few new configs
+    run_service_account_registry(
+        "add-config", 
+        "--conf",
+        config_to_add,
+        "--username", username, "--namespace", namespace, "--backend", backend,
+    )
+
+    stdout, stderr, ret_code = run_service_account_registry(
+        "get-config", "--username", username, "--namespace", namespace, "--backend", backend
+    )
+    updated_configs = set(stdout.splitlines())
+    added_configs = updated_configs - original_configs
+
+    assert added_configs == set([config_to_add])
+
+
+@pytest.mark.parametrize("backend", VALID_BACKENDS)
+def test_service_account_remove_config(service_account, backend):
+    username, namespace = service_account
+
+    config_to_add = "foo=bar"
+
+    # Add a new configs
+    run_service_account_registry(
+        "add-config", 
+        "--conf",
+        config_to_add,
+        "--username", username, 
+        "--namespace", namespace, 
+        "--backend", backend,
+    )
+    stdout, stderr, ret_code = run_service_account_registry(
+        "get-config", "--username", username, "--namespace", namespace, "--backend", backend
+    )
+    new_configs = set(stdout.splitlines())
+    assert config_to_add in new_configs
+
+    # Now remove the added config
+    config_to_remove = "foo"
+    stdout, stderr, ret_code = run_service_account_registry(
+        "remove-config",
+        "--conf",
+        config_to_remove,
+        "--username", username, 
+        "--namespace", namespace, 
+        "--backend", backend
+    )
+    new_configs = set(stdout.splitlines())
+    assert config_to_add not in new_configs
+
+
+@pytest.mark.parametrize("backend", VALID_BACKENDS)
+def test_service_account_clear_config(service_account, backend):
+    username, namespace = service_account
+
+    configs_to_add = [
+        "foo1=bar1",
+        "foo2=bar2",
+        "foo3=bar3"
+    ]
+    conf_opt_string = []
+    for config in configs_to_add:
+        conf_opt_string.extend(["--conf", config])
+    
+    # Add new configs
+    run_service_account_registry(
+        "add-config", 
+        *conf_opt_string,
+        "--username", username, 
+        "--namespace", namespace, 
+        "--backend", backend,
+    )
+    stdout, stderr, ret_code = run_service_account_registry(
+        "get-config", "--username", username, "--namespace", namespace, "--backend", backend
+    )
+    new_configs = set(stdout.splitlines())
+    assert all(config in new_configs for config in configs_to_add)
+
+    # Now clear all configs
+    stdout, stderr, ret_code = run_service_account_registry(
+        "clear-config",
+        "--username", username, 
+        "--namespace", namespace, 
+        "--backend", backend
+    )
+    new_configs = set(stdout.splitlines())
+    assert not any(config in new_configs for config in configs_to_add)
