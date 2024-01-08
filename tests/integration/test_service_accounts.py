@@ -17,6 +17,7 @@ ALLOWED_PERMISSIONS = {
     "services": ["create", "get", "list", "watch", "delete"],
 }
 
+
 @pytest.fixture
 def namespace():
     namespace_name = str(uuid.uuid4())
@@ -213,24 +214,31 @@ def test_delete_service_account(service_account, backend, action, resource):
     assert rbac_check.stdout.strip() == "no"
 
 
-
 @pytest.mark.parametrize("backend", VALID_BACKENDS)
 def test_service_account_get_primary(namespace, backend):
     username = str(uuid.uuid4())
 
     # Create a new service account with --primary option provided
     run_service_account_registry(
-        "create", "--username", username, "--namespace", namespace, "--backend", backend, "--primary"
+        "create",
+        "--username",
+        username,
+        "--namespace",
+        namespace,
+        "--backend",
+        backend,
+        "--primary",
     )
 
     # Attempt to get primary service account
-    stdout, stderr, ret_code = run_service_account_registry("get-primary", "--backend", backend)  
+    stdout, stderr, ret_code = run_service_account_registry(
+        "get-primary", "--backend", backend
+    )
     assert f"{namespace}:{username}" == stdout.strip()
 
 
 @pytest.mark.parametrize("backend", VALID_BACKENDS)
 def test_service_accounts_listing(namespace, backend):
-
     usernames = [
         str(uuid.uuid4()),
         str(uuid.uuid4()),
@@ -239,11 +247,19 @@ def test_service_accounts_listing(namespace, backend):
 
     for username in usernames:
         run_service_account_registry(
-            "create", "--username", username, "--namespace", namespace, "--backend", backend
+            "create",
+            "--username",
+            username,
+            "--namespace",
+            namespace,
+            "--backend",
+            backend,
         )
-    
+
     # List the service accounts
-    stdout, stderr, ret_code = run_service_account_registry("list", "--backend", backend)  
+    stdout, stderr, ret_code = run_service_account_registry(
+        "list", "--backend", backend
+    )
     actual_output_lines = stdout.split("\n")
     expected_outout_lines = [f"{namespace}:{username}" for username in usernames]
 
@@ -252,25 +268,37 @@ def test_service_accounts_listing(namespace, backend):
 
 
 @pytest.mark.parametrize("backend", VALID_BACKENDS)
-def test_service_account_get_config(service_account, backend):    
+def test_service_account_get_config(service_account, backend):
     username, namespace = service_account
     stdout, stderr, ret_code = run_service_account_registry(
-        "get-config", "--username", username, "--namespace", namespace, "--backend", backend
+        "get-config",
+        "--username",
+        username,
+        "--namespace",
+        namespace,
+        "--backend",
+        backend,
     )
     actual_configs = set(stdout.splitlines())
     expected_configs = {
         f"spark.kubernetes.authenticate.driver.serviceAccountName={username}",
-        f"spark.kubernetes.namespace={namespace}"
+        f"spark.kubernetes.namespace={namespace}",
     }
     assert actual_configs == expected_configs
 
 
 @pytest.mark.parametrize("backend", VALID_BACKENDS)
-def test_service_account_add_config(service_account, backend):    
+def test_service_account_add_config(service_account, backend):
     username, namespace = service_account
 
     stdout, stderr, ret_code = run_service_account_registry(
-        "get-config", "--username", username, "--namespace", namespace, "--backend", backend
+        "get-config",
+        "--username",
+        username,
+        "--namespace",
+        namespace,
+        "--backend",
+        backend,
     )
     original_configs = set(stdout.splitlines())
 
@@ -278,14 +306,25 @@ def test_service_account_add_config(service_account, backend):
 
     # Add a few new configs
     run_service_account_registry(
-        "add-config", 
+        "add-config",
         "--conf",
         config_to_add,
-        "--username", username, "--namespace", namespace, "--backend", backend,
+        "--username",
+        username,
+        "--namespace",
+        namespace,
+        "--backend",
+        backend,
     )
 
     stdout, stderr, ret_code = run_service_account_registry(
-        "get-config", "--username", username, "--namespace", namespace, "--backend", backend
+        "get-config",
+        "--username",
+        username,
+        "--namespace",
+        namespace,
+        "--backend",
+        backend,
     )
     updated_configs = set(stdout.splitlines())
     added_configs = updated_configs - original_configs
@@ -301,15 +340,24 @@ def test_service_account_remove_config(service_account, backend):
 
     # Add a new configs
     run_service_account_registry(
-        "add-config", 
+        "add-config",
         "--conf",
         config_to_add,
-        "--username", username, 
-        "--namespace", namespace, 
-        "--backend", backend,
+        "--username",
+        username,
+        "--namespace",
+        namespace,
+        "--backend",
+        backend,
     )
     stdout, stderr, ret_code = run_service_account_registry(
-        "get-config", "--username", username, "--namespace", namespace, "--backend", backend
+        "get-config",
+        "--username",
+        username,
+        "--namespace",
+        namespace,
+        "--backend",
+        backend,
     )
     new_configs = set(stdout.splitlines())
     assert config_to_add in new_configs
@@ -320,9 +368,12 @@ def test_service_account_remove_config(service_account, backend):
         "remove-config",
         "--conf",
         config_to_remove,
-        "--username", username, 
-        "--namespace", namespace, 
-        "--backend", backend
+        "--username",
+        username,
+        "--namespace",
+        namespace,
+        "--backend",
+        backend,
     )
     new_configs = set(stdout.splitlines())
     assert config_to_add not in new_configs
@@ -332,25 +383,30 @@ def test_service_account_remove_config(service_account, backend):
 def test_service_account_clear_config(service_account, backend):
     username, namespace = service_account
 
-    configs_to_add = [
-        "foo1=bar1",
-        "foo2=bar2",
-        "foo3=bar3"
-    ]
+    configs_to_add = ["foo1=bar1", "foo2=bar2", "foo3=bar3"]
     conf_opt_string = []
     for config in configs_to_add:
         conf_opt_string.extend(["--conf", config])
-    
+
     # Add new configs
     run_service_account_registry(
-        "add-config", 
+        "add-config",
         *conf_opt_string,
-        "--username", username, 
-        "--namespace", namespace, 
-        "--backend", backend,
+        "--username",
+        username,
+        "--namespace",
+        namespace,
+        "--backend",
+        backend,
     )
     stdout, stderr, ret_code = run_service_account_registry(
-        "get-config", "--username", username, "--namespace", namespace, "--backend", backend
+        "get-config",
+        "--username",
+        username,
+        "--namespace",
+        namespace,
+        "--backend",
+        backend,
     )
     new_configs = set(stdout.splitlines())
     assert all(config in new_configs for config in configs_to_add)
@@ -358,9 +414,12 @@ def test_service_account_clear_config(service_account, backend):
     # Now clear all configs
     stdout, stderr, ret_code = run_service_account_registry(
         "clear-config",
-        "--username", username, 
-        "--namespace", namespace, 
-        "--backend", backend
+        "--username",
+        username,
+        "--namespace",
+        namespace,
+        "--backend",
+        backend,
     )
     new_configs = set(stdout.splitlines())
     assert not any(config in new_configs for config in configs_to_add)

@@ -377,8 +377,10 @@ class LightKube(AbstractKubeInterface):
                 all_namespaces.append(ns.metadata.name)
 
         else:
-            all_namespaces = [namespace, ]
-                
+            all_namespaces = [
+                namespace,
+            ]
+
         result = []
         for namespace in all_namespaces:
             with io.StringIO() as buffer:
@@ -392,9 +394,8 @@ class LightKube(AbstractKubeInterface):
                 )
                 buffer.seek(0)
                 result += list(yaml.safe_load_all(buffer))
-        
+
         return result
-        
 
     def get_secret(
         self, secret_name: str, namespace: Optional[str] = None
@@ -408,7 +409,11 @@ class LightKube(AbstractKubeInterface):
         try:
             with io.StringIO() as buffer:
                 codecs.dump_all_yaml(
-                    [self.client.get(res=Secret, namespace=namespace, name=secret_name)],
+                    [
+                        self.client.get(
+                            res=Secret, namespace=namespace, name=secret_name
+                        )
+                    ],
                     buffer,
                 )
                 buffer.seek(0)
