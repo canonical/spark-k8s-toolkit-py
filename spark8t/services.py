@@ -772,7 +772,7 @@ class KubeInterface(AbstractKubeInterface):
                 f"Error retrieving account id {account_id} in namespace {namespace}"
             )
 
-        self.logger.warning(service_account_raw)
+        self.logger.debug(service_account_raw)
 
         return service_account_raw
 
