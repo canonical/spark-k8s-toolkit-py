@@ -295,7 +295,7 @@ def test_service_account_get_primary(namespace, backend):
     )
     assert f"{namespace}:{username}" == stdout.strip()
 
-    # Now create another account, with --primary set again. 
+    # Now create another account, with --primary set again.
     # This should effectively make the newly created account the primary account
     username2 = str(uuid.uuid4())
     run_service_account_registry(
