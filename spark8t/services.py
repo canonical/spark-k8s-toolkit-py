@@ -405,21 +405,23 @@ class LightKube(AbstractKubeInterface):
             secret_name: name of the secret
             namespace: namespace where the secret is contained
         """
+        try:
+            with io.StringIO() as buffer:
+                codecs.dump_all_yaml(
+                    [self.client.get(res=Secret, namespace=namespace, name=secret_name)],
+                    buffer,
+                )
+                buffer.seek(0)
+                secret = yaml.safe_load(buffer)
 
-        with io.StringIO() as buffer:
-            codecs.dump_all_yaml(
-                [self.client.get(res=Secret, namespace=namespace, name=secret_name)],
-                buffer,
-            )
-            buffer.seek(0)
-            secret = yaml.safe_load(buffer)
+                result = dict()
+                for k, v in secret["data"].items():
+                    result[k] = base64.b64decode(v).decode("utf-8")
 
-            result = dict()
-            for k, v in secret["data"].items():
-                result[k] = base64.b64decode(v).decode("utf-8")
-
-            secret["data"] = result
-            return secret
+                secret["data"] = result
+                return secret
+        except Exception:
+            raise K8sResourceNotFound(secret_name, KubernetesResourceType.SECRET)
 
     def set_label(
         self,
