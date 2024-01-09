@@ -1,6 +1,3 @@
-from spark8t.domain import KubernetesResourceType
-
-
 class K8sClusterNotReachable(Exception):
     """Kubernetes cluster cannot be reached successfully by the client."""
 
@@ -55,11 +52,3 @@ class FormatError(SyntaxError):
 
 class ResourceAlreadyExists(FileExistsError):
     pass
-
-
-class NamespaceNotFound(K8sResourceNotFound):
-    def __init__(self, resource_name: str):
-        super().__init__(resource_name, resource_type=KubernetesResourceType.NAMESPACE)
-
-    def __str__(self) -> str:
-        return f"Namespace '{self.resource_name}' could not be found."

@@ -31,7 +31,6 @@ from spark8t.exceptions import (
     AccountNotFound,
     FormatError,
     K8sResourceNotFound,
-    NamespaceNotFound,
     ResourceAlreadyExists,
 )
 from spark8t.literals import MANAGED_BY_LABELNAME, PRIMARY_LABELNAME, SPARK8S_LABEL
@@ -1180,12 +1179,6 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
 
         rolename = username + "-role"
         rolebindingname = username + "-role-binding"
-
-        if not self.kube_interface.exists(
-            KubernetesResourceType.NAMESPACE,
-            service_account.namespace,
-        ):
-            raise NamespaceNotFound(service_account.namespace)
 
         # Check if the resources to be created already exist in K8s cluster
         if self.kube_interface.exists(
