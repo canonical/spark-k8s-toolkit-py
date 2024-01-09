@@ -67,6 +67,30 @@ def service_account(namespace, request):
     return username, namespace
 
 
+@pytest.fixture
+def multiple_namespaces_and_service_accounts():
+    from collections import defaultdict
+
+    result = defaultdict(list)
+    for _ in range(3):
+        namespace_name = str(uuid.uuid4())
+        create_ns_command = ["kubectl", "create", "namespace", namespace_name]
+        subprocess.run(create_ns_command, check=True)
+
+        for _ in range(3):
+            sa_name = str(uuid.uuid4())
+            run_service_account_registry(
+                "create", "--username", sa_name, "--namespace", namespace_name
+            )
+            result[namespace_name].append(sa_name)
+
+    yield result
+
+    for namespace_name in result.keys():
+        destroy_command = ["kubectl", "delete", "namespace", namespace_name]
+        subprocess.run(destroy_command, check=True)
+
+
 @pytest.mark.parametrize("backend", VALID_BACKENDS)
 @pytest.mark.parametrize("action, resource", parameterize(ALLOWED_PERMISSIONS))
 def test_create_service_account(namespace, backend, action, resource):
@@ -350,6 +374,26 @@ def test_service_accounts_listing(namespace, backend):
     # Check if the list contains all newly created accounts
     for line in expected_outout_lines:
         assert line in actual_output_lines
+
+
+@pytest.mark.parametrize("backend", VALID_BACKENDS)
+def test_service_accounts_listing_multiple_namespaces(
+    multiple_namespaces_and_service_accounts, backend
+):
+    """Test listing of service accounts across multiple namespaces using the CLI."""
+    expected_output_lines = []
+    for namespace, usernames in multiple_namespaces_and_service_accounts.items():
+        expected_output_lines.extend(
+            [f"{namespace}:{username}" for username in usernames]
+        )
+
+    # List the service accounts
+    stdout, stderr, ret_code = run_service_account_registry(
+        "list", "--backend", backend
+    )
+    actual_output_lines = [line for line in stdout.split("\n") if line.strip()]
+
+    assert set(expected_output_lines) == set(actual_output_lines)
 
 
 @pytest.mark.parametrize("backend", VALID_BACKENDS)
