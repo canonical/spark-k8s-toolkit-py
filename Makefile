@@ -91,6 +91,7 @@ microk8s: $(k8s_tag)
 
 integration-tests: setup microk8s
 	echo "Integration tests"
+	sg microk8s "export KUBECONFIG=/home/ubuntu/.kube/config"
 	sg microk8s "${PYTHON} tox -e integration"
 
 clean:
