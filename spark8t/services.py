@@ -27,7 +27,12 @@ from spark8t.domain import (
     PropertyFile,
     ServiceAccount,
 )
-from spark8t.exceptions import AccountNotFound, FormatError, K8sResourceNotFound
+from spark8t.exceptions import (
+    AccountNotFound,
+    FormatError,
+    K8sResourceNotFound,
+    ResourceAlreadyExists,
+)
 from spark8t.literals import MANAGED_BY_LABELNAME, PRIMARY_LABELNAME, SPARK8S_LABEL
 from spark8t.utils import (
     PercentEncodingSerializer,
@@ -366,20 +371,36 @@ class LightKube(AbstractKubeInterface):
                 k, v = PropertyFile.parse_property_line(entry)
                 labels_to_pass[k] = v
 
-        if not namespace:
-            namespace = "default"
+        all_namespaces = []
 
-        with io.StringIO() as buffer:
-            codecs.dump_all_yaml(
-                self.client.list(
-                    res=LightKubeServiceAccount,
-                    namespace=namespace,
-                    labels=labels_to_pass,
-                ),
-                buffer,
+        if not namespace:
+            # means all namespaces
+            iterator = self.client.list(
+                res=Namespace,
             )
-            buffer.seek(0)
-            return list(yaml.safe_load_all(buffer))
+            for ns in iterator:
+                all_namespaces.append(ns.metadata.name)
+
+        else:
+            all_namespaces = [
+                namespace,
+            ]
+
+        result = []
+        for namespace in all_namespaces:
+            with io.StringIO() as buffer:
+                codecs.dump_all_yaml(
+                    self.client.list(
+                        res=LightKubeServiceAccount,
+                        namespace=namespace,
+                        labels=labels_to_pass,
+                    ),
+                    buffer,
+                )
+                buffer.seek(0)
+                result += list(yaml.safe_load_all(buffer))
+
+        return result
 
     def get_secret(
         self, secret_name: str, namespace: Optional[str] = None
@@ -390,21 +411,27 @@ class LightKube(AbstractKubeInterface):
             secret_name: name of the secret
             namespace: namespace where the secret is contained
         """
+        try:
+            with io.StringIO() as buffer:
+                codecs.dump_all_yaml(
+                    [
+                        self.client.get(
+                            res=Secret, namespace=namespace, name=secret_name
+                        )
+                    ],
+                    buffer,
+                )
+                buffer.seek(0)
+                secret = yaml.safe_load(buffer)
 
-        with io.StringIO() as buffer:
-            codecs.dump_all_yaml(
-                [self.client.get(res=Secret, namespace=namespace, name=secret_name)],
-                buffer,
-            )
-            buffer.seek(0)
-            secret = yaml.safe_load(buffer)
+                result = dict()
+                for k, v in secret["data"].items():
+                    result[k] = base64.b64decode(v).decode("utf-8")
 
-            result = dict()
-            for k, v in secret["data"].items():
-                result[k] = base64.b64decode(v).decode("utf-8")
-
-            secret["data"] = result
-            return secret
+                secret["data"] = result
+                return secret
+        except Exception:
+            raise K8sResourceNotFound(secret_name, KubernetesResourceType.SECRET)
 
     def set_label(
         self,
@@ -755,7 +782,7 @@ class KubeInterface(AbstractKubeInterface):
                 f"Error retrieving account id {account_id} in namespace {namespace}"
             )
 
-        self.logger.warning(service_account_raw)
+        self.logger.debug(service_account_raw)
 
         return service_account_raw
 
@@ -792,7 +819,6 @@ class KubeInterface(AbstractKubeInterface):
             secret_name: name of the secret
             namespace: namespace where the secret is contained
         """
-
         try:
             secret = self.exec(
                 f"get secret {secret_name} --ignore-not-found",
@@ -1154,6 +1180,37 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
         rolename = username + "-role"
         rolebindingname = username + "-role-binding"
 
+        # Check if the resources to be created already exist in K8s cluster
+        if self.kube_interface.exists(
+            KubernetesResourceType.SERVICEACCOUNT,
+            username,
+            namespace=service_account.namespace,
+        ):
+            raise ResourceAlreadyExists(
+                "Could not create the service account. "
+                f"A {KubernetesResourceType.SERVICEACCOUNT} with name '{username}' already exists."
+            )
+
+        if self.kube_interface.exists(
+            KubernetesResourceType.ROLE,
+            rolename,
+            namespace=service_account.namespace,
+        ):
+            raise ResourceAlreadyExists(
+                "Could not create the service account. "
+                f"A {KubernetesResourceType.ROLE} with name '{rolename}' already exists."
+            )
+
+        if self.kube_interface.exists(
+            KubernetesResourceType.ROLEBINDING,
+            rolebindingname,
+            namespace=service_account.namespace,
+        ):
+            raise ResourceAlreadyExists(
+                "Could not create the service account. "
+                f"A {KubernetesResourceType.ROLEBINDING} with name '{rolebindingname}' already exists."
+            )
+
         self.kube_interface.create(
             KubernetesResourceType.SERVICEACCOUNT,
             username,
@@ -1272,6 +1329,11 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
 
         rolename = name + "-role"
         rolebindingname = name + "-role-binding"
+
+        if not self.kube_interface.exists(
+            KubernetesResourceType.SERVICEACCOUNT, name, namespace=namespace
+        ):
+            raise AccountNotFound(name)
 
         try:
             self.kube_interface.delete(

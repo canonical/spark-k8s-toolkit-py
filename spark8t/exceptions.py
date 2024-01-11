@@ -41,10 +41,16 @@ class AccountNotFound(ResourceNotFound):
         return self.resource_name
 
     def __str__(self) -> str:
-        return f"Account {self.account} not found"
+        return f"Account {self.account} could not be found."
 
 
 class FormatError(SyntaxError):
     """Exception to be used when input provided by the user cannot be parsed."""
+
+    pass
+
+
+class ResourceAlreadyExists(FileExistsError):
+    """The resource already exists in the K8s cluster."""
 
     pass
