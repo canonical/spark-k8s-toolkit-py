@@ -333,6 +333,14 @@ def test_service_account_get_primary(namespace, backend):
     )
     assert f"{namespace}:{username}" == stdout.strip()
 
+    # Also ensure that the `list` command lists this account as primary
+    stdout, stderr, ret_code = run_service_account_registry(
+        "list", "--backend", backend
+    )
+    actual_output_lines = [line for line in stdout.split("\n") if line.strip()]
+    expected_outout_lines = [f"{namespace}:{username} (Primary)"]
+    assert set(actual_output_lines) == set(expected_outout_lines)
+
     # Now create another account, with --primary set again.
     # This should effectively make the newly created account the primary account
     username2 = str(uuid.uuid4())
@@ -350,6 +358,17 @@ def test_service_account_get_primary(namespace, backend):
         "get-primary", "--backend", backend
     )
     assert f"{namespace}:{username2}" == stdout.strip()
+
+    # Also ensure that the `list` command lists the new account as primary
+    stdout, stderr, ret_code = run_service_account_registry(
+        "list", "--backend", backend
+    )
+    actual_output_lines = [line for line in stdout.split("\n") if line.strip()]
+    expected_outout_lines = [
+        f"{namespace}:{username}",
+        f"{namespace}:{username2} (Primary)",
+    ]
+    assert set(actual_output_lines) == set(expected_outout_lines)
 
 
 @pytest.mark.parametrize("backend", VALID_BACKENDS)
