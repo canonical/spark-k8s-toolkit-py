@@ -1,6 +1,7 @@
 import json
 import subprocess
 import uuid
+from collections import defaultdict
 from subprocess import CalledProcessError
 
 import pytest
@@ -69,8 +70,6 @@ def service_account(namespace, request):
 
 @pytest.fixture
 def multiple_namespaces_and_service_accounts():
-    from collections import defaultdict
-
     result = defaultdict(list)
     for _ in range(3):
         namespace_name = str(uuid.uuid4())
