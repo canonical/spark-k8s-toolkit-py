@@ -51,4 +51,6 @@ class FormatError(SyntaxError):
 
 
 class ResourceAlreadyExists(FileExistsError):
+    """The resource already exists in the K8s cluster."""
+
     pass
