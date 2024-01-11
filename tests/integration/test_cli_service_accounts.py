@@ -6,7 +6,7 @@ from subprocess import CalledProcessError
 
 import pytest
 
-from spark8t.literals import MANAGED_BY_LABELNAME, SPARK8S_LABEL
+from spark8t.literals import MANAGED_BY_LABELNAME, PRIMARY_LABELNAME, SPARK8S_LABEL
 
 VALID_BACKENDS = [
     "kubectl",
@@ -92,7 +92,8 @@ def multiple_namespaces_and_service_accounts():
 
 @pytest.mark.parametrize("backend", VALID_BACKENDS)
 @pytest.mark.parametrize("action, resource", parameterize(ALLOWED_PERMISSIONS))
-def test_create_service_account(namespace, backend, action, resource):
+@pytest.mark.parametrize("primary", [True, False])
+def test_create_service_account(namespace, backend, action, resource, primary):
     """Test creation of service account using the CLI.
 
     Verify that the serviceaccount, role and rolebinding resources are created
@@ -104,10 +105,20 @@ def test_create_service_account(namespace, backend, action, resource):
     role_name = f"{username}-role"
     role_binding_name = f"{username}-role-binding"
 
+    create_args = [
+        "create",
+        "--username",
+        username,
+        "--namespace",
+        namespace,
+        "--backend",
+        backend,
+    ]
+    if primary:
+        create_args.append("--primary")
+
     # Create the service account
-    run_service_account_registry(
-        "create", "--username", username, "--namespace", namespace, "--backend", backend
-    )
+    run_service_account_registry(*create_args)
 
     # Check if service account was created
     service_account_result = subprocess.run(
@@ -123,6 +134,8 @@ def test_create_service_account(namespace, backend, action, resource):
     assert service_account is not None
     actual_labels = service_account["metadata"]["labels"]
     expected_labels = {MANAGED_BY_LABELNAME: SPARK8S_LABEL}
+    if primary:
+        expected_labels.update({PRIMARY_LABELNAME: "True"})
     assert actual_labels == expected_labels
 
     # Check if a role was created
@@ -164,6 +177,8 @@ def test_create_service_account(namespace, backend, action, resource):
     assert role_binding is not None
     actual_labels = role_binding["metadata"]["labels"]
     expected_labels = {MANAGED_BY_LABELNAME: SPARK8S_LABEL}
+    if primary:
+        expected_labels.update({PRIMARY_LABELNAME: "True"})
     assert actual_labels == expected_labels
 
     # Check for RBAC permissions
