@@ -100,7 +100,7 @@ def test_create_service_account(namespace, backend, action, resource):
     for the created serviceaccount are intact.
     """
 
-    username = "bikalpa"
+    username = "foobar"
     role_name = f"{username}-role"
     role_binding_name = f"{username}-role-binding"
 
