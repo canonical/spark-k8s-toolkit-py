@@ -60,7 +60,7 @@ class AbstractKubeInterface(WithLogging, metaclass=ABCMeta):
 
     @property
     @abstractmethod
-    def kube_config_file(self) -> Union[str, Dict[str, Any]]:
+    def kube_config_file(self) -> Union[None, str, Dict[str, Any]]:
         pass
 
     @cached_property
@@ -79,7 +79,7 @@ class AbstractKubeInterface(WithLogging, metaclass=ABCMeta):
 
     @property
     @abstractmethod
-    def context_name(self) -> str:
+    def context_name(self) -> Union[None, str]:
         """Return current context name."""
         pass
 
@@ -320,8 +320,11 @@ class LightKube(AbstractKubeInterface):
         return LightKube(self.kube_config_file, self.defaults, context_name)
 
     @property
-    def context_name(self) -> str:
+    def context_name(self) -> Union[None, str]:
         """Return current context name."""
+        if not self.kube_config:
+            return None
+
         return (
             self.kube_config["current-context"]
             if self._context_name is None
@@ -697,7 +700,7 @@ class KubeInterface(AbstractKubeInterface):
         return self._kube_config_file
 
     @property
-    def context_name(self) -> None | str:
+    def context_name(self) -> Union[None, str]:
         """Return current context name."""
         if not self.kube_config:
             return None

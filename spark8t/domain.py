@@ -3,7 +3,7 @@ import os
 import re
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 from spark8t.utils import WithLogging, union
 
@@ -221,7 +221,7 @@ class Defaults:
         return self.environ.get("SPARK_KUBECTL", "kubectl")
 
     @property
-    def kube_config(self) -> None | str:
+    def kube_config(self) -> Union[None, str]:
         """Return default kubeconfig to use if provided in env variable."""
         filename = self.environ.get("KUBECONFIG", None)
         return filename if filename else None
