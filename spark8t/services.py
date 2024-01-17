@@ -778,10 +778,10 @@ class KubeInterface(AbstractKubeInterface):
             namespace: namespace where to look for the service account. Default is 'default'
         """
 
-        cmd = f"get serviceaccount {account_id} -n {namespace}"
+        cmd = f"get serviceaccount {account_id}"
 
         try:
-            service_account_raw = self.exec(cmd, namespace=self.namespace)
+            service_account_raw = self.exec(cmd, namespace=namespace)
         except subprocess.CalledProcessError as e:
             if "NotFound" in e.stdout.decode("utf-8"):
                 raise K8sResourceNotFound(
