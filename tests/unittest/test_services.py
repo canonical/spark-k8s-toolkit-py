@@ -187,7 +187,6 @@ def test_kube_interface():
     username3 = str(uuid.uuid4())
     context3 = str(uuid.uuid4())
     token3 = str(uuid.uuid4())
-    test_kubectl_cmd = str(uuid.uuid4())
 
     kubeconfig_yaml = {
         "apiVersion": "v1",
@@ -247,26 +246,26 @@ def test_kube_interface():
         ],
     }
 
-    k = KubeInterface(kube_config_file=kubeconfig_yaml)
+    k = KubeInterface(kube_config_file=kubeconfig_yaml, defaults=defaults)
 
     assert k.context_name == context2
     assert k.with_context(context3).context_name == context3
-    assert k.with_context(context3).context.get("cluster") == f"{context3}-cluster"
-    assert k.with_kubectl_cmd(test_kubectl_cmd).kubectl_cmd == test_kubectl_cmd
-    assert k.kube_config == kubeconfig_yaml
+    assert (
+        k.with_context(context3).single_config.context.cluster == f"{context3}-cluster"
+    )
 
-    assert context1 in k.available_contexts
-    assert context2 in k.available_contexts
-    assert context3 in k.available_contexts
-    assert len(k.available_contexts) == 3
+    assert context1 in k.kube_config.contexts
+    assert context2 in k.kube_config.contexts
+    assert context3 in k.kube_config.contexts
+    assert len(k.kube_config.contexts) == 3
 
-    current_context = k.context
-    assert current_context.get("cluster") == f"{context2}-cluster"
-    assert current_context.get("user") == f"{username2}"
+    current_context = k.single_config.context
+    assert current_context.cluster == f"{context2}-cluster"
+    assert current_context.user == f"{username2}"
 
-    current_cluster = k.cluster
-    assert current_cluster.get("certificate-authority-data") == f"{test_id}-2"
-    assert current_cluster.get("server") == f"https://0.0.0.0:{test_id}-2"
+    current_cluster = k.single_config.cluster
+    assert current_cluster.certificate_auth_data == f"{test_id}-2"
+    assert current_cluster.server == f"https://0.0.0.0:{test_id}-2"
 
 
 def test_lightkube(tmp_kubeconf):
@@ -283,19 +282,21 @@ def test_lightkube(tmp_kubeconf):
 
     assert k.context_name == context2
     assert k.with_context(context3).context_name == context3
-    assert k.with_context(context3).context.get("cluster") == f"{context3}-cluster"
+    assert (
+        k.with_context(context3).single_config.context.cluster == f"{context3}-cluster"
+    )
 
-    assert context1 in k.available_contexts
-    assert context2 in k.available_contexts
-    assert context3 in k.available_contexts
-    assert len(k.available_contexts) == 3
+    assert context1 in k.kube_config.contexts
+    assert context2 in k.kube_config.contexts
+    assert context3 in k.kube_config.contexts
+    assert len(k.kube_config.contexts) == 3
 
-    current_context = k.context
-    assert current_context.get("cluster") == f"{context2}-cluster"
-    assert current_context.get("user") == f"{username2}"
+    current_context = k.single_config.context
+    assert current_context.cluster == f"{context2}-cluster"
+    assert current_context.user == f"{username2}"
 
-    current_cluster = k.cluster
-    assert current_cluster.get("server") == "https://0.0.0.1:9090"
+    current_cluster = k.single_config.cluster
+    assert current_cluster.server == "https://0.0.0.1:9090"
 
 
 def test_lightkube_get_secret(mocker, tmp_kubeconf):
@@ -325,9 +326,7 @@ def test_lightkube_get_secret(mocker, tmp_kubeconf):
     assert conf_value == secret_result["data"][conf_key]
 
 
-def test_kube_interface_get_secret(mocker):
-    mock_yaml_safe_load = mocker.patch("yaml.safe_load")
-    mock_open = mocker.patch("builtins.open")
+def test_kube_interface_get_secret(mocker, tmp_path):
     mock_subprocess = mocker.patch("subprocess.check_output")
 
     # mock logic
@@ -370,9 +369,12 @@ def test_kube_interface_get_secret(mocker):
         "users": [{"name": f"{username}", "user": {"token": f"{token}"}}],
     }
 
-    kubeconfig_yaml_str = yaml.dump(kubeconfig_yaml, sort_keys=False)
+    kube_config_file = os.path.join(tmp_path, kubeconfig)
 
-    cmd_get_secret = f"kubectl --kubeconfig {kubeconfig}  --namespace {namespace}  --context {context} get secret {secret_name} --ignore-not-found -o yaml "
+    with open(kube_config_file, "w") as fid:
+        yaml.dump(kubeconfig_yaml, fid, sort_keys=False)
+
+    cmd_get_secret = f"kubectl --kubeconfig {kube_config_file} --namespace {namespace} --context {context} get secret {secret_name} --ignore-not-found -o yaml"
     output_get_secret_yaml = {
         "apiVersion": "v1",
         "data": {conf_key: conf_value_base64_encoded},
@@ -393,12 +395,11 @@ def test_kube_interface_get_secret(mocker):
         cmd_get_secret: output_get_secret,
     }
 
-    mock_yaml_safe_load.side_effect = [kubeconfig_yaml, output_get_secret_yaml]
-
-    with patch("builtins.open", mock_open(read_data=kubeconfig_yaml_str)):
-        k = KubeInterface(kube_config_file=kubeconfig)
-        secret_result = k.get_secret(secret_name, namespace)
-        assert conf_value == secret_result["data"][conf_key]
+    secret_mock = mocker.patch("spark8t.utils.parse_yaml_shell_output")
+    secret_mock.side_effect = output_get_secret
+    k = KubeInterface(kube_config_file=kube_config_file, defaults=defaults)
+    secret_result = k.get_secret(secret_name, namespace)
+    assert conf_value == secret_result["data"][conf_key]
 
     mock_subprocess.assert_any_call(
         cmd_get_secret, shell=True, stderr=subprocess.STDOUT
@@ -546,13 +547,10 @@ def test_lightkube_remove_label_role_binding(mocker, tmp_kubeconf):
     )
 
 
-def test_kube_interface_set_label(mocker):
-    mock_yaml_safe_load = mocker.patch("yaml.safe_load")
-    mock_open = mocker.patch("builtins.open")
+def test_kube_interface_set_label(mocker, tmp_path):
     mock_subprocess = mocker.patch("subprocess.check_output")
 
     # mock logic
-
     def side_effect(*args, **kwargs):
         return values[args[0]]
 
@@ -591,20 +589,22 @@ def test_kube_interface_set_label(mocker):
         "users": [{"name": f"{username}", "user": {"token": f"{token}"}}],
     }
 
-    kubeconfig_yaml_str = yaml.dump(kubeconfig_yaml, sort_keys=False)
+    kube_config_file = os.path.join(tmp_path, kubeconfig)
 
-    cmd_set_label = f"kubectl --kubeconfig {kubeconfig}  --namespace {namespace}  --context {context} label {resource_type} {resource_name} {label} -o yaml "
-    output_set_label_yaml = {}
+    with open(kube_config_file, "w") as fid:
+        yaml.dump(kubeconfig_yaml, fid, sort_keys=False)
+
+    cmd_set_label = f"kubectl --kubeconfig {kube_config_file} --namespace {namespace} --context {context} label {resource_type} {resource_name} {label} -o yaml"
+
     output_set_label = "0".encode("utf-8")
     values = {
         cmd_set_label: output_set_label,
     }
 
-    mock_yaml_safe_load.side_effect = [kubeconfig_yaml, output_set_label_yaml]
-
-    with patch("builtins.open", mock_open(read_data=kubeconfig_yaml_str)):
-        k = KubeInterface(kube_config_file=kubeconfig)
-        k.set_label(resource_type, resource_name, label, namespace)
+    set_label_mock = mocker.patch("spark8t.utils.parse_yaml_shell_output")
+    set_label_mock.side_effect = output_set_label
+    k = KubeInterface(kube_config_file=kube_config_file, defaults=defaults)
+    k.set_label(resource_type, resource_name, label, namespace)
 
     mock_subprocess.assert_any_call(cmd_set_label, shell=True, stderr=subprocess.STDOUT)
 
@@ -855,9 +855,7 @@ def test_lightkube_delete_role_binding(mocker, tmp_kubeconf):
     )
 
 
-def test_kube_interface_create(mocker):
-    mock_yaml_safe_load = mocker.patch("yaml.safe_load")
-    mock_open = mocker.patch("builtins.open")
+def test_kube_interface_create(mocker, tmp_path):
     mock_subprocess = mocker.patch("subprocess.check_output")
 
     # mock logic
@@ -898,32 +896,32 @@ def test_kube_interface_create(mocker):
         "users": [{"name": f"{username}", "user": {"token": f"{token}"}}],
     }
 
-    kubeconfig_yaml_str = yaml.dump(kubeconfig_yaml, sort_keys=False)
+    kube_config_file = os.path.join(tmp_path, kubeconfig)
 
-    cmd_create = f"kubectl --kubeconfig {kubeconfig}  --namespace {namespace}  --context {context} create {resource_type} {resource_name} --k1=v1 --k2=v21 --k2=v22 -o name "
-    output_create_yaml = {}
+    with open(kube_config_file, "w") as fid:
+        yaml.dump(kubeconfig_yaml, fid, sort_keys=False)
+
+    cmd_create = f"kubectl --kubeconfig {kube_config_file} --namespace {namespace} --context {context} create {resource_type} {resource_name} --k1=v1 --k2=v21 --k2=v22 -o name"
     output_create = "0".encode("utf-8")
     values = {
         cmd_create: output_create,
     }
 
-    mock_yaml_safe_load.side_effect = [kubeconfig_yaml, output_create_yaml]
+    create_mock = mocker.patch("spark8t.utils.parse_yaml_shell_output")
+    create_mock.side_effect = output_create
 
-    with patch("builtins.open", mock_open(read_data=kubeconfig_yaml_str)):
-        k = KubeInterface(kube_config_file=kubeconfig)
-        k.create(
-            resource_type,
-            resource_name,
-            namespace,
-            **{"k1": "v1", "k2": ["v21", "v22"]},
-        )
+    k = KubeInterface(kube_config_file=kube_config_file, defaults=defaults)
+    k.create(
+        resource_type,
+        resource_name,
+        namespace,
+        **{"k1": "v1", "k2": ["v21", "v22"]},
+    )
 
     mock_subprocess.assert_any_call(cmd_create, shell=True, stderr=subprocess.STDOUT)
 
 
-def test_kube_interface_delete(mocker):
-    mock_yaml_safe_load = mocker.patch("yaml.safe_load")
-    mock_open = mocker.patch("builtins.open")
+def test_kube_interface_delete(mocker, tmp_path):
     mock_subprocess = mocker.patch("subprocess.check_output")
 
     # mock logic
@@ -964,20 +962,43 @@ def test_kube_interface_delete(mocker):
         "users": [{"name": f"{username}", "user": {"token": f"{token}"}}],
     }
 
-    kubeconfig_yaml_str = yaml.dump(kubeconfig_yaml, sort_keys=False)
+    kube_config_file = os.path.join(tmp_path, kubeconfig)
 
-    cmd_delete = f"kubectl --kubeconfig {kubeconfig}  --namespace {namespace}  --context {context} delete {resource_type} {resource_name} --ignore-not-found -o name "
-    output_delete_yaml = {}
+    with open(kube_config_file, "w") as fid:
+        yaml.dump(kubeconfig_yaml, fid, sort_keys=False)
+
+    cmd_delete = f"kubectl --kubeconfig {kube_config_file} --namespace {namespace} --context {context} delete {resource_type} {resource_name} --ignore-not-found -o name"
     output_delete = "0".encode("utf-8")
     values = {
         cmd_delete: output_delete,
     }
 
-    mock_yaml_safe_load.side_effect = [kubeconfig_yaml, output_delete_yaml]
+    delete_mock = mocker.patch("spark8t.utils.parse_yaml_shell_output")
+    delete_mock.side_effect = output_delete
 
-    with patch("builtins.open", mock_open(read_data=kubeconfig_yaml_str)):
-        k = KubeInterface(kube_config_file=kubeconfig)
-        k.delete(resource_type, resource_name, namespace)
+    k = KubeInterface(kube_config_file=kube_config_file, defaults=defaults)
+    k.delete(resource_type, resource_name, namespace)
+
+    mock_subprocess.assert_any_call(cmd_delete, shell=True, stderr=subprocess.STDOUT)
+
+
+def test_kube_interface_delete_no_kubeconfig(mocker):
+    mock_subprocess = mocker.patch("subprocess.check_output")
+
+    # mock logic
+    def side_effect(*args, **kwargs):
+        return "0".encode("utf-8")  # values[args[0]]
+
+    mock_subprocess.side_effect = side_effect
+
+    namespace = str(uuid.uuid4())
+    resource_type = str(uuid.uuid4())
+    resource_name = str(uuid.uuid4())
+
+    cmd_delete = f"kubectl --namespace {namespace} delete {resource_type} {resource_name} --ignore-not-found -o name"
+
+    k = KubeInterface(kube_config_file=None, defaults=defaults)
+    k.delete(resource_type, resource_name, namespace)
 
     mock_subprocess.assert_any_call(cmd_delete, shell=True, stderr=subprocess.STDOUT)
 
@@ -1035,10 +1056,9 @@ def test_lightkube_get_service_account(mocker, tmp_kubeconf):
     k.get_service_account(resource_name)
 
 
-def test_kube_interface_get_service_accounts(mocker):
-    mock_yaml_safe_load = mocker.patch("yaml.safe_load")
-    mock_open = mocker.patch("builtins.open")
+def test_kube_interface_get_service_accounts(mocker, tmp_path):
     mock_subprocess = mocker.patch("subprocess.check_output")
+
     test_id = str(uuid.uuid4())
     kubeconfig = str(uuid.uuid4())
     username = str(uuid.uuid4())
@@ -1072,9 +1092,12 @@ def test_kube_interface_get_service_accounts(mocker):
         "users": [{"name": f"{username}", "user": {"token": f"{token}"}}],
     }
 
-    kubeconfig_yaml_str = yaml.dump(kubeconfig_yaml, sort_keys=False)
+    kube_config_file = os.path.join(tmp_path, kubeconfig)
 
-    cmd_get_sa = f"kubectl --kubeconfig {kubeconfig}  --context {context} get serviceaccount -l {label1}  -l {label2} -n {namespace} -o yaml "
+    with open(kube_config_file, "w") as fid:
+        yaml.dump(kubeconfig_yaml, fid, sort_keys=False)
+
+    cmd_get_sa = f"kubectl --kubeconfig {kube_config_file} --context {context} get serviceaccount -l {label1}  -l {label2} -n {namespace} -o yaml"
     output_get_sa_yaml = {
         "apiVersion": "v1",
         "items": [
@@ -1105,28 +1128,24 @@ def test_kube_interface_get_service_accounts(mocker):
 
     mock_subprocess.side_effect = side_effect
 
-    mock_yaml_safe_load.side_effect = [kubeconfig_yaml, output_get_sa_yaml]
-
-    with patch("builtins.open", mock_open(read_data=kubeconfig_yaml_str)):
-        k = KubeInterface(kube_config_file=kubeconfig)
-        sa_list = k.get_service_accounts(namespace, labels)
-        assert sa_list[0].get("metadata").get("name") == username
-        assert sa_list[0].get("metadata").get("namespace") == namespace
+    k = KubeInterface(kube_config_file=kube_config_file, defaults=defaults)
+    sa_list = k.get_service_accounts(namespace, labels)
+    assert sa_list[0].get("metadata").get("name") == username
+    assert sa_list[0].get("metadata").get("namespace") == namespace
 
     mock_subprocess.assert_any_call(cmd_get_sa, shell=True, stderr=subprocess.STDOUT)
 
 
-def test_kube_interface_autodetect(mocker):
-    mock_yaml_safe_load = mocker.patch("yaml.safe_load")
-    mock_open = mocker.patch("builtins.open")
+def test_kube_interface_autodetect(mocker, tmp_path):
     mock_subprocess = mocker.patch("subprocess.check_output")
-    test_id = str(uuid.uuid4())
+
     kubeconfig = str(uuid.uuid4())
+
+    test_id = str(uuid.uuid4())
     username = str(uuid.uuid4())
     namespace = str(uuid.uuid4())
     context = str(uuid.uuid4())
     token = str(uuid.uuid4())
-    kubectl_cmd_str = str(uuid.uuid4())
 
     kubeconfig_yaml = {
         "apiVersion": "v1",
@@ -1151,10 +1170,13 @@ def test_kube_interface_autodetect(mocker):
         "users": [{"name": f"{username}", "user": {"token": f"{token}"}}],
     }
 
-    kubeconfig_yaml_str = yaml.dump(kubeconfig_yaml, sort_keys=False)
+    kube_config_file = os.path.join(tmp_path, kubeconfig)
+
+    with open(kube_config_file, "w") as fid:
+        yaml.dump(kubeconfig_yaml, fid, sort_keys=False)
 
     cmd_autodetect = (
-        f"{kubectl_cmd_str} --context {context} config view --minify -o yaml"
+        f"kubectl --context {context} config view --raw " "--minify -o yaml"
     )
     output_autodetect_yaml = {
         "apiVersion": "v1",
@@ -1187,86 +1209,14 @@ def test_kube_interface_autodetect(mocker):
         return output_autodetect
 
     mock_subprocess.side_effect = side_effect
-    mock_yaml_safe_load.side_effect = [kubeconfig_yaml, output_autodetect_yaml]
 
-    with patch("builtins.open", mock_open(read_data=kubeconfig_yaml_str)):
-        k = KubeInterface(kube_config_file=kubeconfig)
-        ki = k.autodetect(context, kubectl_cmd_str)
-        assert ki.context_name == context
-        assert ki.kubectl_cmd == kubectl_cmd_str
+    ki = KubeInterface.autodetect(context, defaults)
+    assert ki.context_name == context
+    assert ki.kubectl_cmd == "kubectl"
 
     mock_subprocess.assert_any_call(
         cmd_autodetect, shell=True, stderr=subprocess.STDOUT
     )
-
-
-def test_kube_interface_select_by_master(mocker):
-    mock_yaml_safe_load = mocker.patch("yaml.safe_load")
-    mock_open = mocker.patch("builtins.open")
-    mocker.patch("subprocess.check_output")
-    test_id = str(uuid.uuid4())
-    kubeconfig = str(uuid.uuid4())
-    username = str(uuid.uuid4())
-    namespace = str(uuid.uuid4())
-    context = str(uuid.uuid4())
-    token = str(uuid.uuid4())
-
-    kubeconfig_yaml = {
-        "apiVersion": "v1",
-        "clusters": [
-            {
-                "cluster": {
-                    "certificate-authority-data": f"{test_id}",
-                    "server": f"https://0.0.0.0:{test_id}",
-                },
-                "name": f"{context}-cluster",
-            }
-        ],
-        "contexts": [
-            {
-                "context": {"cluster": f"{context}-cluster", "user": f"{username}"},
-                "name": f"{context}",
-            }
-        ],
-        "current-context": f"{context}",
-        "kind": "Config",
-        "preferences": {},
-        "users": [{"name": f"{username}", "user": {"token": f"{token}"}}],
-    }
-
-    kubeconfig_yaml_str = yaml.dump(kubeconfig_yaml, sort_keys=False)
-
-    output_select_by_master_yaml = {
-        "apiVersion": "v1",
-        "items": [
-            {
-                "apiVersion": "v1",
-                "kind": "ServiceAccount",
-                "metadata": {
-                    "creationTimestamp": "2022-11-21T14:32:06Z",
-                    "labels": {
-                        MANAGED_BY_LABELNAME: SPARK8S_LABEL,
-                        PRIMARY_LABELNAME: "1",
-                    },
-                    "name": f"{username}",
-                    "namespace": f"{namespace}",
-                    "resourceVersion": "321848",
-                    "uid": "87ef7231-8106-4a36-b545-d8cf167788a6",
-                },
-            }
-        ],
-        "kind": "List",
-        "metadata": {"resourceVersion": ""},
-    }
-
-    mock_yaml_safe_load.side_effect = [
-        kubeconfig_yaml,
-        output_select_by_master_yaml,
-    ]
-
-    with patch("builtins.open", mock_open(read_data=kubeconfig_yaml_str)):
-        k = KubeInterface(kube_config_file=kubeconfig)
-        assert k == k.select_by_master(f"https://0.0.0.0:{test_id}")
 
 
 def test_k8s_registry_retrieve_account_configurations(mocker):

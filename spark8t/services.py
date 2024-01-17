@@ -12,7 +12,7 @@ from types import MappingProxyType
 from typing import Any, Dict, List, Optional, Type, Union
 
 import yaml
-from lightkube import Client, KubeConfig, codecs
+from lightkube import Client, KubeConfig, SingleConfig, codecs
 from lightkube.core.exceptions import ApiError
 from lightkube.core.resource import GlobalResource
 from lightkube.models.meta_v1 import ObjectMeta
@@ -49,72 +49,71 @@ from spark8t.utils import (
 class AbstractKubeInterface(WithLogging, metaclass=ABCMeta):
     """Abstract class for implementing Kubernetes Interface."""
 
-    @abstractmethod
-    def with_context(self, context_name: str):
+    defaults: Defaults
+    kube_config_file: Union[None, str, Dict[str, Any]]
+    context_name: Optional[str] = None
+
+    def __init__(
+        self,
+        kube_config_file: Union[None, str, Dict[str, Any]],
+        defaults: Defaults,
+        context_name: Optional[str] = None,
+    ):
+        """Initialise a KubeInterface class from a kube config file.
+
+        Args:
+            kube_config_file: kube config path
+            context_name: name of the context to be used
+        """
+        self.kube_config_file = kube_config_file
+        self.defaults = defaults
+        self._context_name = context_name
+
+    def with_context(self, context_name: str) -> "AbstractKubeInterface":
         """Return a new KubeInterface object using a different context.
 
         Args:
             context_name: context to be used
         """
-        pass
-
-    @property
-    @abstractmethod
-    def kube_config_file(self) -> Union[str, Dict[str, Any]]:
-        pass
+        return type(self)(self.kube_config_file, self.defaults, context_name)
 
     @cached_property
-    def kube_config(self) -> Dict[str, Any]:
+    def kube_config(self) -> KubeConfig:
         """Return the kube config file parsed as a dictionary"""
+        if not self.kube_config_file:
+            return KubeConfig.from_env()
+
         if isinstance(self.kube_config_file, str):
-            with open(self.kube_config_file, "r") as fid:
-                return yaml.safe_load(fid)
+            return KubeConfig.from_file(self.kube_config_file)
+        elif isinstance(self.kube_config_file, dict):
+            return KubeConfig.from_dict(self.kube_config_file)
         else:
-            return self.kube_config_file
+            raise ValueError(
+                f"malformed kube_config: type {type(self.kube_config_file)}"
+            )
 
     @cached_property
-    def available_contexts(self) -> List[str]:
-        """Return the available contexts present in the kube config file."""
-        return [context["name"] for context in self.kube_config["contexts"]]
-
-    @property
-    @abstractmethod
     def context_name(self) -> str:
-        """Return current context name."""
-        pass
+        return self._context_name or self.kube_config.current_context
 
     @cached_property
-    def context(self) -> Dict[str, str]:
-        """Return current context."""
-        return [
-            context["context"]
-            for context in self.kube_config["contexts"]
-            if context["name"] == self.context_name
-        ][0]
-
-    @cached_property
-    def cluster(self) -> Dict:
-        """Return current cluster."""
-        return [
-            cluster["cluster"]
-            for cluster in self.kube_config["clusters"]
-            if cluster["name"] == self.context["cluster"]
-        ][0]
+    def single_config(self) -> SingleConfig:
+        return self.kube_config.get(self.context_name)
 
     @cached_property
     def api_server(self):
         """Return current K8s api-server endpoint."""
-        return self.cluster["server"]
+        return self.single_config.cluster.server
 
     @cached_property
     def namespace(self):
         """Return current namespace."""
-        return self.context.get("namespace", "default")
+        return self.single_config.context.namespace
 
     @cached_property
     def user(self):
         """Return current admin user."""
-        return self.context.get("user", "default")
+        return self.single_config.context.user
 
     @abstractmethod
     def get_service_account(
@@ -241,16 +240,15 @@ class AbstractKubeInterface(WithLogging, metaclass=ABCMeta):
 
     def select_by_master(self, master: str):
         api_servers_clusters = {
-            cluster["name"]: cluster["cluster"]["server"]
-            for cluster in self.kube_config["clusters"]
+            name: cluster.server for name, cluster in self.kube_config.clusters.items()
         }
 
         self.logger.debug(f"Clusters API: {dict(api_servers_clusters)}")
 
         contexts_for_api_server = [
-            _context["name"]
-            for _context in self.kube_config["contexts"]
-            if api_servers_clusters[_context["context"]["cluster"]] == master
+            name
+            for name, context in self.kube_config.contexts.items()
+            if api_servers_clusters[context.cluster] == master
         ]
 
         if len(contexts_for_api_server) == 0:
@@ -279,33 +277,9 @@ class LightKube(AbstractKubeInterface):
         }
     )
 
-    def __init__(
-        self,
-        kube_config_file: Union[str, Dict[str, Any]],
-        defaults: Defaults,
-        context_name: Optional[str] = None,
-    ):
-        """Initialise a KubeInterface class from a kube config file.
-
-        Args:
-            kube_config_file: kube config path
-            context_name: name of the context to be used
-        """
-        self._kube_config_file = kube_config_file
-        self._context_name = context_name
-        self.config = KubeConfig.from_file(self.kube_config_file)
-
-        self.defaults = defaults
-
-        if context_name:
-            self.client = Client(config=self.config.get(context_name=context_name))
-        else:
-            self.client = Client(config=self.config.get())
-
-    @property
-    def kube_config_file(self) -> Union[str, Dict[str, Any]]:
-        """Return the kube config file name"""
-        return self._kube_config_file
+    @cached_property
+    def client(self):
+        return Client(config=self.single_config)
 
     def with_context(self, context_name: str):
         """Return a new KubeInterface object using a different context.
@@ -314,15 +288,6 @@ class LightKube(AbstractKubeInterface):
             context_name: context to be used
         """
         return LightKube(self.kube_config_file, self.defaults, context_name)
-
-    @property
-    def context_name(self) -> str:
-        """Return current context name."""
-        return (
-            self.kube_config["current-context"]
-            if self._context_name is None
-            else self._context_name
-        )
 
     def get_service_account(
         self, account_id: str, namespace: Optional[str] = None
@@ -670,36 +635,9 @@ class LightKube(AbstractKubeInterface):
 class KubeInterface(AbstractKubeInterface):
     """Class for providing an interface for k8s API needed for the spark client."""
 
-    def __init__(
-        self,
-        kube_config_file: Union[str, Dict[str, Any]],
-        context_name: Optional[str] = None,
-        kubectl_cmd: str = "kubectl",
-    ):
-        """Initialise a KubeInterface class from a kube config file.
-
-        Args:
-            kube_config_file: kube config path
-            context_name: name of the context to be used
-            kubectl_cmd: path to the kubectl command to be used to interact with the K8s API
-        """
-        self._kube_config_file = kube_config_file
-        self._context_name = context_name
-        self.kubectl_cmd = kubectl_cmd
-
-    @property
-    def kube_config_file(self) -> Union[str, Dict[str, Any]]:
-        """Return the kube config file name"""
-        return self._kube_config_file
-
-    @property
-    def context_name(self) -> str:
-        """Return current context name."""
-        return (
-            self.kube_config["current-context"]
-            if self._context_name is None
-            else self._context_name
-        )
+    @cached_property
+    def kubectl_cmd(self):
+        return self.defaults.kubectl_cmd
 
     def with_context(self, context_name: str):
         """Return a new KubeInterface object using a different context.
@@ -707,15 +645,7 @@ class KubeInterface(AbstractKubeInterface):
         Args:
             context_name: context to be used
         """
-        return KubeInterface(self.kube_config_file, context_name, self.kubectl_cmd)
-
-    def with_kubectl_cmd(self, kubectl_cmd: str):
-        """Return a new KubeInterface object using a different kubectl command.
-
-        Args:
-            kubectl_cmd: path to the kubectl command to be used
-        """
-        return KubeInterface(self.kube_config_file, self.context_name, kubectl_cmd)
+        return KubeInterface(self.kube_config_file, self.defaults, context_name)
 
     def exec(
         self,
@@ -740,14 +670,18 @@ class KubeInterface(AbstractKubeInterface):
             Output of the command, either parsed as yaml or string
         """
 
-        base_cmd = f"{self.kubectl_cmd} --kubeconfig {self.kube_config_file} "
+        cmd_list = [self.kubectl_cmd]
+        if self.kube_config_file:
+            cmd_list += [f"--kubeconfig {self.kube_config_file}"]
 
         if namespace and "--namespace" not in cmd or "-n" not in cmd:
-            base_cmd += f" --namespace {namespace} "
-        if "--context" not in cmd:
-            base_cmd += f" --context {context or self.context_name} "
+            cmd_list += [f"--namespace {namespace}"]
+        if self.kube_config_file and "--context" not in cmd:
+            cmd_list += [f"--context {context or self.context_name}"]
 
-        base_cmd += f"{cmd} -o {output or 'yaml'} "
+        cmd_list += [cmd, f"-o {output or 'yaml'}"]
+
+        base_cmd = " ".join(cmd_list)
 
         self.logger.debug(f"Executing command: {base_cmd}")
 
@@ -766,10 +700,10 @@ class KubeInterface(AbstractKubeInterface):
             namespace: namespace where to look for the service account. Default is 'default'
         """
 
-        cmd = f"get serviceaccount {account_id} -n {namespace}"
+        cmd = f"get serviceaccount {account_id}"
 
         try:
-            service_account_raw = self.exec(cmd, namespace=self.namespace)
+            service_account_raw = self.exec(cmd, namespace=namespace)
         except subprocess.CalledProcessError as e:
             if "NotFound" in e.stdout.decode("utf-8"):
                 raise K8sResourceNotFound(
@@ -942,51 +876,24 @@ class KubeInterface(AbstractKubeInterface):
 
     @classmethod
     def autodetect(
-        cls, context_name: Optional[str] = None, kubectl_cmd: str = "kubectl"
+        cls, context_name: Optional[str] = None, defaults: Defaults = Defaults()
     ) -> "KubeInterface":
         """
         Return a KubeInterface object by auto-parsing the output of the kubectl command.
 
         Args:
             context_name: context to be used to export the cluster configuration
-            kubectl_cmd: path to the kubectl command to be used to interact with the K8s API
+            defaults: defaults coming from env variable
         """
 
-        cmd = kubectl_cmd
+        cmd = defaults.kubectl_cmd
 
         if context_name:
             cmd += f" --context {context_name}"
 
-        config = parse_yaml_shell_output(f"{cmd} config view --minify -o yaml")
+        config = parse_yaml_shell_output(f"{cmd} config view --raw --minify -o yaml")
 
-        return KubeInterface(config, context_name=context_name, kubectl_cmd=kubectl_cmd)
-
-    def select_by_master(self, master: str):
-        api_servers_clusters = {
-            cluster["name"]: cluster["cluster"]["server"]
-            for cluster in self.kube_config["clusters"]
-        }
-
-        self.logger.debug(f"Clusters API: {dict(api_servers_clusters)}")
-
-        contexts_for_api_server = [
-            _context["name"]
-            for _context in self.kube_config["contexts"]
-            if api_servers_clusters[_context["context"]["cluster"]] == master
-        ]
-
-        if len(contexts_for_api_server) == 0:
-            raise AccountNotFound(master)
-
-        self.logger.info(
-            f"Contexts on api server {master}: {', '.join(contexts_for_api_server)}"
-        )
-
-        return (
-            self
-            if self.context_name in contexts_for_api_server
-            else self.with_context(contexts_for_api_server[0])
-        )
+        return KubeInterface(config, defaults=defaults, context_name=context_name)
 
 
 class AbstractServiceAccountRegistry(WithLogging, ABC):
@@ -1582,7 +1489,12 @@ class SparkInterface(WithLogging):
             submit_cmd = f"{self.defaults.spark_submit} {' '.join(submit_args)}"
 
             self.logger.debug(submit_cmd)
-            with environ(KUBECONFIG=self.kube_interface.kube_config_file):
+
+            envs = {}
+            if self.kube_interface.kube_config_file:
+                envs["KUBECONFIG"] = self.kube_interface.kube_config_file
+
+            with environ(**envs):
                 os.system(submit_cmd)
 
     def spark_shell(
@@ -1633,7 +1545,12 @@ class SparkInterface(WithLogging):
             submit_cmd = f"{self.defaults.spark_shell} {' '.join(submit_args)}"
 
             self.logger.debug(submit_cmd)
-            with environ(KUBECONFIG=self.kube_interface.kube_config_file):
+
+            envs = {}
+            if self.kube_interface.kube_config_file:
+                envs["KUBECONFIG"] = self.kube_interface.kube_config_file
+
+            with environ(**envs):
                 os.system(f"touch {self.defaults.scala_history_file}")
                 os.system(submit_cmd)
 
@@ -1680,7 +1597,12 @@ class SparkInterface(WithLogging):
             submit_cmd = f"{self.defaults.pyspark} {' '.join(submit_args)}"
 
             self.logger.debug(submit_cmd)
-            with environ(KUBECONFIG=self.kube_interface.kube_config_file):
+
+            envs = {}
+            if self.kube_interface.kube_config_file:
+                envs["KUBECONFIG"] = self.kube_interface.kube_config_file
+
+            with environ(**envs):
                 os.system(submit_cmd)
 
     def prefix_optional_detected_driver_host(self, conf: PropertyFile):

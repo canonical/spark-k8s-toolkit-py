@@ -106,7 +106,9 @@ def main(args: Namespace, logger: Logger):
 
     logger.debug(f"Using K8s context: {context}")
 
-    registry = K8sServiceAccountRegistry(kube_interface.with_context(context))
+    registry = K8sServiceAccountRegistry(
+        kube_interface.with_context(context) if context else kube_interface
+    )
 
     if args.action == Actions.CREATE:
         service_account = build_service_account_from_args(args, registry)

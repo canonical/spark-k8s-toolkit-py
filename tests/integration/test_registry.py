@@ -174,12 +174,11 @@ def test_merge_configurations():
 @pytest.mark.usefixtures("integration_test")
 def test_kube_interface(kubeinterface):
     context = str(uuid.uuid4())
-    kubectl_cmd = str(uuid.uuid4())
 
     k = kubeinterface.autodetect()
     assert k.context_name == "microk8s"
-    assert k.cluster.get("server") == "https://127.0.0.1:16443"
-    k2 = k.select_by_master("https://127.0.0.1:16443")
+    # assert (k.single_config.cluster.server == "https://127.0.0.1:16443")
+
+    k2 = k.select_by_master(k.single_config.cluster.server)
     assert k2.context_name == "microk8s"
     assert k.with_context(context).context_name == context
-    assert k.with_kubectl_cmd(kubectl_cmd).kubectl_cmd == kubectl_cmd

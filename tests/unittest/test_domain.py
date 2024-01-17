@@ -1,4 +1,5 @@
 import logging
+import os
 import tempfile
 import uuid
 
@@ -36,6 +37,22 @@ def test_defaults():
     assert defaults.spark_submit, f"{spark_home}/bin/spark-submit"
     assert defaults.spark_shell, f"{spark_home}/bin/spark-shell"
     assert defaults.pyspark, f"{spark_home}/bin/pyspark"
+
+
+def test_defaults_kube_config():
+    """
+    Validates defaults passed in as environment.
+    """
+
+    from spark8t.utils import environ
+
+    d = Defaults(dict())
+
+    assert d.kube_config is None
+
+    with environ(KUBECONFIG="my-kube-config"):
+        d = Defaults(dict(os.environ))
+        assert d.kube_config == "my-kube-config"
 
 
 def test_service_account():
