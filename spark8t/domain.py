@@ -212,6 +212,10 @@ class Defaults:
         return self.environ.get("SPARK_CONFS", os.path.join(self.spark_home, "conf"))
 
     @property
+    def kubernetes_service_host(self):
+        return self.environ["KUBERNETES_SERVICE_HOST"]
+
+    @property
     def spark_user_data(self):
         return self.environ["SPARK_USER_DATA"]
 

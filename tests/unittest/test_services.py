@@ -187,7 +187,6 @@ def test_kube_interface():
     username3 = str(uuid.uuid4())
     context3 = str(uuid.uuid4())
     token3 = str(uuid.uuid4())
-    test_kubectl_cmd = str(uuid.uuid4())
 
     kubeconfig_yaml = {
         "apiVersion": "v1",
@@ -247,12 +246,11 @@ def test_kube_interface():
         ],
     }
 
-    k = KubeInterface(kube_config_file=kubeconfig_yaml)
+    k = KubeInterface(kube_config_file=kubeconfig_yaml, defaults=defaults)
 
     assert k.context_name == context2
     assert k.with_context(context3).context_name == context3
     assert k.with_context(context3).context.get("cluster") == f"{context3}-cluster"
-    assert k.with_kubectl_cmd(test_kubectl_cmd).kubectl_cmd == test_kubectl_cmd
     assert k.kube_config == kubeconfig_yaml
 
     assert context1 in k.available_contexts
@@ -396,7 +394,7 @@ def test_kube_interface_get_secret(mocker):
     mock_yaml_safe_load.side_effect = [kubeconfig_yaml, output_get_secret_yaml]
 
     with patch("builtins.open", mock_open(read_data=kubeconfig_yaml_str)):
-        k = KubeInterface(kube_config_file=kubeconfig)
+        k = KubeInterface(kube_config_file=kubeconfig, defaults=defaults)
         secret_result = k.get_secret(secret_name, namespace)
         assert conf_value == secret_result["data"][conf_key]
 
@@ -603,7 +601,7 @@ def test_kube_interface_set_label(mocker):
     mock_yaml_safe_load.side_effect = [kubeconfig_yaml, output_set_label_yaml]
 
     with patch("builtins.open", mock_open(read_data=kubeconfig_yaml_str)):
-        k = KubeInterface(kube_config_file=kubeconfig)
+        k = KubeInterface(kube_config_file=kubeconfig, defaults=defaults)
         k.set_label(resource_type, resource_name, label, namespace)
 
     mock_subprocess.assert_any_call(cmd_set_label, shell=True, stderr=subprocess.STDOUT)
@@ -910,7 +908,7 @@ def test_kube_interface_create(mocker):
     mock_yaml_safe_load.side_effect = [kubeconfig_yaml, output_create_yaml]
 
     with patch("builtins.open", mock_open(read_data=kubeconfig_yaml_str)):
-        k = KubeInterface(kube_config_file=kubeconfig)
+        k = KubeInterface(kube_config_file=kubeconfig, defaults=defaults)
         k.create(
             resource_type,
             resource_name,
@@ -976,7 +974,7 @@ def test_kube_interface_delete(mocker):
     mock_yaml_safe_load.side_effect = [kubeconfig_yaml, output_delete_yaml]
 
     with patch("builtins.open", mock_open(read_data=kubeconfig_yaml_str)):
-        k = KubeInterface(kube_config_file=kubeconfig)
+        k = KubeInterface(kube_config_file=kubeconfig, defaults=defaults)
         k.delete(resource_type, resource_name, namespace)
 
     mock_subprocess.assert_any_call(cmd_delete, shell=True, stderr=subprocess.STDOUT)
@@ -997,7 +995,7 @@ def test_kube_interface_delete_no_kubeconfig(mocker):
 
     cmd_delete = f"kubectl --namespace {namespace} delete {resource_type} {resource_name} --ignore-not-found -o name "
 
-    k = KubeInterface(kube_config_file=None)
+    k = KubeInterface(kube_config_file=None, defaults=defaults)
     k.delete(resource_type, resource_name, namespace)
 
     mock_subprocess.assert_any_call(cmd_delete, shell=True, stderr=subprocess.STDOUT)
@@ -1129,7 +1127,7 @@ def test_kube_interface_get_service_accounts(mocker):
     mock_yaml_safe_load.side_effect = [kubeconfig_yaml, output_get_sa_yaml]
 
     with patch("builtins.open", mock_open(read_data=kubeconfig_yaml_str)):
-        k = KubeInterface(kube_config_file=kubeconfig)
+        k = KubeInterface(kube_config_file=kubeconfig, defaults=defaults)
         sa_list = k.get_service_accounts(namespace, labels)
         assert sa_list[0].get("metadata").get("name") == username
         assert sa_list[0].get("metadata").get("namespace") == namespace
@@ -1142,12 +1140,10 @@ def test_kube_interface_autodetect(mocker):
     mock_open = mocker.patch("builtins.open")
     mock_subprocess = mocker.patch("subprocess.check_output")
     test_id = str(uuid.uuid4())
-    kubeconfig = str(uuid.uuid4())
     username = str(uuid.uuid4())
     namespace = str(uuid.uuid4())
     context = str(uuid.uuid4())
     token = str(uuid.uuid4())
-    kubectl_cmd_str = str(uuid.uuid4())
 
     kubeconfig_yaml = {
         "apiVersion": "v1",
@@ -1174,9 +1170,7 @@ def test_kube_interface_autodetect(mocker):
 
     kubeconfig_yaml_str = yaml.dump(kubeconfig_yaml, sort_keys=False)
 
-    cmd_autodetect = (
-        f"{kubectl_cmd_str} --context {context} config view --minify -o yaml"
-    )
+    cmd_autodetect = f"kubectl --context {context} config view --minify -o yaml"
     output_autodetect_yaml = {
         "apiVersion": "v1",
         "items": [
@@ -1211,10 +1205,9 @@ def test_kube_interface_autodetect(mocker):
     mock_yaml_safe_load.side_effect = [kubeconfig_yaml, output_autodetect_yaml]
 
     with patch("builtins.open", mock_open(read_data=kubeconfig_yaml_str)):
-        k = KubeInterface(kube_config_file=kubeconfig)
-        ki = k.autodetect(context, kubectl_cmd_str)
+        ki = KubeInterface.autodetect(context, defaults)
         assert ki.context_name == context
-        assert ki.kubectl_cmd == kubectl_cmd_str
+        assert ki.kubectl_cmd == "kubectl"
 
     mock_subprocess.assert_any_call(
         cmd_autodetect, shell=True, stderr=subprocess.STDOUT
@@ -1286,7 +1279,7 @@ def test_kube_interface_select_by_master(mocker):
     ]
 
     with patch("builtins.open", mock_open(read_data=kubeconfig_yaml_str)):
-        k = KubeInterface(kube_config_file=kubeconfig)
+        k = KubeInterface(kube_config_file=kubeconfig, defaults=defaults)
         assert k == k.select_by_master(f"https://0.0.0.0:{test_id}")
 
 

@@ -49,6 +49,8 @@ from spark8t.utils import (
 class AbstractKubeInterface(WithLogging, metaclass=ABCMeta):
     """Abstract class for implementing Kubernetes Interface."""
 
+    defaults: Defaults
+
     @abstractmethod
     def with_context(self, context_name: str):
         """Return a new KubeInterface object using a different context.
@@ -104,6 +106,9 @@ class AbstractKubeInterface(WithLogging, metaclass=ABCMeta):
     @cached_property
     def api_server(self):
         """Return current K8s api-server endpoint."""
+        if not self.kube_config_file:
+            return self.defaults.kubernetes_service_host
+
         return self.cluster["server"]
 
     @cached_property
@@ -680,8 +685,8 @@ class KubeInterface(AbstractKubeInterface):
     def __init__(
         self,
         kube_config_file: Union[None, str, Dict[str, Any]],
+        defaults: Defaults,
         context_name: Optional[str] = None,
-        kubectl_cmd: str = "kubectl",
     ):
         """Initialise a KubeInterface class from a kube config file.
 
@@ -692,7 +697,10 @@ class KubeInterface(AbstractKubeInterface):
         """
         self._kube_config_file = kube_config_file
         self._context_name = context_name
-        self.kubectl_cmd = kubectl_cmd
+
+        self.defaults = defaults
+
+        self.kubectl_cmd = self.defaults.kubectl_cmd
 
     @property
     def kube_config_file(self) -> Union[None, str, Dict[str, Any]]:
@@ -717,15 +725,7 @@ class KubeInterface(AbstractKubeInterface):
         Args:
             context_name: context to be used
         """
-        return KubeInterface(self.kube_config_file, context_name, self.kubectl_cmd)
-
-    def with_kubectl_cmd(self, kubectl_cmd: str):
-        """Return a new KubeInterface object using a different kubectl command.
-
-        Args:
-            kubectl_cmd: path to the kubectl command to be used
-        """
-        return KubeInterface(self.kube_config_file, self.context_name, kubectl_cmd)
+        return KubeInterface(self.kube_config_file, self.defaults, context_name)
 
     def exec(
         self,
@@ -954,24 +954,24 @@ class KubeInterface(AbstractKubeInterface):
 
     @classmethod
     def autodetect(
-        cls, context_name: Optional[str] = None, kubectl_cmd: str = "kubectl"
+        cls, context_name: Optional[str] = None, defaults: Defaults = Defaults()
     ) -> "KubeInterface":
         """
         Return a KubeInterface object by auto-parsing the output of the kubectl command.
 
         Args:
             context_name: context to be used to export the cluster configuration
-            kubectl_cmd: path to the kubectl command to be used to interact with the K8s API
+            defaults: defaults coming from env variable
         """
 
-        cmd = kubectl_cmd
+        cmd = defaults.kubectl_cmd
 
         if context_name:
             cmd += f" --context {context_name}"
 
         config = parse_yaml_shell_output(f"{cmd} config view --minify -o yaml")
 
-        return KubeInterface(config, context_name=context_name, kubectl_cmd=kubectl_cmd)
+        return KubeInterface(config, defaults=defaults, context_name=context_name)
 
     def select_by_master(self, master: str):
         api_servers_clusters = {
