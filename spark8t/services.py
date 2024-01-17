@@ -1594,7 +1594,12 @@ class SparkInterface(WithLogging):
             submit_cmd = f"{self.defaults.spark_submit} {' '.join(submit_args)}"
 
             self.logger.debug(submit_cmd)
-            with environ(KUBECONFIG=self.kube_interface.kube_config_file):
+
+            envs = {}
+            if self.kube_interface.kube_config_file:
+                envs["KUBECONFIG"] = self.kube_interface.kube_config_file
+
+            with environ(**envs):
                 os.system(submit_cmd)
 
     def spark_shell(
@@ -1645,7 +1650,12 @@ class SparkInterface(WithLogging):
             submit_cmd = f"{self.defaults.spark_shell} {' '.join(submit_args)}"
 
             self.logger.debug(submit_cmd)
-            with environ(KUBECONFIG=self.kube_interface.kube_config_file):
+
+            envs = {}
+            if self.kube_interface.kube_config_file:
+                envs["KUBECONFIG"] = self.kube_interface.kube_config_file
+
+            with environ(**envs):
                 os.system(f"touch {self.defaults.scala_history_file}")
                 os.system(submit_cmd)
 
@@ -1692,7 +1702,12 @@ class SparkInterface(WithLogging):
             submit_cmd = f"{self.defaults.pyspark} {' '.join(submit_args)}"
 
             self.logger.debug(submit_cmd)
-            with environ(KUBECONFIG=self.kube_interface.kube_config_file):
+
+            envs = {}
+            if self.kube_interface.kube_config_file:
+                envs["KUBECONFIG"] = self.kube_interface.kube_config_file
+
+            with environ(**envs):
                 os.system(submit_cmd)
 
     def prefix_optional_detected_driver_host(self, conf: PropertyFile):
