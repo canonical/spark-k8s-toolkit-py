@@ -982,6 +982,27 @@ def test_kube_interface_delete(mocker):
     mock_subprocess.assert_any_call(cmd_delete, shell=True, stderr=subprocess.STDOUT)
 
 
+def test_kube_interface_delete_no_kubeconfig(mocker):
+    mock_subprocess = mocker.patch("subprocess.check_output")
+
+    # mock logic
+    def side_effect(*args, **kwargs):
+        return "0".encode("utf-8")  # values[args[0]]
+
+    mock_subprocess.side_effect = side_effect
+
+    namespace = str(uuid.uuid4())
+    resource_type = str(uuid.uuid4())
+    resource_name = str(uuid.uuid4())
+
+    cmd_delete = f"kubectl --namespace {namespace} delete {resource_type} {resource_name} --ignore-not-found -o name "
+
+    k = KubeInterface(kube_config_file=None)
+    k.delete(resource_type, resource_name, namespace)
+
+    mock_subprocess.assert_any_call(cmd_delete, shell=True, stderr=subprocess.STDOUT)
+
+
 def test_lightkube_get_service_accounts(mocker, tmp_kubeconf):
     mock_lightkube_codecs_dump_all_yaml = mocker.patch("lightkube.codecs.dump_all_yaml")
     mock_lightkube_client_list = mocker.patch("lightkube.Client.list")

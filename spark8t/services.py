@@ -281,7 +281,7 @@ class LightKube(AbstractKubeInterface):
 
     def __init__(
         self,
-        kube_config_file: Union[str, Dict[str, Any]],
+        kube_config_file: Union[None, str, Dict[str, Any]],
         defaults: Defaults,
         context_name: Optional[str] = None,
     ):
@@ -291,19 +291,23 @@ class LightKube(AbstractKubeInterface):
             kube_config_file: kube config path
             context_name: name of the context to be used
         """
-        self._kube_config_file = kube_config_file
-        self._context_name = context_name
-        self.config = KubeConfig.from_file(self.kube_config_file)
-
         self.defaults = defaults
 
-        if context_name:
-            self.client = Client(config=self.config.get(context_name=context_name))
+        self._kube_config_file = kube_config_file
+        self._context_name = context_name
+
+        if self.kube_config_file:
+            config = KubeConfig.from_file(self.kube_config_file)
+            self.client = Client(
+                config=config.get(context_name=context_name)
+                if context_name
+                else config.get()
+            )
         else:
-            self.client = Client(config=self.config.get())
+            self.client = Client()
 
     @property
-    def kube_config_file(self) -> Union[str, Dict[str, Any]]:
+    def kube_config_file(self) -> Union[None, str, Dict[str, Any]]:
         """Return the kube config file name"""
         return self._kube_config_file
 
@@ -672,7 +676,7 @@ class KubeInterface(AbstractKubeInterface):
 
     def __init__(
         self,
-        kube_config_file: Union[str, Dict[str, Any]],
+        kube_config_file: Union[None, str, Dict[str, Any]],
         context_name: Optional[str] = None,
         kubectl_cmd: str = "kubectl",
     ):
@@ -688,13 +692,16 @@ class KubeInterface(AbstractKubeInterface):
         self.kubectl_cmd = kubectl_cmd
 
     @property
-    def kube_config_file(self) -> Union[str, Dict[str, Any]]:
+    def kube_config_file(self) -> Union[None, str, Dict[str, Any]]:
         """Return the kube config file name"""
         return self._kube_config_file
 
     @property
-    def context_name(self) -> str:
+    def context_name(self) -> None | str:
         """Return current context name."""
+        if not self.kube_config:
+            return None
+
         return (
             self.kube_config["current-context"]
             if self._context_name is None
@@ -740,11 +747,13 @@ class KubeInterface(AbstractKubeInterface):
             Output of the command, either parsed as yaml or string
         """
 
-        base_cmd = f"{self.kubectl_cmd} --kubeconfig {self.kube_config_file} "
+        base_cmd = f"{self.kubectl_cmd}"
+        if self.kube_config_file:
+            base_cmd += f" --kubeconfig {self.kube_config_file} "
 
         if namespace and "--namespace" not in cmd or "-n" not in cmd:
             base_cmd += f" --namespace {namespace} "
-        if "--context" not in cmd:
+        if self.kube_config_file and "--context" not in cmd:
             base_cmd += f" --context {context or self.context_name} "
 
         base_cmd += f"{cmd} -o {output or 'yaml'} "

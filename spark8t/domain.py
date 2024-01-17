@@ -221,9 +221,10 @@ class Defaults:
         return self.environ.get("SPARK_KUBECTL", "kubectl")
 
     @property
-    def kube_config(self) -> str:
-        """Return default kubeconfig to use if not explicitly provided."""
-        return self.environ["KUBECONFIG"]
+    def kube_config(self) -> None | str:
+        """Return default kubeconfig to use if provided in env variable."""
+        filename = self.environ.get("KUBECONFIG", None)
+        return filename if filename else None
 
     @property
     def static_conf_file(self) -> str:
