@@ -107,7 +107,7 @@ class AbstractKubeInterface(WithLogging, metaclass=ABCMeta):
     def api_server(self):
         """Return current K8s api-server endpoint."""
         if not self.kube_config_file:
-            return self.defaults.kubernetes_service_host
+            return self.defaults.kubernetes_api
 
         return self.cluster["server"]
 
