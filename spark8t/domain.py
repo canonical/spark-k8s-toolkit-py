@@ -213,8 +213,10 @@ class Defaults:
 
     @property
     def kubernetes_api(self):
-        return f"https://{self.environ['KUBERNETES_SERVICE_HOST']}:" + \
-            f"{self.environ['KUBERNETES_SERVICE_PORT']}"
+        return (
+            f"https://{self.environ['KUBERNETES_SERVICE_HOST']}:"
+            + f"{self.environ['KUBERNETES_SERVICE_PORT']}"
+        )
 
     @property
     def spark_user_data(self):
