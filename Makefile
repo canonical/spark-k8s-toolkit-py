@@ -90,8 +90,10 @@ $(k8s_tag):
 microk8s: $(k8s_tag)
 
 integration-tests: setup microk8s
-	echo "Integration tests"
+	echo "Integration tests (Python)"
 	sg microk8s "${PYTHON} tox -e integration"
+	echo "Integration tests (Bash)"
+	sg microk8s "./tests/integration/tests_in_pods.sh"
 
 clean:
 	@echo "==Cleaning environment=="

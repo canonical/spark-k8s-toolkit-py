@@ -336,11 +336,14 @@ class LightKube(AbstractKubeInterface):
 
         if not namespace:
             # means all namespaces
-            iterator = self.client.list(
-                res=Namespace,
-            )
-            for ns in iterator:
-                all_namespaces.append(ns.metadata.name)
+            try:
+                iterator = self.client.list(
+                    res=Namespace,
+                )
+                for ns in iterator:
+                    all_namespaces.append(ns.metadata.name)
+            except Exception as _:
+                all_namespaces.append(self.namespace)
 
         else:
             all_namespaces = [
@@ -731,9 +734,17 @@ class KubeInterface(AbstractKubeInterface):
         if labels is not None and len(labels) > 0:
             cmd += " ".join([f" -l {label}" for label in labels])
 
-        namespace = " -A" if namespace is None else f" -n {namespace}"
-
-        all_service_accounts_raw = self.exec(cmd + namespace, namespace=None)
+        if namespace:
+            all_service_accounts_raw = self.exec(cmd, namespace=namespace)
+        else:
+            try:
+                all_service_accounts_raw = self.exec(
+                    f"{cmd} -A", namespace=None
+                )
+            except subprocess.CalledProcessError:
+                all_service_accounts_raw = self.exec(
+                    cmd, namespace=self.namespace
+                )
 
         if isinstance(all_service_accounts_raw, str):
             raise ValueError("Malformed output")
@@ -1125,7 +1136,10 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
             rolename,
             namespace=service_account.namespace,
             **{
-                "resource": ["pods", "configmaps", "services"],
+                "resource": [
+                    "pods", "configmaps", "services",
+                    "serviceaccounts", "secrets"
+                ],
                 "verb": ["create", "get", "list", "watch", "delete"],
             },
         )
