@@ -1461,7 +1461,16 @@ def test_k8s_registry_create(mocker):
         namespace=namespace3,
         **{
             "resource": ["pods", "configmaps", "services"],
-            "verb": ["create", "get", "list", "watch", "delete"],
+            "verb": [
+                "create",
+                "get",
+                "list",
+                "watch",
+                "delete",
+                "deletecollection",
+                "patch",
+                "update",
+            ],
         },
     )
 
