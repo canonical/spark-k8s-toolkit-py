@@ -1223,7 +1223,16 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
             namespace=service_account.namespace,
             **{
                 "resource": ["pods", "configmaps", "services"],
-                "verb": ["create", "get", "list", "watch", "delete"],
+                "verb": [
+                    "create",
+                    "get",
+                    "list",
+                    "watch",
+                    "delete",
+                    "deletecollection",
+                    "patch",
+                    "update",
+                ],
             },
         )
         self.kube_interface.create(
