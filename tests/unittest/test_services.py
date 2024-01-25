@@ -1410,7 +1410,13 @@ def test_k8s_registry_create(mocker):
         f"{name3}-role",
         namespace=namespace3,
         **{
-            "resource": ["pods", "configmaps", "services", "serviceaccounts", "secrets"],
+            "resource": [
+                "pods",
+                "configmaps",
+                "services",
+                "serviceaccounts",
+                "secrets",
+            ],
             "verb": ["create", "get", "list", "watch", "delete"],
         },
     )
