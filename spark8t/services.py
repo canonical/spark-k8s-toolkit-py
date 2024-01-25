@@ -49,10 +49,6 @@ from spark8t.utils import (
 class AbstractKubeInterface(WithLogging, metaclass=ABCMeta):
     """Abstract class for implementing Kubernetes Interface."""
 
-    defaults: Defaults
-    kube_config_file: Union[None, str, Dict[str, Any]]
-    context_name: Optional[str] = None
-
     def __init__(
         self,
         kube_config_file: Union[None, str, Dict[str, Any]],
