@@ -342,7 +342,7 @@ class LightKube(AbstractKubeInterface):
                 )
                 for ns in iterator:
                     all_namespaces.append(ns.metadata.name)
-            except Exception as _:
+            except Exception:
                 all_namespaces.append(self.namespace)
 
         else:
@@ -738,13 +738,9 @@ class KubeInterface(AbstractKubeInterface):
             all_service_accounts_raw = self.exec(cmd, namespace=namespace)
         else:
             try:
-                all_service_accounts_raw = self.exec(
-                    f"{cmd} -A", namespace=None
-                )
+                all_service_accounts_raw = self.exec(f"{cmd} -A", namespace=None)
             except subprocess.CalledProcessError:
-                all_service_accounts_raw = self.exec(
-                    cmd, namespace=self.namespace
-                )
+                all_service_accounts_raw = self.exec(cmd, namespace=self.namespace)
 
         if isinstance(all_service_accounts_raw, str):
             raise ValueError("Malformed output")
@@ -1137,8 +1133,11 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
             namespace=service_account.namespace,
             **{
                 "resource": [
-                    "pods", "configmaps", "services",
-                    "serviceaccounts", "secrets"
+                    "pods",
+                    "configmaps",
+                    "services",
+                    "serviceaccounts",
+                    "secrets",
                 ],
                 "verb": ["create", "get", "list", "watch", "delete"],
             },
