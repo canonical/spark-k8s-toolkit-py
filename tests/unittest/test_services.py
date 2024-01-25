@@ -1097,7 +1097,7 @@ def test_kube_interface_get_service_accounts(mocker, tmp_path):
     with open(kube_config_file, "w") as fid:
         yaml.dump(kubeconfig_yaml, fid, sort_keys=False)
 
-    cmd_get_sa = f"kubectl --kubeconfig {kube_config_file} --context {context} get serviceaccount -l {label1}  -l {label2} -n {namespace} -o yaml"
+    cmd_get_sa = f"kubectl --kubeconfig {kube_config_file} --namespace {namespace} --context {context} get serviceaccount -l {label1}  -l {label2} -o yaml"
     output_get_sa_yaml = {
         "apiVersion": "v1",
         "items": [
@@ -1410,7 +1410,7 @@ def test_k8s_registry_create(mocker):
         f"{name3}-role",
         namespace=namespace3,
         **{
-            "resource": ["pods", "configmaps", "services"],
+            "resource": ["pods", "configmaps", "services", "serviceaccounts", "secrets"],
             "verb": ["create", "get", "list", "watch", "delete"],
         },
     )
