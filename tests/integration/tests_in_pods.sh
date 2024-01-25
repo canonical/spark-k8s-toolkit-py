@@ -20,7 +20,7 @@ create_service_account(){
   USERNAME=$1
   NAMESPACE=$2
 
-  python -m spark8t.cli.service_account_registry create \
+  poetry run python -m spark8t.cli.service_account_registry create \
     --username $USERNAME --namespace $NAMESPACE
 }
 
@@ -87,7 +87,7 @@ check_service_accounts_admin() {
   CHECK=$2
   EXPECTED_RESULT=$3
 
-  python -m spark8t.cli.service_account_registry $CMD > spark8t.out
+  poetry run python -m spark8t.cli.service_account_registry $CMD > spark8t.out
 
   out=$(cat spark8t.out | $CHECK)
 
