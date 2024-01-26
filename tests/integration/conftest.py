@@ -34,7 +34,7 @@ def _get_kube_namespaces(interface):
 
 @pytest.fixture
 def kubeinterface(defs_with_kubeconf):
-    interface = KubeInterface(defs_with_kubeconf.kube_config)
+    interface = KubeInterface(defs_with_kubeconf.kube_config, defs_with_kubeconf)
     ns_before = _get_kube_namespaces(interface)
     yield interface
     ns_after = _get_kube_namespaces(interface)

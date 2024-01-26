@@ -3,7 +3,7 @@ import os
 import re
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 from spark8t.utils import WithLogging, union
 
@@ -212,6 +212,13 @@ class Defaults:
         return self.environ.get("SPARK_CONFS", os.path.join(self.spark_home, "conf"))
 
     @property
+    def kubernetes_api(self):
+        return (
+            f"https://{self.environ['KUBERNETES_SERVICE_HOST']}:"
+            + f"{self.environ['KUBERNETES_SERVICE_PORT']}"
+        )
+
+    @property
     def spark_user_data(self):
         return self.environ["SPARK_USER_DATA"]
 
@@ -221,9 +228,10 @@ class Defaults:
         return self.environ.get("SPARK_KUBECTL", "kubectl")
 
     @property
-    def kube_config(self) -> str:
-        """Return default kubeconfig to use if not explicitly provided."""
-        return self.environ["KUBECONFIG"]
+    def kube_config(self) -> Union[None, str]:
+        """Return default kubeconfig to use if provided in env variable."""
+        filename = self.environ.get("KUBECONFIG", None)
+        return filename if filename else None
 
     @property
     def static_conf_file(self) -> str:

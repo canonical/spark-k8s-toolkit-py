@@ -128,12 +128,10 @@ def add_deploy_arguments(parser: ArgumentParser) -> ArgumentParser:
 
 
 def get_kube_interface(args: Namespace) -> AbstractKubeInterface:
-    return (
-        LightKube(args.kubeconfig or defaults.kube_config, defaults)
-        if args.backend == "lightkube"
-        else KubeInterface(
-            args.kubeconfig or defaults.kube_config, context_name=args.context
-        )
+    _class = LightKube if args.backend == "lightkube" else KubeInterface
+
+    return _class(
+        args.kubeconfig or defaults.kube_config, defaults, context_name=args.context
     )
 
 
