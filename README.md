@@ -50,7 +50,7 @@ Related settings:
 You could install the contents of this repository either by direct checkout, or using `pip` such as
 
 ```
-pip insatll git+https://github.com/canonical/spark-k8s-toolkit-py.git
+pip install git+https://github.com/canonical/spark-k8s-toolkit-py.git
 ```
 
 You'll need to add a mandatory configuration for the tool, which points to the OCI image to be used for the Spark workers.
