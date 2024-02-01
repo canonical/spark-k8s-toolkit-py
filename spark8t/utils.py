@@ -280,8 +280,6 @@ def execute_command_output(cmd: str) -> str:
             cmd, shell=True, stderr=subprocess.STDOUT
         ).decode("utf-8")
     except subprocess.CalledProcessError as e:
-        print(e.stderr)
-        print(e.stdout)
         raise e
 
     return output
