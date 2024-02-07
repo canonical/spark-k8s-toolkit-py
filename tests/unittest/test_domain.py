@@ -211,7 +211,7 @@ def test_property_file_construct_options_string():
     scala_hist_file = str(uuid.uuid4())
 
     expected_props_with_option = (
-        f"\"-Dscala.shell.histfile={scala_hist_file} -Da=A -Db=B -Dc=C\""
+        f'"-Dscala.shell.histfile={scala_hist_file} -Da=A -Db=B -Dc=C"'
     )
 
     assert (
@@ -272,15 +272,15 @@ def test_merge_property_file_options(tmp_path):
     """
     Validates property file write and read.
     """
-    key = 'spark.driver.extraJavaOptions'
+    key = "spark.driver.extraJavaOptions"
 
-    filename_1 = os.path.join(tmp_path, 'test-1.properties')
+    filename_1 = os.path.join(tmp_path, "test-1.properties")
     with open(filename_1, "w") as fid:
-        fid.write(f"{key}=\"-Da=A -Db=B\"")
+        fid.write(f'{key}="-Da=A -Db=B"')
 
-    filename_2 = os.path.join(tmp_path, 'test-2.properties')
+    filename_2 = os.path.join(tmp_path, "test-2.properties")
     with open(filename_2, "w") as fid:
-        fid.write(f"{key}=\"-Da=D -Dc=C\"")
+        fid.write(f'{key}="-Da=D -Dc=C"')
 
     conf_1 = PropertyFile.read(filename_1)
     conf_2 = PropertyFile.read(filename_2)
@@ -289,7 +289,7 @@ def test_merge_property_file_options(tmp_path):
 
     assert conf_1.options[key]["a"] == "A"
 
-    assert conf_1.props[key] == "\"-Da=A -Db=B\""
+    assert conf_1.props[key] == '"-Da=A -Db=B"'
 
     merged = conf_1 + conf_2
 
@@ -297,9 +297,7 @@ def test_merge_property_file_options(tmp_path):
 
     assert merged.options[key]["a"] == "D"
 
-    assert merged.props[key] == "\"-Da=D -Db=B -Dc=C\""
-
-
+    assert merged.props[key] == '"-Da=D -Db=B -Dc=C"'
 
 
 def test_property_file_log(caplog):
