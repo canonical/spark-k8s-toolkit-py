@@ -3,6 +3,8 @@ import os
 import tempfile
 import uuid
 
+import pytest
+
 from spark8t.domain import Defaults, PropertyFile, ServiceAccount
 from spark8t.services import InMemoryAccountRegistry
 from spark8t.utils import umask_named_temporary_file
@@ -268,12 +270,19 @@ def test_property_file_io():
         assert test_config_r.props.get("spark.app.name") == app_name
 
 
-def test_merge_property_file_options(tmp_path):
+@pytest.mark.parametrize(
+    "key",
+    [
+        "spark.driver.defaultJavaOptions",
+        "spark.driver.extraJavaOptions",
+        "spark.executor.defaultJavaOptions",
+        "spark.executor.extraJavaOptions",
+    ],
+)
+def test_merge_property_file_options(tmp_path, key):
     """
     Validates property file write and read.
     """
-    key = "spark.driver.extraJavaOptions"
-
     filename_1 = os.path.join(tmp_path, "test-1.properties")
     with open(filename_1, "w") as fid:
         fid.write(f'{key}="-Da=A -Db=B"')
