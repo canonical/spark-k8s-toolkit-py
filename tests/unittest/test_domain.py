@@ -208,24 +208,14 @@ def test_property_file_construct_options_string():
     """
     Validates construction of options string.
     """
-    name = str(uuid.uuid4())
-    namespace = str(uuid.uuid4())
-
     scala_hist_file = str(uuid.uuid4())
 
     expected_props_with_option = (
-        f" -Dscala.shell.histfile={scala_hist_file} -Da=A -Db=B -Dc=C"
-    )
-
-    conf = PropertyFile(
-        props={
-            "spark.kubernetes.authenticate.driver.serviceAccountName": name,
-            "spark.kubernetes.namespace": namespace,
-        }
+        f"\"-Dscala.shell.histfile={scala_hist_file} -Da=A -Db=B -Dc=C\""
     )
 
     assert (
-        conf._construct_options_string(
+        PropertyFile._construct_options_string(
             options={
                 "scala.shell.histfile": f"{scala_hist_file}",
                 "a": "A",
@@ -276,6 +266,40 @@ def test_property_file_io():
             == contents_java_options
         )
         assert test_config_r.props.get("spark.app.name") == app_name
+
+
+def test_merge_property_file_options(tmp_path):
+    """
+    Validates property file write and read.
+    """
+    key = 'spark.driver.extraJavaOptions'
+
+    filename_1 = os.path.join(tmp_path, 'test-1.properties')
+    with open(filename_1, "w") as fid:
+        fid.write(f"{key}=\"-Da=A -Db=B\"")
+
+    filename_2 = os.path.join(tmp_path, 'test-2.properties')
+    with open(filename_2, "w") as fid:
+        fid.write(f"{key}=\"-Da=D -Dc=C\"")
+
+    conf_1 = PropertyFile.read(filename_1)
+    conf_2 = PropertyFile.read(filename_2)
+
+    assert len(conf_1.options[key]) == 2
+
+    assert conf_1.options[key]["a"] == "A"
+
+    assert conf_1.props[key] == "\"-Da=A -Db=B\""
+
+    merged = conf_1 + conf_2
+
+    assert len(merged.options[key]) == 3
+
+    assert merged.options[key]["a"] == "D"
+
+    assert merged.props[key] == "\"-Da=D -Db=B -Dc=C\""
+
+
 
 
 def test_property_file_log(caplog):

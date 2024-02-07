@@ -30,7 +30,12 @@ class PropertyFile(WithLogging):
         Args:
             key: Property for which special options-like parsing decision has to be taken
         """
-        return key in ["spark.driver.extraJavaOptions"]
+        return key in [
+            "spark.driver.defaultJavaOptions",
+            "spark.driver.extraJavaOptions",
+            "spark.executor.defaultJavaOptions",
+            "spark.executor.extraJavaOptions"
+        ]
 
     @staticmethod
     def is_line_parsable(line: str) -> bool:
@@ -51,11 +56,8 @@ class PropertyFile(WithLogging):
     def parse_property_line(line: str) -> Tuple[str, str]:
         prop_assignment = list(filter(None, re.split("=| ", line.strip())))
         prop_key = prop_assignment[0].strip()
-        if PropertyFile._is_property_with_options(prop_key):
-            option_assignment = line.split("=", 1)
-            value = option_assignment[1].strip()
-        else:
-            value = prop_assignment[1].strip()
+        option_assignment = line.split("=", 1)
+        value = option_assignment[1].strip()
         return prop_key, value
 
     @classmethod
@@ -138,11 +140,10 @@ class PropertyFile(WithLogging):
 
     @staticmethod
     def _construct_options_string(options: Dict) -> str:
-        result = ""
-        for k in options:
-            v = options[k]
-            result += f" -D{k}={v}"
-        return result
+        output = " ".join(
+            f"-D{k}={v}" for k, v in options.items()
+        )
+        return f"\"{output}\""
 
     @classmethod
     def empty(cls) -> "PropertyFile":

@@ -1596,6 +1596,8 @@ class SparkInterface(WithLogging):
 
             conf.write(t.file)
 
+            conf.log(print)
+
             t.flush()
 
             submit_args = [
