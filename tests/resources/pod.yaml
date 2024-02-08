@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: testpod
+  labels:
+    app: ubuntu
+spec:
+  serviceAccount: spark
+  containers:
+  - image: docker.io/python:3.10
+    command:
+      - "sleep"
+      - "604800"
+    imagePullPolicy: Always
+    name: ubuntu
+  restartPolicy: Always
