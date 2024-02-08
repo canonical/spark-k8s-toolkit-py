@@ -1601,6 +1601,58 @@ class SparkInterface(WithLogging):
             with environ(**envs):
                 os.system(submit_cmd)
 
+
+    def spark_sql(
+        self, confs: List[str], cli_property: Optional[str], extra_args: List[str]
+    ):
+        """Start an interactive Spark SQL shell.
+
+        Args:
+            confs: list of extra configuration provided via command line
+            cli_property: property-file path provided via command line
+            extra_args: extra arguments provided to pyspark
+        """
+
+        with umask_named_temporary_file(
+            mode="w", prefix="spark-conf-", suffix=".conf"
+        ) as t:
+            self.logger.debug(f"Spark props available for reference at {t.name}\n")
+
+            conf = (
+                self._read_properties_file(self.defaults.static_conf_file)
+                + self.service_account.configurations
+                + self._read_properties_file(self.defaults.env_conf_file)
+                + self._read_properties_file(cli_property)
+                + self._generate_properties_file_from_arguments(confs)
+            )
+
+            conf = self.prefix_optional_detected_driver_host(conf)
+
+            if "spark.driver.host" not in conf.props:
+                raise ValueError(
+                    "Please specify spark.driver.host configuration property"
+                )
+
+            conf.write(t.file)
+
+            t.flush()
+
+            submit_args = [
+                f"--master k8s://{self.service_account.api_server}",
+                f"--properties-file {t.name}",
+            ] + extra_args
+
+            submit_cmd = f"{self.defaults.spark_sql} {' '.join(submit_args)}"
+
+            self.logger.debug(submit_cmd)
+
+            envs = {}
+            if self.kube_interface.kube_config_file:
+                envs["KUBECONFIG"] = self.kube_interface.kube_config_file
+
+            with environ(**envs):
+                os.system(submit_cmd)
+
     def prefix_optional_detected_driver_host(self, conf: PropertyFile):
         spark_driver_host = self.detect_host()
         if spark_driver_host:

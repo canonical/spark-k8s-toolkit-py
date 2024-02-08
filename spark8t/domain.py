@@ -268,6 +268,10 @@ class Defaults:
         return f"{self.spark_home}/bin/pyspark"
 
     @property
+    def spark_sql(self) -> str:
+        return f"{self.spark_home}/bin/spark-sql"
+
+    @property
     def dir_package(self) -> str:
         return os.path.dirname(__file__)
 
