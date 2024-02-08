@@ -1601,7 +1601,6 @@ class SparkInterface(WithLogging):
             with environ(**envs):
                 os.system(submit_cmd)
 
-
     def spark_sql(
         self, confs: List[str], cli_property: Optional[str], extra_args: List[str]
     ):
