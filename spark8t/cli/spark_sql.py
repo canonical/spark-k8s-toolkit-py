@@ -52,9 +52,7 @@ if __name__ == "__main__":
         [add_logging_arguments, k8s_parser, spark_user_parser, add_config_arguments]
     ).parse_known_args()
 
-    logger = setup_logging(
-        args.log_level, args.log_conf_file, "spark8t.cli.spark_sql"
-    )
+    logger = setup_logging(args.log_level, args.log_conf_file, "spark8t.cli.spark_sql")
 
     try:
         main(args, logger)
