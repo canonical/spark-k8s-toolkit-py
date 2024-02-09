@@ -1,9 +1,9 @@
 anyio==3.7.0 ; python_full_version > "3.8.0" and python_version < "4.0" \
     --hash=sha256:275d9973793619a5374e1c89a4f4ad3f4b0a5510a2b5b939444bee8f4c4d37ce \
     --hash=sha256:eddca883c4175f14df8aedce21054bfca3adb70ffe76a9f607aef9d7fa2ea7f0
-certifi==2023.5.7 ; python_full_version > "3.8.0" and python_version < "4.0" \
-    --hash=sha256:0f0d56dc5a6ad56fd4ba36484d6cc34451e1c6548c61daad8c320169f91eddc7 \
-    --hash=sha256:c6c2e98f5c7869efca1f8916fed228dd91539f9f1b444c314c06eef02980c716
+certifi==2023.7.22; python_full_version > "3.8.0" and python_version < "4.0" \
+    --hash=sha256:539cc1d13202e33ca466e88b2807e29f4c13049d6d87031a3c110744495cb082 \
+    --hash=sha256:92d6037539857d8206b8f6ae472e8b77db8058fec5937a1ef3f54304089edbb9
 envyaml==1.10.211231 ; python_full_version > "3.8.0" and python_version < "4.0" \
     --hash=sha256:88f8a076159e3c317d3450a5f404132b6ac91aecee4934ea72eac65f911f1244 \
     --hash=sha256:8d7a7a6be12587cc5da32a587067506b47b849f4643981099ad148015a72de52
