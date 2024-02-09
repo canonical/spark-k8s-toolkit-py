@@ -161,7 +161,7 @@ def test_merge_configurations():
     expected_merged_props = PropertyFile(
         {
             k1: v13,
-            k2: f" -Dscala.shell.histfile={v23}",
+            k2: f'"-Dscala.shell.histfile={v23}"',
             "key1": "value1",
             "key2": "value2",
             "key3": "value3",
