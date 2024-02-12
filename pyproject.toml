@@ -47,6 +47,7 @@ description = "This project allow you to create a SNAP for interacting with a K8
 authors = [
     "Enrico Deusebio <enrico.deusebio@canonical.com>",
     "Paolo Sottovia <paolo.sottovia@canonical.com>",
+    "Judit Novak <judit.novak@canonical.com>",
     "Bikalpa Dhakal <bikalpa.dhakal@canonical.com>"
 ]
 license = "MIT"
