@@ -42,13 +42,12 @@ ignore_missing_imports = true
 
 [tool.poetry]
 name = "spark8t"
-version = "0.0.3"
+version = "0.0.4"
 description = "This project allow you to create a SNAP for interacting with a K8s cluster to submit Spark jobs or run spark shells interactively"
 authors = [
-    "Abhishek Verma <abhishek.verma@canonical.com>",
     "Enrico Deusebio <enrico.deusebio@canonical.com>",
     "Paolo Sottovia <paolo.sottovia@canonical.com>",
-    "Judit Novak <judit.novak@canonical.com>"
+    "Bikalpa Dhakal <bikalpa.dhakal@canonical.com>"
 ]
 license = "MIT"
 readme = "README.md"
