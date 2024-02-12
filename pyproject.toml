@@ -47,7 +47,7 @@ description = "This project provides some utilities function and CLI commands to
 authors = [
     "Canonical Data Platform <data-platform@lists.launchpad.net>"
 ]
-license = "MIT"
+license = "Apache-2.0"
 readme = "README.md"
 packages = []
 
