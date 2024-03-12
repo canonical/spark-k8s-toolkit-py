@@ -300,6 +300,7 @@ class ServiceAccount:
     api_server: str
     primary: bool = False
     extra_confs: PropertyFile = PropertyFile.empty()
+    hub_confs: PropertyFile = PropertyFile.empty()
 
     @property
     def id(self):
