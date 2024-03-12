@@ -1538,7 +1538,8 @@ class SparkInterface(WithLogging):
 
             with environ(**envs):
                 print(f"ENV: {os.environ}")
-                os.system(submit_cmd)
+                print(f"COMMAND: {submit_cmd}")
+                os.system("env;" + submit_cmd)
 
     def spark_shell(
         self, confs: List[str], cli_property: Optional[str], extra_args: List[str]
