@@ -33,7 +33,12 @@ from spark8t.exceptions import (
     K8sResourceNotFound,
     ResourceAlreadyExists,
 )
-from spark8t.literals import MANAGED_BY_LABELNAME, PRIMARY_LABELNAME, SPARK8S_LABEL
+from spark8t.literals import (
+    CONFIGURATION_HUB_LABEL,
+    MANAGED_BY_LABELNAME,
+    PRIMARY_LABELNAME,
+    SPARK8S_LABEL,
+)
 from spark8t.utils import (
     PercentEncodingSerializer,
     WithLogging,
@@ -1000,8 +1005,12 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
     def _get_secret_name(name):
         return f"{SPARK8S_LABEL}-sa-conf-{name}"
 
-    def _retrieve_account_configurations(
-        self, name: str, namespace: str
+    @staticmethod
+    def _get_configuration_hub_secret_name(name):
+        return f"{CONFIGURATION_HUB_LABEL}-{name}"
+
+    def _retrieve_secret_configurations(
+        self, name: str, namespace: str, secret_name: str
     ) -> PropertyFile:
         secret_name = self._get_secret_name(name)
 
@@ -1024,12 +1033,20 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
         namespace = metadata["namespace"]
         primary = PRIMARY_LABELNAME in metadata["labels"]
 
+        account_secret_name = self._get_secret_name(name)
+        configuration_hub_secret_name = self._get_configuration_hub_secret_name(name)
+
         return ServiceAccount(
             name=name,
             namespace=namespace,
             primary=primary,
             api_server=self.kube_interface.api_server,
-            extra_confs=self._retrieve_account_configurations(name, namespace),
+            extra_confs=self._retrieve_secret_configurations(
+                name, namespace, account_secret_name
+            ),
+            configuration_hub_confs=self._retrieve_secret_configurations(
+                name, namespace, configuration_hub_secret_name
+            ),
         )
 
     def set_primary(
