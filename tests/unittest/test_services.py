@@ -1219,14 +1219,14 @@ def test_kube_interface_autodetect(mocker, tmp_path):
     )
 
 
-def test_k8s_registry_retrieve_account_configurations(mocker):
+def test_k8s_registry_secret_account_configurations(mocker):
     mock_kube_interface = mocker.patch("spark8t.services.KubeInterface")
     data = {"k": "v"}
     mock_kube_interface.get_secret.return_value = {"data": data}
     registry = K8sServiceAccountRegistry(mock_kube_interface)
     assert (
-        registry._retrieve_account_configurations(
-            str(uuid.uuid4()), str(uuid.uuid4())
+        registry._retrieve_secret_configurations(
+            str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
         ).props
         == data
     )
