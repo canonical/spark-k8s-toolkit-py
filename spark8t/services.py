@@ -432,8 +432,12 @@ class LightKube(AbstractKubeInterface):
     def delete_secret_content(
         self, secret_name: str, namespace: str | None = None
     ) -> None:
-        # lightkube client here
-        # self.client.patch(res=Secret, namespace=namespace, name=secret_name, )
+        if len(self.get_secret(secret_name, namespace)["data"]) == 0:
+            self.logger.debug(
+                f"Secret: {secret_name} is already empty, no need to delete its content."
+            )
+            return
+
         patch = [{"op": "remove", "path": "/data"}]
         self.client.patch(
             res=Secret,
@@ -454,8 +458,8 @@ class LightKube(AbstractKubeInterface):
         Args:
             secret_name: name of the secret
             namespace: namespace where the secret is contained
+            configurations: the desired configuration to insert
         """
-        # lightkube client here
         patch = {"op": "add", "stringData": configurations.props}
         self.client.patch(res=Secret, namespace=namespace, name=secret_name, obj=patch)
 
@@ -619,9 +623,6 @@ class LightKube(AbstractKubeInterface):
                         "apiVersion": "v1",
                         "kind": "Secret",
                         "metadata": {"name": resource_name, "namespace": namespace},
-                        "stringData": self.create_property_file_entries(
-                            extra_args["from-env-file"]
-                        ),
                     }
                 )
             )
@@ -790,6 +791,11 @@ class KubeInterface(AbstractKubeInterface):
             secret_name: name of the secret.
             namespace: namespace where to look for the service account. Default is 'default'
         """
+        if len(self.get_secret(secret_name, namespace)["data"]) == 0:
+            self.logger.debug(
+                f"Secret: {secret_name} is already empty, no need to delete its content."
+            )
+            return
 
         cmd = f'patch secret {secret_name} --type=json -p=\'[{{"op": "remove", "path": "/data" }}]\''
 
@@ -815,13 +821,14 @@ class KubeInterface(AbstractKubeInterface):
         namespace: Optional[str] = None,
         configurations: PropertyFile = PropertyFile.empty(),
     ) -> None:
-        """Delete the content of the specified secret.
+        """Add the content of the specified secret.
 
         Args:
             secret_name: name of the secret
             namespace: namespace where the secret is contained
+            configurations: the configuration parameters to add in
         """
-        """Delete the content of the secret name entry.
+        """Add the content of the secret name entry.
 
         Args:
             secret_name: name of the secret.
@@ -1337,19 +1344,13 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
         self,
         service_account: ServiceAccount,
     ):
-        """Add new configuration to the service account."""
+        """Add service account configuration to the service account."""
         secret_name = self._get_secret_name(service_account.name)
 
-        # get content of the secret.
-
-        current_configurations = self.kube_interface.get_secret(
-            secret_name, service_account.namespace
-        )
-
-        current_properties = PropertyFile(
+        properties = PropertyFile(
             {
                 self._kubernetes_key_serializer.serialize(key): value
-                for key, value in current_configurations.items()
+                for key, value in service_account.extra_confs.props.items()
             }
         )
 
@@ -1363,7 +1364,7 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
         self.kube_interface.add_secret_content(
             secret_name,
             service_account.namespace,
-            current_properties + service_account.extra_confs,
+            properties,
         )
 
     def set_configurations(self, account_id: str, configurations: PropertyFile) -> str:

@@ -36,16 +36,18 @@ def test_create_exists_delete(
 @pytest.mark.parametrize(
     "kubeinterface_name", [("kubeinterface"), ("lightkubeinterface")]
 )
-def test_create_exists_delete_secret(kubeinterface_name, request):
+def test_create_exists_delete_secret(kubeinterface_name, request, namespace):
     secret_name = "my-secret"
-    namespace = "default"
 
     property_file = PropertyFile({"key": "value"})
 
     kubeinterface = request.getfixturevalue(kubeinterface_name)
 
     with umask_named_temporary_file(
-        mode="w", prefix="spark-dynamic-conf-k8s-", suffix=".conf", dir="/home/ubuntu/"
+        mode="w",
+        prefix="spark-dynamic-conf-k8s-",
+        suffix=".conf",
+        dir=os.path.expanduser("~"),
     ) as t:
         property_file.write(t.file)
 
@@ -72,9 +74,8 @@ def test_create_exists_delete_secret(kubeinterface_name, request):
 @pytest.mark.parametrize(
     "kubeinterface_name", [("kubeinterface"), ("lightkubeinterface")]
 )
-def test_delete_secret_content(kubeinterface_name, request):
+def test_delete_secret_content(kubeinterface_name, request, namespace):
     secret_name = "my-secret"
-    namespace = "default"
 
     property_file = PropertyFile({"key": "value"})
 

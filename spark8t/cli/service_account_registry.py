@@ -143,6 +143,8 @@ def main(args: Namespace, logger: Logger):
             + parse_conf_overrides(args.conf)
         )
 
+        print(f"ADD CONFIG: {account_configuration}")
+
         registry.set_configurations(input_service_account.id, account_configuration)
 
     elif args.action == Actions.REMOVE_CONFIG:

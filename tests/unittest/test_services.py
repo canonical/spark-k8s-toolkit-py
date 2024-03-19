@@ -762,8 +762,7 @@ def test_lightkube_create_secret(mocker, tmp_kubeconf):
             "apiVersion": "v1",
             "kind": "Secret",
             "metadata": {"name": resource_name, "namespace": namespace},
-            # "stringData": { label_key : base64.b64encode(label_value.encode("ascii")) },
-            "stringData": {},
+            "stringData": None
         }
     )
 
