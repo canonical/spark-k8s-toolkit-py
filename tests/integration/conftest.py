@@ -1,4 +1,6 @@
 import os
+import subprocess
+import uuid
 
 import pytest
 from lightkube.resources.core_v1 import Namespace
@@ -72,3 +74,14 @@ def lightkube_registry(lightkubeinterface):
     registry = K8sServiceAccountRegistry(lightkubeinterface)
     yield registry
     _clearnup_registry(registry)
+
+
+@pytest.fixture
+def namespace():
+    """A temporary K8S namespace gets cleaned up automatically"""
+    namespace_name = str(uuid.uuid4())
+    create_command = ["kubectl", "create", "namespace", namespace_name]
+    subprocess.run(create_command, check=True)
+    yield namespace_name
+    destroy_command = ["kubectl", "delete", "namespace", namespace_name]
+    subprocess.run(destroy_command, check=True)

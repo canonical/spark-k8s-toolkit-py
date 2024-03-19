@@ -20,17 +20,6 @@ ALLOWED_PERMISSIONS = {
 }
 
 
-@pytest.fixture
-def namespace():
-    """A temporary K8S namespace gets cleaned up automatically"""
-    namespace_name = str(uuid.uuid4())
-    create_command = ["kubectl", "create", "namespace", namespace_name]
-    subprocess.run(create_command, check=True)
-    yield namespace_name
-    destroy_command = ["kubectl", "delete", "namespace", namespace_name]
-    subprocess.run(destroy_command, check=True)
-
-
 def run_service_account_registry(*args):
     """Run service_account_registry CLI command with given set of args
 
@@ -91,9 +80,8 @@ def multiple_namespaces_and_service_accounts():
 
 
 @pytest.mark.parametrize("backend", VALID_BACKENDS)
-@pytest.mark.parametrize("action, resource", parameterize(ALLOWED_PERMISSIONS))
 @pytest.mark.parametrize("primary", [True, False])
-def test_create_service_account(namespace, backend, action, resource, primary):
+def test_create_service_account(namespace, backend, primary):
     """Test creation of service account using the CLI.
 
     Verify that the serviceaccount, role and rolebinding resources are created
@@ -183,24 +171,26 @@ def test_create_service_account(namespace, backend, action, resource, primary):
 
     # Check for RBAC permissions
     sa_identifier = f"system:serviceaccount:{namespace}:{username}"
-    rbac_check = subprocess.run(
-        [
-            "kubectl",
-            "auth",
-            "can-i",
-            action,
-            resource,
-            "--namespace",
-            namespace,
-            "--as",
-            sa_identifier,
-        ],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    assert rbac_check.returncode == 0
-    assert rbac_check.stdout.strip() == "yes"
+    for resource, actions in ALLOWED_PERMISSIONS.items():
+        for action in actions:
+            rbac_check = subprocess.run(
+                [
+                    "kubectl",
+                    "auth",
+                    "can-i",
+                    action,
+                    resource,
+                    "--namespace",
+                    namespace,
+                    "--as",
+                    sa_identifier,
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            assert rbac_check.returncode == 0
+            assert rbac_check.stdout.strip() == "yes"
 
 
 @pytest.mark.parametrize("backend", VALID_BACKENDS)
@@ -222,8 +212,8 @@ def test_create_service_account_when_account_already_exists(service_account, bac
 
 
 @pytest.mark.parametrize("backend", VALID_BACKENDS)
-@pytest.mark.parametrize("action, resource", parameterize(ALLOWED_PERMISSIONS))
-def test_delete_service_account(service_account, backend, action, resource):
+# @pytest.mark.parametrize("action, resource", parameterize(ALLOWED_PERMISSIONS))
+def test_delete_service_account(service_account, backend):
     """Test deletion of service account using the CLI.
 
     Verify that the serviceaccount, role and rolebinding resources are deleted
@@ -274,23 +264,25 @@ def test_delete_service_account(service_account, backend, action, resource):
 
     # Check for RBAC permissions, these should be invalid now
     sa_identifier = f"system:serviceaccount:{namespace}:{username}"
-    rbac_check = subprocess.run(
-        [
-            "kubectl",
-            "auth",
-            "can-i",
-            action,
-            resource,
-            "--namespace",
-            namespace,
-            "--as",
-            sa_identifier,
-        ],
-        capture_output=True,
-        text=True,
-    )
-    assert rbac_check.returncode != 0
-    assert rbac_check.stdout.strip() == "no"
+    for resource, actions in ALLOWED_PERMISSIONS.items():
+        for action in actions:
+            rbac_check = subprocess.run(
+                [
+                    "kubectl",
+                    "auth",
+                    "can-i",
+                    action,
+                    resource,
+                    "--namespace",
+                    namespace,
+                    "--as",
+                    sa_identifier,
+                ],
+                capture_output=True,
+                text=True,
+            )
+            assert rbac_check.returncode != 0
+            assert rbac_check.stdout.strip() == "no"
 
 
 @pytest.mark.parametrize("backend", VALID_BACKENDS)
