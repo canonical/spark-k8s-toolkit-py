@@ -783,7 +783,7 @@ class KubeInterface(AbstractKubeInterface):
         return service_account_raw
 
     def delete_secret_content(
-        self, secret_name: str, namespace: str | None = None
+        self, secret_name: str, namespace: Optional[str] = None
     ) -> None:
         """Delete the content of the secret name entry.
 
