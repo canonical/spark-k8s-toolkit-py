@@ -430,7 +430,7 @@ class LightKube(AbstractKubeInterface):
             raise K8sResourceNotFound(secret_name, KubernetesResourceType.SECRET)
 
     def delete_secret_content(
-        self, secret_name: str, namespace: str | None = None
+        self, secret_name: str, namespace: Optional[str] = None
     ) -> None:
         if len(self.get_secret(secret_name, namespace)["data"]) == 0:
             self.logger.debug(
