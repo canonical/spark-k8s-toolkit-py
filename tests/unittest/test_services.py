@@ -762,7 +762,7 @@ def test_lightkube_create_secret(mocker, tmp_kubeconf):
             "apiVersion": "v1",
             "kind": "Secret",
             "metadata": {"name": resource_name, "namespace": namespace},
-            "stringData": None
+            "stringData": None,
         }
     )
 
