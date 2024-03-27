@@ -734,6 +734,7 @@ def test_lightkube_create_rolebinding(mocker, tmp_kubeconf):
 
     with patch("builtins.open", mock_open(read_data=kubeconfig_yaml_str)):
         k = LightKube(kube_config_file=kubeconfig, defaults=defaults)
+        print(f"rn: {resource_name}, namespace: {namespace}")
         k.create(
             KubernetesResourceType.ROLEBINDING,
             resource_name,
@@ -762,8 +763,7 @@ def test_lightkube_create_secret(mocker, tmp_kubeconf):
             "apiVersion": "v1",
             "kind": "Secret",
             "metadata": {"name": resource_name, "namespace": namespace},
-            # "stringData": { label_key : base64.b64encode(label_value.encode("ascii")) },
-            "stringData": {},
+            "stringData": None,
         }
     )
 
@@ -1219,14 +1219,14 @@ def test_kube_interface_autodetect(mocker, tmp_path):
     )
 
 
-def test_k8s_registry_retrieve_account_configurations(mocker):
+def test_k8s_registry_secret_account_configurations(mocker):
     mock_kube_interface = mocker.patch("spark8t.services.KubeInterface")
     data = {"k": "v"}
     mock_kube_interface.get_secret.return_value = {"data": data}
     registry = K8sServiceAccountRegistry(mock_kube_interface)
     assert (
-        registry._retrieve_account_configurations(
-            str(uuid.uuid4()), str(uuid.uuid4())
+        registry._retrieve_secret_configurations(
+            str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
         ).props
         == data
     )
@@ -1409,16 +1409,7 @@ def test_k8s_registry_create(mocker):
         "role",
         f"{name3}-role",
         namespace=namespace3,
-        **{
-            "resource": [
-                "pods",
-                "configmaps",
-                "services",
-                "serviceaccounts",
-                "secrets",
-            ],
-            "verb": ["create", "get", "list", "watch", "delete"],
-        },
+        **{"username": f"{name3}"},
     )
 
     mock_kube_interface.create.assert_any_call(

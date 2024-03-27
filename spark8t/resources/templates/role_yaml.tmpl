@@ -20,3 +20,24 @@ rules:
   - list
   - watch
   - delete
+  - deletecollection
+  - update
+  - patch
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  resourceNames:
+  - spark8t-sa-conf-{{username}}
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  resourceNames:
+  - configuration-hub-conf-{{username}}
+  verbs:
+  - get
