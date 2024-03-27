@@ -734,6 +734,7 @@ def test_lightkube_create_rolebinding(mocker, tmp_kubeconf):
 
     with patch("builtins.open", mock_open(read_data=kubeconfig_yaml_str)):
         k = LightKube(kube_config_file=kubeconfig, defaults=defaults)
+        print(f"rn: {resource_name}, namespace: {namespace}")
         k.create(
             KubernetesResourceType.ROLEBINDING,
             resource_name,
@@ -1408,16 +1409,7 @@ def test_k8s_registry_create(mocker):
         "role",
         f"{name3}-role",
         namespace=namespace3,
-        **{
-            "resource": [
-                "pods",
-                "configmaps",
-                "services",
-                "serviceaccounts",
-                "secrets",
-            ],
-            "verb": ["create", "get", "list", "watch", "delete"],
-        },
+        **{"username": f"{name3}"},
     )
 
     mock_kube_interface.create.assert_any_call(

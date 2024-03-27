@@ -968,6 +968,26 @@ class KubeInterface(AbstractKubeInterface):
             self.exec(
                 f"create {resource_type} {resource_name}", namespace=None, output="name"
             )
+        elif resource_type == KubernetesResourceType.ROLE:
+            with open(self.defaults.template_role) as f:
+                res = codecs.load_all_yaml(
+                    f,
+                    context=filter_none(
+                        {
+                            "resourcename": resource_name,
+                            "namespace": namespace,
+                        }
+                        | extra_args
+                    ),
+                )
+                with umask_named_temporary_file(
+                    mode="w",
+                    prefix="role-",
+                    suffix=".yaml",
+                    dir=os.path.expanduser("~"),
+                ) as t:
+                    codecs.dump_all_yaml(res, t)
+                    self.exec(f"apply -f {t.name}", namespace=namespace, output="name")
         else:
             # NOTE: removing 'username' to avoid interference with KUBECONFIG
             # ERROR: more than one authentication method found for admin; found [token basicAuth], only one is allowed
@@ -1281,16 +1301,7 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
             KubernetesResourceType.ROLE,
             rolename,
             namespace=service_account.namespace,
-            **{
-                "resource": [
-                    "pods",
-                    "configmaps",
-                    "services",
-                    "serviceaccounts",
-                    "secrets",
-                ],
-                "verb": ["create", "get", "list", "watch", "delete"],
-            },
+            **{"username": username},
         )
         self.kube_interface.create(
             KubernetesResourceType.ROLEBINDING,
