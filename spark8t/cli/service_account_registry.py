@@ -83,8 +83,11 @@ def create_service_account_registry_parser(parser: ArgumentParser):
     parse_arguments_with(
         [spark_user_parser],
         subparsers.add_parser(Actions.GET_CONFIG.value, parents=[base_parser]),
+    ).add_argument(
+        "--ignore-configuration-hub",
+        action="store_true",
+        help="Boolean to ignore configuration hub generated options.",
     )
-
     #  subparser for sa-conf-del
     parse_arguments_with(
         [spark_user_parser],
@@ -168,7 +171,11 @@ def main(args: Namespace, logger: Logger):
         if maybe_service_account is None:
             raise AccountNotFound(input_service_account.id)
 
-        maybe_service_account.configurations.log(print)
+        maybe_service_account.configurations.log(
+            print
+        ) if args.ignore_configuration_hub else maybe_service_account.configurations_with_hub.log(
+            print
+        )
 
     elif args.action == Actions.CLEAR_CONFIG:
         registry.set_configurations(

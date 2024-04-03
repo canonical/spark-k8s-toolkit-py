@@ -19,6 +19,20 @@ ALLOWED_PERMISSIONS = {
     "services": ["create", "get", "list", "watch", "delete"],
 }
 
+ALL_ACTIONS = [
+    "create",
+    "delete",
+    "deletecollection",
+    "get",
+    "list",
+    "patch",
+    "update",
+    "watch",
+]
+
+ALLOWED_PERMISSIONS_USER_SECRET = ["get", "patch", "update"]
+ALLOWED_PERMISSIONS_HUB_SECRET = ["get"]
+
 
 def run_service_account_registry(*args):
     """Run service_account_registry CLI command with given set of args
@@ -92,6 +106,8 @@ def test_create_service_account(namespace, backend, primary):
     username = "foobar"
     role_name = f"{username}-role"
     role_binding_name = f"{username}-role-binding"
+    secret_name = f"{SPARK8S_LABEL}-sa-conf-{username}"
+    hub_secret_name = f"configuration-hub-conf-{username}"
 
     create_args = [
         "create",
@@ -169,6 +185,24 @@ def test_create_service_account(namespace, backend, primary):
         expected_labels.update({PRIMARY_LABELNAME: "True"})
     assert actual_labels == expected_labels
 
+    # Check secret creation
+    secret_result = subprocess.run(
+        [
+            "kubectl",
+            "get",
+            "secret",
+            secret_name,
+            "-n",
+            namespace,
+            "-o",
+            "json",
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert secret_result.returncode == 0
+
     # Check for RBAC permissions
     sa_identifier = f"system:serviceaccount:{namespace}:{username}"
     for resource, actions in ALLOWED_PERMISSIONS.items():
@@ -192,6 +226,59 @@ def test_create_service_account(namespace, backend, primary):
             assert rbac_check.returncode == 0
             assert rbac_check.stdout.strip() == "yes"
 
+    # Check for RBAC permissions for named resources
+
+    resource_name_actions = {
+        secret_name: ALLOWED_PERMISSIONS_USER_SECRET,
+        hub_secret_name: ALLOWED_PERMISSIONS_HUB_SECRET,
+    }
+
+    for resource_name, actions in resource_name_actions.items():
+        for action in actions:
+            rbac_check = subprocess.run(
+                [
+                    "kubectl",
+                    "auth",
+                    "can-i",
+                    action,
+                    f"secret/{resource_name}",
+                    "--namespace",
+                    namespace,
+                    "--as",
+                    sa_identifier,
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            assert rbac_check.returncode == 0
+            assert rbac_check.stdout.strip() == "yes"
+
+        not_allowed_actions = set(ALL_ACTIONS).difference(actions)
+        print(not_allowed_actions)
+        for action in not_allowed_actions:
+            command = [
+                "kubectl",
+                "auth",
+                "can-i",
+                action,
+                f"secret/{resource_name}",
+                "--namespace",
+                namespace,
+                "--as",
+                sa_identifier,
+            ]
+            print(" ".join(command))
+            rbac_check = subprocess.run(
+                command,
+                capture_output=True,
+                text=True,
+            )
+            print(f"Return code: {rbac_check.returncode}")
+            print(f"Return stdout: {rbac_check.stdout.strip()}")
+            assert rbac_check.returncode != 0
+            assert rbac_check.stdout.strip() == "no"
+
 
 @pytest.mark.parametrize("backend", VALID_BACKENDS)
 def test_create_service_account_when_account_already_exists(service_account, backend):
@@ -212,7 +299,6 @@ def test_create_service_account_when_account_already_exists(service_account, bac
 
 
 @pytest.mark.parametrize("backend", VALID_BACKENDS)
-# @pytest.mark.parametrize("action, resource", parameterize(ALLOWED_PERMISSIONS))
 def test_delete_service_account(service_account, backend):
     """Test deletion of service account using the CLI.
 

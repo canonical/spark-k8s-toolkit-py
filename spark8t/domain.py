@@ -299,6 +299,7 @@ class ServiceAccount:
     namespace: str
     api_server: str
     primary: bool = False
+    include_hub_config: bool = True
     extra_confs: PropertyFile = PropertyFile.empty()
     configuration_hub_confs: PropertyFile = PropertyFile.empty()
 

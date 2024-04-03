@@ -7,6 +7,7 @@ from typing import Optional
 
 from spark8t.cli.params import (
     add_config_arguments,
+    add_ignore_configuration_hub,
     add_logging_arguments,
     defaults,
     get_kube_interface,
@@ -44,12 +45,20 @@ def main(args: Namespace, logger: Logger):
         service_account=service_account,
         kube_interface=kube_interface,
         defaults=defaults,
-    ).spark_shell(args.conf, args.properties_file, extra_args)
+    ).spark_shell(
+        args.conf, args.properties_file, extra_args, args.ignore_configuration_hub
+    )
 
 
 if __name__ == "__main__":
     args, extra_args = parse_arguments_with(
-        [add_logging_arguments, k8s_parser, spark_user_parser, add_config_arguments]
+        [
+            add_logging_arguments,
+            k8s_parser,
+            spark_user_parser,
+            add_config_arguments,
+            add_ignore_configuration_hub,
+        ]
     ).parse_known_args()
 
     logger = setup_logging(
