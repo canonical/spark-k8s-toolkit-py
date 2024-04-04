@@ -171,6 +171,8 @@ def main(args: Namespace, logger: Logger):
         if maybe_service_account is None:
             raise AccountNotFound(input_service_account.id)
 
+        # logger.info(f"args.ignore_configuration_hub: {args.ignore_configuration_hub}")
+        # print(f"args.ignore_configuration_hub: {args.ignore_configuration_hub}")
         maybe_service_account.configurations.log(
             print
         ) if args.ignore_configuration_hub else maybe_service_account.configurations_with_hub.log(

@@ -1,4 +1,5 @@
 import json
+import os
 import subprocess
 import uuid
 from collections import defaultdict
@@ -6,7 +7,14 @@ from subprocess import CalledProcessError
 
 import pytest
 
-from spark8t.literals import MANAGED_BY_LABELNAME, PRIMARY_LABELNAME, SPARK8S_LABEL
+from spark8t.domain import KubernetesResourceType, PropertyFile
+from spark8t.literals import (
+    CONFIGURATION_HUB_LABEL,
+    MANAGED_BY_LABELNAME,
+    PRIMARY_LABELNAME,
+    SPARK8S_LABEL,
+)
+from spark8t.utils import umask_named_temporary_file
 
 VALID_BACKENDS = [
     "kubectl",
@@ -508,7 +516,7 @@ def test_service_accounts_listing_multiple_namespaces(
 
 
 @pytest.mark.parametrize("backend", VALID_BACKENDS)
-def test_service_account_get_config(service_account, backend):
+def test_service_account_get_config(service_account, backend, request):
     """Test retrieval of service account configs using the CLI.
 
     Use a fixture that creates temporary service account, then
@@ -534,6 +542,67 @@ def test_service_account_get_config(service_account, backend):
         f"spark.kubernetes.authenticate.driver.serviceAccountName={username}",
         f"spark.kubernetes.namespace={namespace}",
     }
+    assert actual_configs == expected_configs
+
+    # add configuration hub secret for the test service account
+    secret_name = f"{CONFIGURATION_HUB_LABEL}-{username}"
+
+    property_file = PropertyFile({"key": "value"})
+
+    kubeinterface = request.getfixturevalue("kubeinterface")
+
+    with umask_named_temporary_file(
+        mode="w",
+        prefix="spark-dynamic-conf-k8s-",
+        suffix=".conf",
+        dir=os.path.expanduser("~"),
+    ) as t:
+        property_file.write(t.file)
+
+        t.flush()
+
+        kubeinterface.create(
+            KubernetesResourceType.SECRET_GENERIC,
+            secret_name,
+            namespace=namespace,
+            **{"from-env-file": str(t.name)},
+        )
+
+    assert kubeinterface.exists(
+        KubernetesResourceType.SECRET_GENERIC, secret_name, namespace
+    )
+
+    # check that configuration hub config is there
+    # Get the default configs created with a service account
+    stdout, stderr, ret_code = run_service_account_registry(
+        "get-config",
+        "--username",
+        username,
+        "--namespace",
+        namespace,
+        "--backend",
+        backend,
+    )
+    actual_configs = set(stdout.splitlines())
+    expected_configs_hub = {
+        f"spark.kubernetes.authenticate.driver.serviceAccountName={username}",
+        f"spark.kubernetes.namespace={namespace}",
+        "key=value",
+    }
+
+    assert actual_configs == expected_configs_hub
+
+    stdout, stderr, ret_code = run_service_account_registry(
+        "get-config",
+        "--username",
+        username,
+        "--namespace",
+        namespace,
+        "--backend",
+        backend,
+        "--ignore-configuration-hub",
+    )
+    actual_configs = set(stdout.splitlines())
     assert actual_configs == expected_configs
 
 
@@ -583,6 +652,7 @@ def test_service_account_add_config(service_account, backend):
         namespace,
         "--backend",
         backend,
+        "--ignore-configuration-hub",
     )
     updated_configs = set(stdout.splitlines())
 

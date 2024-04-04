@@ -1165,8 +1165,6 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
     def _retrieve_secret_configurations(
         self, name: str, namespace: str, secret_name: str
     ) -> PropertyFile:
-        secret_name = self._get_secret_name(name)
-
         try:
             secret = self.kube_interface.get_secret(secret_name, namespace=namespace)[
                 "data"
