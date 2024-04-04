@@ -22,9 +22,36 @@ VALID_BACKENDS = [
 ]
 
 ALLOWED_PERMISSIONS = {
-    "pods": ["create", "get", "list", "watch", "delete"],
-    "configmaps": ["create", "get", "list", "watch", "delete"],
-    "services": ["create", "get", "list", "watch", "delete"],
+    "pods": [
+        "create",
+        "get",
+        "list",
+        "watch",
+        "delete",
+        "deletecollection",
+        "patch",
+        "update",
+    ],
+    "configmaps": [
+        "create",
+        "get",
+        "list",
+        "watch",
+        "delete",
+        "deletecollection",
+        "patch",
+        "update",
+    ],
+    "services": [
+        "create",
+        "get",
+        "list",
+        "watch",
+        "delete",
+        "deletecollection",
+        "patch",
+        "update",
+    ],
 }
 
 ALL_ACTIONS = [

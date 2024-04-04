@@ -907,8 +907,6 @@ class KubeInterface(AbstractKubeInterface):
         # handle empty secret
         if "data" in secret:
             for k, v in secret["data"].items():
-                # k1 = k.replace(".", "\\.")
-                # value = self.kube_interface.exec(f"get secret {secret_name}", output=f"jsonpath='{{.data.{k1}}}'")
                 result[k] = base64.b64decode(v).decode("utf-8")
 
         secret["data"] = result
