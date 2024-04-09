@@ -2,6 +2,7 @@
 
 import base64
 import io
+import json
 import os
 import socket
 import subprocess
@@ -33,7 +34,12 @@ from spark8t.exceptions import (
     K8sResourceNotFound,
     ResourceAlreadyExists,
 )
-from spark8t.literals import MANAGED_BY_LABELNAME, PRIMARY_LABELNAME, SPARK8S_LABEL
+from spark8t.literals import (
+    CONFIGURATION_HUB_LABEL,
+    MANAGED_BY_LABELNAME,
+    PRIMARY_LABELNAME,
+    SPARK8S_LABEL,
+)
 from spark8t.utils import (
     PercentEncodingSerializer,
     WithLogging,
@@ -218,6 +224,31 @@ class AbstractKubeInterface(WithLogging, metaclass=ABCMeta):
         """
         pass
 
+    def delete_secret_content(
+        self, secret_name: str, namespace: Optional[str] = None
+    ) -> None:
+        """Delete the content of the specified secret.
+
+        Args:
+            secret_name: name of the secret
+            namespace: namespace where the secret is contained
+        """
+        pass
+
+    def add_secret_content(
+        self,
+        secret_name: str,
+        namespace: Optional[str] = None,
+        configurations: PropertyFile = PropertyFile.empty(),
+    ) -> None:
+        """Delete the content of the specified secret.
+
+        Args:
+            secret_name: name of the secret
+            namespace: namespace where the secret is contained
+        """
+        pass
+
     @abstractmethod
     def exists(
         self,
@@ -389,13 +420,48 @@ class LightKube(AbstractKubeInterface):
                 secret = yaml.safe_load(buffer)
 
                 result = dict()
-                for k, v in secret["data"].items():
-                    result[k] = base64.b64decode(v).decode("utf-8")
+                if "data" in secret:
+                    for k, v in secret["data"].items():
+                        result[k] = base64.b64decode(v).decode("utf-8")
 
                 secret["data"] = result
                 return secret
         except Exception:
             raise K8sResourceNotFound(secret_name, KubernetesResourceType.SECRET)
+
+    def delete_secret_content(
+        self, secret_name: str, namespace: Optional[str] = None
+    ) -> None:
+        if len(self.get_secret(secret_name, namespace)["data"]) == 0:
+            self.logger.debug(
+                f"Secret: {secret_name} is already empty, no need to delete its content."
+            )
+            return
+
+        patch = [{"op": "remove", "path": "/data"}]
+        self.client.patch(
+            res=Secret,
+            namespace=namespace,
+            name=secret_name,
+            obj=patch,
+            patch_type=PatchType.JSON,
+        )
+
+    def add_secret_content(
+        self,
+        secret_name: str,
+        namespace: Optional[str] = None,
+        configurations: PropertyFile = PropertyFile.empty(),
+    ) -> None:
+        """Delete the content of the specified secret.
+
+        Args:
+            secret_name: name of the secret
+            namespace: namespace where the secret is contained
+            configurations: the desired configuration to insert
+        """
+        patch = {"op": "add", "stringData": configurations.props}
+        self.client.patch(res=Secret, namespace=namespace, name=secret_name, obj=patch)
 
     def set_label(
         self,
@@ -557,9 +623,6 @@ class LightKube(AbstractKubeInterface):
                         "apiVersion": "v1",
                         "kind": "Secret",
                         "metadata": {"name": resource_name, "namespace": namespace},
-                        "stringData": self.create_property_file_entries(
-                            extra_args["from-env-file"]
-                        ),
                     }
                 )
             )
@@ -719,6 +782,79 @@ class KubeInterface(AbstractKubeInterface):
 
         return service_account_raw
 
+    def delete_secret_content(
+        self, secret_name: str, namespace: Optional[str] = None
+    ) -> None:
+        """Delete the content of the secret name entry.
+
+        Args:
+            secret_name: name of the secret.
+            namespace: namespace where to look for the service account. Default is 'default'
+        """
+        if len(self.get_secret(secret_name, namespace)["data"]) == 0:
+            self.logger.debug(
+                f"Secret: {secret_name} is already empty, no need to delete its content."
+            )
+            return
+
+        cmd = f'patch secret {secret_name} --type=json -p=\'[{{"op": "remove", "path": "/data" }}]\''
+
+        try:
+            service_account_raw = self.exec(cmd, namespace=namespace)
+        except subprocess.CalledProcessError as e:
+            if "NotFound" in e.stdout.decode("utf-8"):
+                raise K8sResourceNotFound(
+                    secret_name, KubernetesResourceType.SERVICEACCOUNT
+                )
+            raise e
+
+        if isinstance(service_account_raw, str):
+            raise ValueError(
+                f"Error deleting secret content of {secret_name} in namespace {namespace}"
+            )
+
+        self.logger.debug(service_account_raw)
+
+    def add_secret_content(
+        self,
+        secret_name: str,
+        namespace: Optional[str] = None,
+        configurations: PropertyFile = PropertyFile.empty(),
+    ) -> None:
+        """Add the content of the specified secret.
+
+        Args:
+            secret_name: name of the secret
+            namespace: namespace where the secret is contained
+            configurations: the configuration parameters to add in
+        """
+        """Add the content of the secret name entry.
+
+        Args:
+            secret_name: name of the secret.
+            namespace: namespace where to look for the service account. Default is 'default'
+        """
+        if len(configurations.props.keys()) == 0:
+            self.logger.debug("Empty configuration! Nothing to write")
+            return
+        cmd = f"patch secret {secret_name} -p='{{\"stringData\": {json.dumps(configurations.props)} }}'"
+
+        try:
+            service_account_raw = self.exec(cmd, namespace=namespace)
+        except subprocess.CalledProcessError as e:
+            if "NotFound" in e.stdout.decode("utf-8"):
+                raise K8sResourceNotFound(
+                    secret_name, KubernetesResourceType.SERVICEACCOUNT
+                )
+            raise e
+
+        if isinstance(service_account_raw, str):
+            raise ValueError(
+                f"Error deleting secret content of {secret_name} in namespace {namespace}"
+            )
+
+        self.logger.debug(service_account_raw)
+
     def get_service_accounts(
         self, namespace: Optional[str] = None, labels: Optional[List[str]] = None
     ) -> List[Dict[str, Any]]:
@@ -768,10 +904,10 @@ class KubeInterface(AbstractKubeInterface):
             raise K8sResourceNotFound(secret_name, KubernetesResourceType.SECRET)
 
         result = dict()
-        for k, v in secret["data"].items():
-            # k1 = k.replace(".", "\\.")
-            # value = self.kube_interface.exec(f"get secret {secret_name}", output=f"jsonpath='{{.data.{k1}}}'")
-            result[k] = base64.b64decode(v).decode("utf-8")
+        # handle empty secret
+        if "data" in secret:
+            for k, v in secret["data"].items():
+                result[k] = base64.b64decode(v).decode("utf-8")
 
         secret["data"] = result
         return secret
@@ -830,6 +966,26 @@ class KubeInterface(AbstractKubeInterface):
             self.exec(
                 f"create {resource_type} {resource_name}", namespace=None, output="name"
             )
+        elif resource_type == KubernetesResourceType.ROLE:
+            with open(self.defaults.template_role) as f:
+                res = codecs.load_all_yaml(
+                    f,
+                    context=filter_none(
+                        {
+                            "resourcename": resource_name,
+                            "namespace": namespace,
+                        }
+                        | extra_args
+                    ),
+                )
+                with umask_named_temporary_file(
+                    mode="w",
+                    prefix="role-",
+                    suffix=".yaml",
+                    dir=os.path.expanduser("~"),
+                ) as t:
+                    codecs.dump_all_yaml(res, t)
+                    self.exec(f"apply -f {t.name}", namespace=namespace, output="name")
         else:
             # NOTE: removing 'username' to avoid interference with KUBECONFIG
             # ERROR: more than one authentication method found for admin; found [token basicAuth], only one is allowed
@@ -1000,11 +1156,13 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
     def _get_secret_name(name):
         return f"{SPARK8S_LABEL}-sa-conf-{name}"
 
-    def _retrieve_account_configurations(
-        self, name: str, namespace: str
-    ) -> PropertyFile:
-        secret_name = self._get_secret_name(name)
+    @staticmethod
+    def _get_configuration_hub_secret_name(name):
+        return f"{CONFIGURATION_HUB_LABEL}-{name}"
 
+    def _retrieve_secret_configurations(
+        self, name: str, namespace: str, secret_name: str
+    ) -> PropertyFile:
         try:
             secret = self.kube_interface.get_secret(secret_name, namespace=namespace)[
                 "data"
@@ -1024,12 +1182,20 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
         namespace = metadata["namespace"]
         primary = PRIMARY_LABELNAME in metadata["labels"]
 
+        account_secret_name = self._get_secret_name(name)
+        configuration_hub_secret_name = self._get_configuration_hub_secret_name(name)
+
         return ServiceAccount(
             name=name,
             namespace=namespace,
             primary=primary,
             api_server=self.kube_interface.api_server,
-            extra_confs=self._retrieve_account_configurations(name, namespace),
+            extra_confs=self._retrieve_secret_configurations(
+                name, namespace, account_secret_name
+            ),
+            configuration_hub_confs=self._retrieve_secret_configurations(
+                name, namespace, configuration_hub_secret_name
+            ),
         )
 
     def set_primary(
@@ -1131,16 +1297,7 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
             KubernetesResourceType.ROLE,
             rolename,
             namespace=service_account.namespace,
-            **{
-                "resource": [
-                    "pods",
-                    "configmaps",
-                    "services",
-                    "serviceaccounts",
-                    "secrets",
-                ],
-                "verb": ["create", "get", "list", "watch", "delete"],
-            },
+            **{"username": username},
         )
         self.kube_interface.create(
             KubernetesResourceType.ROLEBINDING,
@@ -1173,45 +1330,49 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
         if service_account.primary is True:
             self.set_primary(serviceaccount, service_account.namespace)
 
+        self._create_account_secret(service_account)
+
         if len(service_account.extra_confs) > 0:
             self.set_configurations(serviceaccount, service_account.extra_confs)
 
         return serviceaccount
 
-    def _create_account_configuration(self, service_account: ServiceAccount):
+    def _create_account_secret(self, service_account: ServiceAccount):
+        """This function create the secret that will contain the user configurations."""
         secret_name = self._get_secret_name(service_account.name)
 
-        try:
-            self.kube_interface.delete(
-                KubernetesResourceType.SECRET,
-                secret_name,
-                namespace=service_account.namespace,
-            )
-        except Exception:
-            pass
+        self.kube_interface.create(
+            KubernetesResourceType.SECRET_GENERIC,
+            secret_name,
+            namespace=service_account.namespace,
+        )
 
-        with umask_named_temporary_file(
-            mode="w", prefix="spark-dynamic-conf-k8s-", suffix=".conf"
-        ) as t:
-            self.logger.debug(
-                f"Spark dynamic props available for reference at {t.name}\n"
-            )
+    def _add_account_configuration(
+        self,
+        service_account: ServiceAccount,
+    ):
+        """Add service account configuration to the service account."""
+        secret_name = self._get_secret_name(service_account.name)
 
-            PropertyFile(
-                {
-                    self._kubernetes_key_serializer.serialize(key): value
-                    for key, value in service_account.extra_confs.props.items()
-                }
-            ).write(t.file)
+        properties = PropertyFile(
+            {
+                self._kubernetes_key_serializer.serialize(key): value
+                for key, value in service_account.extra_confs.props.items()
+            }
+        )
 
-            t.flush()
+        # delete secret content
+        self.kube_interface.delete_secret_content(
+            secret_name,
+            namespace=service_account.namespace,
+        )
 
-            self.kube_interface.create(
-                KubernetesResourceType.SECRET_GENERIC,
-                secret_name,
-                namespace=service_account.namespace,
-                **{"from-env-file": str(t.name)},
-            )
+        # add configurations to secrets
+        self.kube_interface.add_secret_content(
+            secret_name,
+            service_account.namespace,
+            properties,
+        )
 
     def set_configurations(self, account_id: str, configurations: PropertyFile) -> str:
         """Set a new service account configuration for the provided service account id.
@@ -1222,8 +1383,7 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
         """
 
         namespace, name = account_id.split(":")
-
-        self._create_account_configuration(
+        self._add_account_configuration(
             ServiceAccount(
                 name=name,
                 namespace=namespace,
@@ -1615,7 +1775,10 @@ class SparkInterface(WithLogging):
                 os.system(submit_cmd)
 
     def spark_sql(
-        self, confs: List[str], cli_property: Optional[str], extra_args: List[str]
+        self,
+        confs: List[str],
+        cli_property: Optional[str],
+        extra_args: List[str],
     ):
         """Start an interactive Spark SQL shell.
 

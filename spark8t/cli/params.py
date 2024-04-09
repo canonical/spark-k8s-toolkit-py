@@ -44,6 +44,21 @@ def add_logging_arguments(parser: ArgumentParser) -> ArgumentParser:
     return parser
 
 
+def add_ignore_configuration_hub(parser: ArgumentParser) -> ArgumentParser:
+    """
+    Add option to exclude the configuration provided by the Spark Configuration Hub
+
+    :param parser: Input parser to decorate with parsing support for logging args.
+    """
+    parser.add_argument(
+        "--ignore-configuration-hub",
+        action="store_true",
+        help="Ignore the configuration provided by Spark Configuration Hub Charm.",
+    )
+
+    return parser
+
+
 def spark_user_parser(parser: ArgumentParser) -> ArgumentParser:
     """
     Add Spark user related argument parsing to the existing parser context

@@ -1,4 +1,5 @@
 import json
+import os
 import subprocess
 import uuid
 from collections import defaultdict
@@ -6,7 +7,14 @@ from subprocess import CalledProcessError
 
 import pytest
 
-from spark8t.literals import MANAGED_BY_LABELNAME, PRIMARY_LABELNAME, SPARK8S_LABEL
+from spark8t.domain import KubernetesResourceType, PropertyFile
+from spark8t.literals import (
+    CONFIGURATION_HUB_LABEL,
+    MANAGED_BY_LABELNAME,
+    PRIMARY_LABELNAME,
+    SPARK8S_LABEL,
+)
+from spark8t.utils import umask_named_temporary_file
 
 VALID_BACKENDS = [
     "kubectl",
@@ -14,21 +22,51 @@ VALID_BACKENDS = [
 ]
 
 ALLOWED_PERMISSIONS = {
-    "pods": ["create", "get", "list", "watch", "delete"],
-    "configmaps": ["create", "get", "list", "watch", "delete"],
-    "services": ["create", "get", "list", "watch", "delete"],
+    "pods": [
+        "create",
+        "get",
+        "list",
+        "watch",
+        "delete",
+        "deletecollection",
+        "patch",
+        "update",
+    ],
+    "configmaps": [
+        "create",
+        "get",
+        "list",
+        "watch",
+        "delete",
+        "deletecollection",
+        "patch",
+        "update",
+    ],
+    "services": [
+        "create",
+        "get",
+        "list",
+        "watch",
+        "delete",
+        "deletecollection",
+        "patch",
+        "update",
+    ],
 }
 
+ALL_ACTIONS = [
+    "create",
+    "delete",
+    "deletecollection",
+    "get",
+    "list",
+    "patch",
+    "update",
+    "watch",
+]
 
-@pytest.fixture
-def namespace():
-    """A temporary K8S namespace gets cleaned up automatically"""
-    namespace_name = str(uuid.uuid4())
-    create_command = ["kubectl", "create", "namespace", namespace_name]
-    subprocess.run(create_command, check=True)
-    yield namespace_name
-    destroy_command = ["kubectl", "delete", "namespace", namespace_name]
-    subprocess.run(destroy_command, check=True)
+ALLOWED_PERMISSIONS_USER_SECRET = ["get", "patch", "update"]
+ALLOWED_PERMISSIONS_HUB_SECRET = ["get"]
 
 
 def run_service_account_registry(*args):
@@ -44,16 +82,6 @@ def run_service_account_registry(*args):
         return output.stdout.decode(), output.stderr.decode(), output.returncode
     except CalledProcessError as e:
         return e.stdout.decode(), e.stderr.decode(), e.returncode
-
-
-def parameterize(permissions):
-    """
-    A utility function to parameterize combinations of actions and RBAC permissions.
-    """
-    parameters = []
-    for resource, actions in permissions.items():
-        parameters.extend([(action, resource) for action in actions])
-    return parameters
 
 
 @pytest.fixture(params=VALID_BACKENDS)
@@ -91,9 +119,8 @@ def multiple_namespaces_and_service_accounts():
 
 
 @pytest.mark.parametrize("backend", VALID_BACKENDS)
-@pytest.mark.parametrize("action, resource", parameterize(ALLOWED_PERMISSIONS))
 @pytest.mark.parametrize("primary", [True, False])
-def test_create_service_account(namespace, backend, action, resource, primary):
+def test_create_service_account(namespace, backend, primary):
     """Test creation of service account using the CLI.
 
     Verify that the serviceaccount, role and rolebinding resources are created
@@ -104,6 +131,8 @@ def test_create_service_account(namespace, backend, action, resource, primary):
     username = "foobar"
     role_name = f"{username}-role"
     role_binding_name = f"{username}-role-binding"
+    secret_name = f"{SPARK8S_LABEL}-sa-conf-{username}"
+    hub_secret_name = f"configuration-hub-conf-{username}"
 
     create_args = [
         "create",
@@ -181,26 +210,99 @@ def test_create_service_account(namespace, backend, action, resource, primary):
         expected_labels.update({PRIMARY_LABELNAME: "True"})
     assert actual_labels == expected_labels
 
-    # Check for RBAC permissions
-    sa_identifier = f"system:serviceaccount:{namespace}:{username}"
-    rbac_check = subprocess.run(
+    # Check secret creation
+    secret_result = subprocess.run(
         [
             "kubectl",
-            "auth",
-            "can-i",
-            action,
-            resource,
-            "--namespace",
+            "get",
+            "secret",
+            secret_name,
+            "-n",
             namespace,
-            "--as",
-            sa_identifier,
+            "-o",
+            "json",
         ],
         check=True,
         capture_output=True,
         text=True,
     )
-    assert rbac_check.returncode == 0
-    assert rbac_check.stdout.strip() == "yes"
+    assert secret_result.returncode == 0
+
+    # Check for RBAC permissions
+    sa_identifier = f"system:serviceaccount:{namespace}:{username}"
+    for resource, actions in ALLOWED_PERMISSIONS.items():
+        for action in actions:
+            rbac_check = subprocess.run(
+                [
+                    "kubectl",
+                    "auth",
+                    "can-i",
+                    action,
+                    resource,
+                    "--namespace",
+                    namespace,
+                    "--as",
+                    sa_identifier,
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            assert rbac_check.returncode == 0
+            assert rbac_check.stdout.strip() == "yes"
+
+    # Check for RBAC permissions for named resources
+
+    resource_name_actions = {
+        secret_name: ALLOWED_PERMISSIONS_USER_SECRET,
+        hub_secret_name: ALLOWED_PERMISSIONS_HUB_SECRET,
+    }
+
+    for resource_name, actions in resource_name_actions.items():
+        for action in actions:
+            rbac_check = subprocess.run(
+                [
+                    "kubectl",
+                    "auth",
+                    "can-i",
+                    action,
+                    f"secret/{resource_name}",
+                    "--namespace",
+                    namespace,
+                    "--as",
+                    sa_identifier,
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            assert rbac_check.returncode == 0
+            assert rbac_check.stdout.strip() == "yes"
+
+        not_allowed_actions = set(ALL_ACTIONS).difference(actions)
+        print(not_allowed_actions)
+        for action in not_allowed_actions:
+            command = [
+                "kubectl",
+                "auth",
+                "can-i",
+                action,
+                f"secret/{resource_name}",
+                "--namespace",
+                namespace,
+                "--as",
+                sa_identifier,
+            ]
+            print(" ".join(command))
+            rbac_check = subprocess.run(
+                command,
+                capture_output=True,
+                text=True,
+            )
+            print(f"Return code: {rbac_check.returncode}")
+            print(f"Return stdout: {rbac_check.stdout.strip()}")
+            assert rbac_check.returncode != 0
+            assert rbac_check.stdout.strip() == "no"
 
 
 @pytest.mark.parametrize("backend", VALID_BACKENDS)
@@ -222,8 +324,7 @@ def test_create_service_account_when_account_already_exists(service_account, bac
 
 
 @pytest.mark.parametrize("backend", VALID_BACKENDS)
-@pytest.mark.parametrize("action, resource", parameterize(ALLOWED_PERMISSIONS))
-def test_delete_service_account(service_account, backend, action, resource):
+def test_delete_service_account(service_account, backend):
     """Test deletion of service account using the CLI.
 
     Verify that the serviceaccount, role and rolebinding resources are deleted
@@ -274,23 +375,25 @@ def test_delete_service_account(service_account, backend, action, resource):
 
     # Check for RBAC permissions, these should be invalid now
     sa_identifier = f"system:serviceaccount:{namespace}:{username}"
-    rbac_check = subprocess.run(
-        [
-            "kubectl",
-            "auth",
-            "can-i",
-            action,
-            resource,
-            "--namespace",
-            namespace,
-            "--as",
-            sa_identifier,
-        ],
-        capture_output=True,
-        text=True,
-    )
-    assert rbac_check.returncode != 0
-    assert rbac_check.stdout.strip() == "no"
+    for resource, actions in ALLOWED_PERMISSIONS.items():
+        for action in actions:
+            rbac_check = subprocess.run(
+                [
+                    "kubectl",
+                    "auth",
+                    "can-i",
+                    action,
+                    resource,
+                    "--namespace",
+                    namespace,
+                    "--as",
+                    sa_identifier,
+                ],
+                capture_output=True,
+                text=True,
+            )
+            assert rbac_check.returncode != 0
+            assert rbac_check.stdout.strip() == "no"
 
 
 @pytest.mark.parametrize("backend", VALID_BACKENDS)
@@ -430,7 +533,7 @@ def test_service_accounts_listing_multiple_namespaces(
 
 
 @pytest.mark.parametrize("backend", VALID_BACKENDS)
-def test_service_account_get_config(service_account, backend):
+def test_service_account_get_config(service_account, backend, request):
     """Test retrieval of service account configs using the CLI.
 
     Use a fixture that creates temporary service account, then
@@ -456,6 +559,67 @@ def test_service_account_get_config(service_account, backend):
         f"spark.kubernetes.authenticate.driver.serviceAccountName={username}",
         f"spark.kubernetes.namespace={namespace}",
     }
+    assert actual_configs == expected_configs
+
+    # add configuration hub secret for the test service account
+    secret_name = f"{CONFIGURATION_HUB_LABEL}-{username}"
+
+    property_file = PropertyFile({"key": "value"})
+
+    kubeinterface = request.getfixturevalue("kubeinterface")
+
+    with umask_named_temporary_file(
+        mode="w",
+        prefix="spark-dynamic-conf-k8s-",
+        suffix=".conf",
+        dir=os.path.expanduser("~"),
+    ) as t:
+        property_file.write(t.file)
+
+        t.flush()
+
+        kubeinterface.create(
+            KubernetesResourceType.SECRET_GENERIC,
+            secret_name,
+            namespace=namespace,
+            **{"from-env-file": str(t.name)},
+        )
+
+    assert kubeinterface.exists(
+        KubernetesResourceType.SECRET_GENERIC, secret_name, namespace
+    )
+
+    # check that configuration hub config is there
+    # Get the default configs created with a service account
+    stdout, stderr, ret_code = run_service_account_registry(
+        "get-config",
+        "--username",
+        username,
+        "--namespace",
+        namespace,
+        "--backend",
+        backend,
+    )
+    actual_configs = set(stdout.splitlines())
+    expected_configs_hub = {
+        f"spark.kubernetes.authenticate.driver.serviceAccountName={username}",
+        f"spark.kubernetes.namespace={namespace}",
+        "key=value",
+    }
+
+    assert actual_configs == expected_configs_hub
+
+    stdout, stderr, ret_code = run_service_account_registry(
+        "get-config",
+        "--username",
+        username,
+        "--namespace",
+        namespace,
+        "--backend",
+        backend,
+        "--ignore-configuration-hub",
+    )
+    actual_configs = set(stdout.splitlines())
     assert actual_configs == expected_configs
 
 
@@ -505,6 +669,7 @@ def test_service_account_add_config(service_account, backend):
         namespace,
         "--backend",
         backend,
+        "--ignore-configuration-hub",
     )
     updated_configs = set(stdout.splitlines())
 

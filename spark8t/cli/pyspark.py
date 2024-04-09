@@ -7,6 +7,7 @@ from typing import Optional
 
 from spark8t.cli.params import (
     add_config_arguments,
+    add_ignore_configuration_hub,
     add_logging_arguments,
     defaults,
     get_kube_interface,
@@ -14,7 +15,7 @@ from spark8t.cli.params import (
     parse_arguments_with,
     spark_user_parser,
 )
-from spark8t.domain import ServiceAccount
+from spark8t.domain import PropertyFile, ServiceAccount
 from spark8t.exceptions import AccountNotFound, PrimaryAccountNotFound
 from spark8t.services import K8sServiceAccountRegistry, SparkInterface
 from spark8t.utils import setup_logging
@@ -40,6 +41,9 @@ def main(args: Namespace, logger: Logger):
             args.username
         ) if args.username else PrimaryAccountNotFound()
 
+    if args.ignore_configuration_hub:
+        service_account.configuration_hub_confs = PropertyFile.empty()
+
     SparkInterface(
         service_account=service_account,
         kube_interface=kube_interface,
@@ -49,7 +53,13 @@ def main(args: Namespace, logger: Logger):
 
 if __name__ == "__main__":
     args, extra_args = parse_arguments_with(
-        [add_logging_arguments, k8s_parser, spark_user_parser, add_config_arguments]
+        [
+            add_logging_arguments,
+            k8s_parser,
+            spark_user_parser,
+            add_config_arguments,
+            add_ignore_configuration_hub,
+        ]
     ).parse_known_args()
 
     logger = setup_logging(args.log_level, args.log_conf_file, "spark8t.cli.pyspark")
