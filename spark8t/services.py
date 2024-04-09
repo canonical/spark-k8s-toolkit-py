@@ -1624,7 +1624,6 @@ class SparkInterface(WithLogging):
         confs: List[str],
         cli_property: Optional[str],
         extra_args: List[str],
-        ignore_configuration_hub_confs: bool = False,
     ):
         """Submit a spark job.
 
@@ -1643,8 +1642,6 @@ class SparkInterface(WithLogging):
             (
                 self._read_properties_file(self.defaults.static_conf_file)
                 + self.service_account.configurations
-                if ignore_configuration_hub_confs
-                else self.service_account.configurations_with_hub
                 + self._read_properties_file(self.defaults.env_conf_file)
                 + self._read_properties_file(cli_property)
                 + self._generate_properties_file_from_arguments(confs)
@@ -1670,11 +1667,7 @@ class SparkInterface(WithLogging):
                 os.system(submit_cmd)
 
     def spark_shell(
-        self,
-        confs: List[str],
-        cli_property: Optional[str],
-        extra_args: List[str],
-        ignore_configuration_hub_confs: bool = False,
+        self, confs: List[str], cli_property: Optional[str], extra_args: List[str]
     ):
         """Start an interactinve spark shell.
 
@@ -1697,8 +1690,6 @@ class SparkInterface(WithLogging):
                     }
                 )
                 + self.service_account.configurations
-                if ignore_configuration_hub_confs
-                else self.service_account.configurations_with_hub
                 + self._read_properties_file(self.defaults.env_conf_file)
                 + self._read_properties_file(cli_property)
                 + self._generate_properties_file_from_arguments(confs)
@@ -1733,11 +1724,7 @@ class SparkInterface(WithLogging):
                 os.system(submit_cmd)
 
     def pyspark_shell(
-        self,
-        confs: List[str],
-        cli_property: Optional[str],
-        extra_args: List[str],
-        ignore_configuration_hub_confs: bool = False,
+        self, confs: List[str], cli_property: Optional[str], extra_args: List[str]
     ):
         """Start an interactinve pyspark shell.
 
@@ -1755,8 +1742,6 @@ class SparkInterface(WithLogging):
             conf = (
                 self._read_properties_file(self.defaults.static_conf_file)
                 + self.service_account.configurations
-                if ignore_configuration_hub_confs
-                else self.service_account.configurations_with_hub
                 + self._read_properties_file(self.defaults.env_conf_file)
                 + self._read_properties_file(cli_property)
                 + self._generate_properties_file_from_arguments(confs)
@@ -1794,7 +1779,6 @@ class SparkInterface(WithLogging):
         confs: List[str],
         cli_property: Optional[str],
         extra_args: List[str],
-        ignore_configuration_hub_confs: bool = False,
     ):
         """Start an interactive Spark SQL shell.
 
@@ -1812,8 +1796,6 @@ class SparkInterface(WithLogging):
             conf = (
                 self._read_properties_file(self.defaults.static_conf_file)
                 + self.service_account.configurations
-                if ignore_configuration_hub_confs
-                else self.service_account.configurations_with_hub
                 + self._read_properties_file(self.defaults.env_conf_file)
                 + self._read_properties_file(cli_property)
                 + self._generate_properties_file_from_arguments(confs)

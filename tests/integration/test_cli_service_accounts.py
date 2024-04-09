@@ -84,16 +84,6 @@ def run_service_account_registry(*args):
         return e.stdout.decode(), e.stderr.decode(), e.returncode
 
 
-def parameterize(permissions):
-    """
-    A utility function to parameterize combinations of actions and RBAC permissions.
-    """
-    parameters = []
-    for resource, actions in permissions.items():
-        parameters.extend([(action, resource) for action in actions])
-    return parameters
-
-
 @pytest.fixture(params=VALID_BACKENDS)
 def service_account(namespace, request):
     """A temporary service account that gets cleaned up automatically."""

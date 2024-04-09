@@ -146,8 +146,6 @@ def main(args: Namespace, logger: Logger):
             + parse_conf_overrides(args.conf)
         )
 
-        print(f"ADD CONFIG: {account_configuration}")
-
         registry.set_configurations(input_service_account.id, account_configuration)
 
     elif args.action == Actions.REMOVE_CONFIG:
@@ -171,11 +169,9 @@ def main(args: Namespace, logger: Logger):
         if maybe_service_account is None:
             raise AccountNotFound(input_service_account.id)
 
-        maybe_service_account.configurations.log(
-            print
-        ) if args.ignore_configuration_hub else maybe_service_account.configurations_with_hub.log(
-            print
-        )
+        if args.ignore_configuration_hub:
+            maybe_service_account.configuration_hub_confs = PropertyFile.empty()
+        maybe_service_account.configurations.log(print)
 
     elif args.action == Actions.CLEAR_CONFIG:
         registry.set_configurations(
