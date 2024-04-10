@@ -93,7 +93,7 @@ jobs:
           echo "wheel=${_NAME}-${_VERSION}-py3-none-any.whl" >> "$GITHUB_OUTPUT"
           echo "tarball=${_NAME}-${_VERSION}.tar.gz" >> "$GITHUB_OUTPUT"
       - name: Create Github Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
