@@ -132,7 +132,7 @@ def test_create_service_account(namespace, backend, primary):
     role_name = f"{username}-role"
     role_binding_name = f"{username}-role-binding"
     secret_name = f"{SPARK8S_LABEL}-sa-conf-{username}"
-    hub_secret_name = f"configuration-hub-conf-{username}"
+    hub_secret_name = f"{HUB_LABEL}-{username}"
 
     create_args = [
         "create",
@@ -561,7 +561,7 @@ def test_service_account_get_config(service_account, backend, request):
     }
     assert actual_configs == expected_configs
 
-    # add configuration hub secret for the test service account
+    # add integrator hub secret for the test service account
     secret_name = f"{HUB_LABEL}-{username}"
 
     property_file = PropertyFile({"key": "value"})
@@ -589,7 +589,7 @@ def test_service_account_get_config(service_account, backend, request):
         KubernetesResourceType.SECRET_GENERIC, secret_name, namespace
     )
 
-    # check that configuration hub config is there
+    # check that integrato hub config is there
     # Get the default configs created with a service account
     stdout, stderr, ret_code = run_service_account_registry(
         "get-config",
@@ -617,7 +617,7 @@ def test_service_account_get_config(service_account, backend, request):
         namespace,
         "--backend",
         backend,
-        "--ignore-configuration-hub",
+        "--ignore-integrator-hub",
     )
     actual_configs = set(stdout.splitlines())
     assert actual_configs == expected_configs
@@ -669,7 +669,7 @@ def test_service_account_add_config(service_account, backend):
         namespace,
         "--backend",
         backend,
-        "--ignore-configuration-hub",
+        "--ignore-integrator-hub",
     )
     updated_configs = set(stdout.splitlines())
 

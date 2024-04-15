@@ -84,9 +84,9 @@ def create_service_account_registry_parser(parser: ArgumentParser):
         [spark_user_parser],
         subparsers.add_parser(Actions.GET_CONFIG.value, parents=[base_parser]),
     ).add_argument(
-        "--ignore-configuration-hub",
+        "--ignore-integrator-hub",
         action="store_true",
-        help="Boolean to ignore configuration hub generated options.",
+        help="Boolean to ignore Spark Integrator Hub generated options.",
     )
     #  subparser for sa-conf-del
     parse_arguments_with(
