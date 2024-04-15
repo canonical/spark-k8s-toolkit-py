@@ -1,4 +1,5 @@
 """Module for general logging functionalities and abstractions."""
+
 import errno
 import io
 import json

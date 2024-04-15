@@ -37,9 +37,11 @@ def main(args: Namespace, logger: Logger):
     )
 
     if service_account is None:
-        raise AccountNotFound(
-            args.username
-        ) if args.username else PrimaryAccountNotFound()
+        raise (
+            AccountNotFound(args.username)
+            if args.username
+            else PrimaryAccountNotFound()
+        )
 
     if args.ignore_configuration_hub:
         service_account.configuration_hub_confs = PropertyFile.empty()
