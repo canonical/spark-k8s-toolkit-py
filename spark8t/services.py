@@ -1183,7 +1183,7 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
         primary = PRIMARY_LABELNAME in metadata["labels"]
 
         account_secret_name = self._get_secret_name(name)
-        configuration_hub_secret_name = self._get_integrator_hub_secret_name(name)
+        integrator_hub_secret_name = self._get_integrator_hub_secret_name(name)
 
         return ServiceAccount(
             name=name,
@@ -1194,7 +1194,7 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
                 name, namespace, account_secret_name
             ),
             integrator_hub_confs=self._retrieve_secret_configurations(
-                name, namespace, configuration_hub_secret_name
+                name, namespace, integrator_hub_secret_name
             ),
         )
 
