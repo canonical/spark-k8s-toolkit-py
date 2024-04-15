@@ -9,7 +9,7 @@ import pytest
 
 from spark8t.domain import KubernetesResourceType, PropertyFile
 from spark8t.literals import (
-    CONFIGURATION_HUB_LABEL,
+    HUB_LABEL,
     MANAGED_BY_LABELNAME,
     PRIMARY_LABELNAME,
     SPARK8S_LABEL,
@@ -562,7 +562,7 @@ def test_service_account_get_config(service_account, backend, request):
     assert actual_configs == expected_configs
 
     # add configuration hub secret for the test service account
-    secret_name = f"{CONFIGURATION_HUB_LABEL}-{username}"
+    secret_name = f"{HUB_LABEL}-{username}"
 
     property_file = PropertyFile({"key": "value"})
 

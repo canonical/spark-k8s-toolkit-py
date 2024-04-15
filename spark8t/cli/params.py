@@ -44,16 +44,16 @@ def add_logging_arguments(parser: ArgumentParser) -> ArgumentParser:
     return parser
 
 
-def add_ignore_configuration_hub(parser: ArgumentParser) -> ArgumentParser:
+def add_ignore_integrator_hub(parser: ArgumentParser) -> ArgumentParser:
     """
-    Add option to exclude the configuration provided by the Spark Configuration Hub
+    Add option to exclude the configuration provided by the Spark Integrator Hub
 
     :param parser: Input parser to decorate with parsing support for logging args.
     """
     parser.add_argument(
-        "--ignore-configuration-hub",
+        "--ignore-integrator-hub",
         action="store_true",
-        help="Ignore the configuration provided by Spark Configuration Hub Charm.",
+        help="Ignore the configuration provided by Spark Integrator Hub Charm.",
     )
 
     return parser

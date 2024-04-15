@@ -169,8 +169,8 @@ def main(args: Namespace, logger: Logger):
         if maybe_service_account is None:
             raise AccountNotFound(input_service_account.id)
 
-        if args.ignore_configuration_hub:
-            maybe_service_account.configuration_hub_confs = PropertyFile.empty()
+        if args.ignore_integrator_hub:
+            maybe_service_account.integrator_hub_confs = PropertyFile.empty()
         maybe_service_account.configurations.log(print)
 
     elif args.action == Actions.CLEAR_CONFIG:
