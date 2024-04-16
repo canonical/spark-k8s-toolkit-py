@@ -35,7 +35,7 @@ from spark8t.exceptions import (
     ResourceAlreadyExists,
 )
 from spark8t.literals import (
-    CONFIGURATION_HUB_LABEL,
+    HUB_LABEL,
     MANAGED_BY_LABELNAME,
     PRIMARY_LABELNAME,
     SPARK8S_LABEL,
@@ -1157,8 +1157,8 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
         return f"{SPARK8S_LABEL}-sa-conf-{name}"
 
     @staticmethod
-    def _get_configuration_hub_secret_name(name):
-        return f"{CONFIGURATION_HUB_LABEL}-{name}"
+    def _get_integrator_hub_secret_name(name):
+        return f"{HUB_LABEL}-{name}"
 
     def _retrieve_secret_configurations(
         self, name: str, namespace: str, secret_name: str
@@ -1183,7 +1183,7 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
         primary = PRIMARY_LABELNAME in metadata["labels"]
 
         account_secret_name = self._get_secret_name(name)
-        configuration_hub_secret_name = self._get_configuration_hub_secret_name(name)
+        integrator_hub_secret_name = self._get_integrator_hub_secret_name(name)
 
         return ServiceAccount(
             name=name,
@@ -1193,8 +1193,8 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
             extra_confs=self._retrieve_secret_configurations(
                 name, namespace, account_secret_name
             ),
-            configuration_hub_confs=self._retrieve_secret_configurations(
-                name, namespace, configuration_hub_secret_name
+            integrator_hub_confs=self._retrieve_secret_configurations(
+                name, namespace, integrator_hub_secret_name
             ),
         )
 

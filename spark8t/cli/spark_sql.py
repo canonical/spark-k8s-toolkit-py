@@ -7,7 +7,7 @@ from typing import Optional
 
 from spark8t.cli.params import (
     add_config_arguments,
-    add_ignore_configuration_hub,
+    add_ignore_integrator_hub,
     add_logging_arguments,
     defaults,
     get_kube_interface,
@@ -43,8 +43,8 @@ def main(args: Namespace, logger: Logger):
             else PrimaryAccountNotFound()
         )
 
-    if args.ignore_configuration_hub:
-        service_account.configuration_hub_confs = PropertyFile.empty()
+    if args.ignore_integrator_hub:
+        service_account.integrator_hub_confs = PropertyFile.empty()
 
     SparkInterface(
         service_account=service_account,
@@ -60,7 +60,7 @@ if __name__ == "__main__":
             k8s_parser,
             spark_user_parser,
             add_config_arguments,
-            add_ignore_configuration_hub,
+            add_ignore_integrator_hub,
         ]
     ).parse_known_args()
 
