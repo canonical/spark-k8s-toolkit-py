@@ -589,7 +589,7 @@ def test_service_account_get_config(service_account, backend, request):
         KubernetesResourceType.SECRET_GENERIC, secret_name, namespace
     )
 
-    # check that integrato hub config is there
+    # check that integrator hub config is there
     # Get the default configs created with a service account
     stdout, stderr, ret_code = run_service_account_registry(
         "get-config",
