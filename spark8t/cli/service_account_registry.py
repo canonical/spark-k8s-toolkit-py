@@ -136,6 +136,9 @@ def main(args: Namespace, logger: Logger):
         if service_account_in_registry is None:
             raise AccountNotFound(input_service_account.id)
 
+        # Discard configuration from the integration hub
+        service_account_in_registry.integrator_hub_confs = PropertyFile.empty()
+
         account_configuration = (
             service_account_in_registry.configurations
             + (
@@ -155,6 +158,8 @@ def main(args: Namespace, logger: Logger):
 
         if service_account_in_registry is None:
             raise AccountNotFound(input_service_account.id)
+
+        service_account_in_registry.integrator_hub_confs = PropertyFile.empty()
 
         registry.set_configurations(
             input_service_account.id,

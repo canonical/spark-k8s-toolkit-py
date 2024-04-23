@@ -624,7 +624,7 @@ def test_service_account_get_config(service_account, backend, request):
 
 
 @pytest.mark.parametrize("backend", VALID_BACKENDS)
-def test_service_account_add_config(service_account, backend):
+def test_service_account_add_config(service_account, backend, request):
     """Test addition of service account config using the CLI.
 
     Use a fixture that creates temporary service account, add new config,
@@ -644,6 +644,34 @@ def test_service_account_add_config(service_account, backend):
         backend,
     )
     original_configs = set(stdout.splitlines())
+
+    # add integrator hub secret for the test service account
+    secret_name = f"{HUB_LABEL}-{username}"
+
+    property_file = PropertyFile({"key": "value"})
+
+    kubeinterface = request.getfixturevalue("kubeinterface")
+
+    with umask_named_temporary_file(
+        mode="w",
+        prefix="spark-dynamic-conf-k8s-",
+        suffix=".conf",
+        dir=os.path.expanduser("~"),
+    ) as t:
+        property_file.write(t.file)
+
+        t.flush()
+
+        kubeinterface.create(
+            KubernetesResourceType.SECRET_GENERIC,
+            secret_name,
+            namespace=namespace,
+            **{"from-env-file": str(t.name)},
+        )
+
+    assert kubeinterface.exists(
+        KubernetesResourceType.SECRET_GENERIC, secret_name, namespace
+    )
 
     config_to_add = "foo=bar"
 
@@ -680,7 +708,7 @@ def test_service_account_add_config(service_account, backend):
 
 
 @pytest.mark.parametrize("backend", VALID_BACKENDS)
-def test_service_account_remove_config(service_account, backend):
+def test_service_account_remove_config(service_account, backend, request):
     """Test removal of service account config using the CLI.
 
     Use a fixture that creates temporary service account, add new config,
@@ -689,6 +717,34 @@ def test_service_account_remove_config(service_account, backend):
     config is not present in the output of `get-config` sub-command.
     """
     username, namespace = service_account
+
+    # add integrator hub secret for the test service account
+    secret_name = f"{HUB_LABEL}-{username}"
+
+    property_file = PropertyFile({"key": "value"})
+
+    kubeinterface = request.getfixturevalue("kubeinterface")
+
+    with umask_named_temporary_file(
+        mode="w",
+        prefix="spark-dynamic-conf-k8s-",
+        suffix=".conf",
+        dir=os.path.expanduser("~"),
+    ) as t:
+        property_file.write(t.file)
+
+        t.flush()
+
+        kubeinterface.create(
+            KubernetesResourceType.SECRET_GENERIC,
+            secret_name,
+            namespace=namespace,
+            **{"from-env-file": str(t.name)},
+        )
+
+    assert kubeinterface.exists(
+        KubernetesResourceType.SECRET_GENERIC, secret_name, namespace
+    )
 
     config_to_add = "foo=bar"
 
@@ -735,6 +791,7 @@ def test_service_account_remove_config(service_account, backend):
     # Ensure the removed configs no longer exist in service account
     new_configs = set(stdout.splitlines())
     assert config_to_add not in new_configs
+    assert "key=value" not in new_configs
 
 
 @pytest.mark.parametrize("backend", VALID_BACKENDS)
