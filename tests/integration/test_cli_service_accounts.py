@@ -561,7 +561,7 @@ def test_service_account_get_config(service_account, backend, request):
     }
     assert actual_configs == expected_configs
 
-    # add integrator hub secret for the test service account
+    # add integration hub secret for the test service account
     secret_name = f"{HUB_LABEL}-{username}"
 
     property_file = PropertyFile({"key": "value"})
@@ -589,7 +589,7 @@ def test_service_account_get_config(service_account, backend, request):
         KubernetesResourceType.SECRET_GENERIC, secret_name, namespace
     )
 
-    # check that integrator hub config is there
+    # check that integration hub config is there
     # Get the default configs created with a service account
     stdout, stderr, ret_code = run_service_account_registry(
         "get-config",
@@ -617,14 +617,14 @@ def test_service_account_get_config(service_account, backend, request):
         namespace,
         "--backend",
         backend,
-        "--ignore-integrator-hub",
+        "--ignore-integration-hub",
     )
     actual_configs = set(stdout.splitlines())
     assert actual_configs == expected_configs
 
 
 @pytest.mark.parametrize("backend", VALID_BACKENDS)
-def test_service_account_add_config(service_account, backend):
+def test_service_account_add_config(service_account, backend, request):
     """Test addition of service account config using the CLI.
 
     Use a fixture that creates temporary service account, add new config,
@@ -644,6 +644,34 @@ def test_service_account_add_config(service_account, backend):
         backend,
     )
     original_configs = set(stdout.splitlines())
+
+    # add integration hub secret for the test service account
+    secret_name = f"{HUB_LABEL}-{username}"
+
+    property_file = PropertyFile({"key": "value"})
+
+    kubeinterface = request.getfixturevalue("kubeinterface")
+
+    with umask_named_temporary_file(
+        mode="w",
+        prefix="spark-dynamic-conf-k8s-",
+        suffix=".conf",
+        dir=os.path.expanduser("~"),
+    ) as t:
+        property_file.write(t.file)
+
+        t.flush()
+
+        kubeinterface.create(
+            KubernetesResourceType.SECRET_GENERIC,
+            secret_name,
+            namespace=namespace,
+            **{"from-env-file": str(t.name)},
+        )
+
+    assert kubeinterface.exists(
+        KubernetesResourceType.SECRET_GENERIC, secret_name, namespace
+    )
 
     config_to_add = "foo=bar"
 
@@ -669,7 +697,7 @@ def test_service_account_add_config(service_account, backend):
         namespace,
         "--backend",
         backend,
-        "--ignore-integrator-hub",
+        "--ignore-integration-hub",
     )
     updated_configs = set(stdout.splitlines())
 
@@ -680,7 +708,7 @@ def test_service_account_add_config(service_account, backend):
 
 
 @pytest.mark.parametrize("backend", VALID_BACKENDS)
-def test_service_account_remove_config(service_account, backend):
+def test_service_account_remove_config(service_account, backend, request):
     """Test removal of service account config using the CLI.
 
     Use a fixture that creates temporary service account, add new config,
@@ -689,6 +717,34 @@ def test_service_account_remove_config(service_account, backend):
     config is not present in the output of `get-config` sub-command.
     """
     username, namespace = service_account
+
+    # add integration hub secret for the test service account
+    secret_name = f"{HUB_LABEL}-{username}"
+
+    property_file = PropertyFile({"key": "value"})
+
+    kubeinterface = request.getfixturevalue("kubeinterface")
+
+    with umask_named_temporary_file(
+        mode="w",
+        prefix="spark-dynamic-conf-k8s-",
+        suffix=".conf",
+        dir=os.path.expanduser("~"),
+    ) as t:
+        property_file.write(t.file)
+
+        t.flush()
+
+        kubeinterface.create(
+            KubernetesResourceType.SECRET_GENERIC,
+            secret_name,
+            namespace=namespace,
+            **{"from-env-file": str(t.name)},
+        )
+
+    assert kubeinterface.exists(
+        KubernetesResourceType.SECRET_GENERIC, secret_name, namespace
+    )
 
     config_to_add = "foo=bar"
 
@@ -735,6 +791,20 @@ def test_service_account_remove_config(service_account, backend):
     # Ensure the removed configs no longer exist in service account
     new_configs = set(stdout.splitlines())
     assert config_to_add not in new_configs
+
+    # Ensure that the added configs have been successfully created
+    stdout, stderr, ret_code = run_service_account_registry(
+        "get-config",
+        "--username",
+        username,
+        "--namespace",
+        namespace,
+        "--backend",
+        backend,
+        "--ignore-integration-hub",
+    )
+    conf = set(stdout.splitlines())
+    assert "key=value" not in conf
 
 
 @pytest.mark.parametrize("backend", VALID_BACKENDS)
