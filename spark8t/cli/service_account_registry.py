@@ -84,9 +84,9 @@ def create_service_account_registry_parser(parser: ArgumentParser):
         [spark_user_parser],
         subparsers.add_parser(Actions.GET_CONFIG.value, parents=[base_parser]),
     ).add_argument(
-        "--ignore-integrator-hub",
+        "--ignore-integration-hub",
         action="store_true",
-        help="Boolean to ignore Spark Integrator Hub generated options.",
+        help="Boolean to ignore Spark Integration Hub generated options.",
     )
     #  subparser for sa-conf-del
     parse_arguments_with(
@@ -136,11 +136,8 @@ def main(args: Namespace, logger: Logger):
         if service_account_in_registry is None:
             raise AccountNotFound(input_service_account.id)
 
-        # Discard configuration from the integration hub
-        service_account_in_registry.integrator_hub_confs = PropertyFile.empty()
-
         account_configuration = (
-            service_account_in_registry.configurations
+            service_account_in_registry.extra_confs
             + (
                 PropertyFile.read(args.properties_file)
                 if args.properties_file is not None
@@ -159,11 +156,9 @@ def main(args: Namespace, logger: Logger):
         if service_account_in_registry is None:
             raise AccountNotFound(input_service_account.id)
 
-        service_account_in_registry.integrator_hub_confs = PropertyFile.empty()
-
         registry.set_configurations(
             input_service_account.id,
-            service_account_in_registry.configurations.remove(args.conf),
+            service_account_in_registry.extra_confs.remove(args.conf),
         )
 
     elif args.action == Actions.GET_CONFIG:
@@ -174,8 +169,8 @@ def main(args: Namespace, logger: Logger):
         if maybe_service_account is None:
             raise AccountNotFound(input_service_account.id)
 
-        if args.ignore_integrator_hub:
-            maybe_service_account.integrator_hub_confs = PropertyFile.empty()
+        if args.ignore_integration_hub:
+            maybe_service_account.integration_hub_confs = PropertyFile.empty()
         maybe_service_account.configurations.log(print)
 
     elif args.action == Actions.CLEAR_CONFIG:

@@ -1157,7 +1157,7 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
         return f"{SPARK8S_LABEL}-sa-conf-{name}"
 
     @staticmethod
-    def _get_integrator_hub_secret_name(name):
+    def _get_integration_hub_secret_name(name):
         return f"{HUB_LABEL}-{name}"
 
     def _retrieve_secret_configurations(
@@ -1183,7 +1183,7 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
         primary = PRIMARY_LABELNAME in metadata["labels"]
 
         account_secret_name = self._get_secret_name(name)
-        integrator_hub_secret_name = self._get_integrator_hub_secret_name(name)
+        integration_hub_secret_name = self._get_integration_hub_secret_name(name)
 
         return ServiceAccount(
             name=name,
@@ -1193,8 +1193,8 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
             extra_confs=self._retrieve_secret_configurations(
                 name, namespace, account_secret_name
             ),
-            integrator_hub_confs=self._retrieve_secret_configurations(
-                name, namespace, integrator_hub_secret_name
+            integration_hub_confs=self._retrieve_secret_configurations(
+                name, namespace, integration_hub_secret_name
             ),
         )
 
