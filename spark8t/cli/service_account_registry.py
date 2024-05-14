@@ -12,13 +12,18 @@ from spark8t.cli.params import (
     parse_arguments_with,
     spark_user_parser,
 )
-from spark8t.domain import PropertyFile, ServiceAccount
+from spark8t.domain import KubernetesResourceType, PropertyFile, ServiceAccount
 from spark8t.exceptions import (
     AccountNotFound,
+    NamespaceNotFound,
     PrimaryAccountNotFound,
     ResourceAlreadyExists,
 )
-from spark8t.services import K8sServiceAccountRegistry, parse_conf_overrides
+from spark8t.services import (
+    AbstractKubeInterface,
+    K8sServiceAccountRegistry,
+    parse_conf_overrides,
+)
 from spark8t.utils import setup_logging
 
 
@@ -40,6 +45,18 @@ class Actions(str, Enum):
     CLEAR_CONFIG = "clear-config"
     PRIMARY = "get-primary"
     LIST = "list"
+
+
+def create_namespace_if_needed(kube_interface: AbstractKubeInterface, namespace: str):
+    """Create namespace if does not exist."""
+    if not kube_interface.exists(KubernetesResourceType.NAMESPACE, namespace):
+        try:
+            kube_interface.create(KubernetesResourceType.NAMESPACE, namespace)
+        except Exception:
+            logger.warn(
+                f"Namespace {namespace} does not exist, and it could not be created."
+            )
+            raise NamespaceNotFound(namespace)
 
 
 def create_service_account_registry_parser(parser: ArgumentParser):
@@ -115,6 +132,10 @@ def main(args: Namespace, logger: Logger):
 
     if args.action == Actions.CREATE:
         service_account = build_service_account_from_args(args, registry)
+
+        # check if namespace exist otherwise create it if permissions allowed.
+        create_namespace_if_needed(kube_interface, service_account.namespace)
+
         service_account.extra_confs = (
             PropertyFile.read(args.properties_file)
             if args.properties_file is not None

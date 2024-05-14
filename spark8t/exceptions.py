@@ -44,6 +44,20 @@ class AccountNotFound(ResourceNotFound):
         return f"Account {self.account} could not be found."
 
 
+class NamespaceNotFound(ResourceNotFound):
+    """Requested Spark account that does not exist."""
+
+    def __init__(self, namespace: str):
+        super().__init__(namespace)
+
+    @property
+    def namespace(self):
+        return self.resource_name
+
+    def __str__(self) -> str:
+        return f"Namespace {self.namespace} could not be found."
+
+
 class FormatError(SyntaxError):
     """Exception to be used when input provided by the user cannot be parsed."""
 

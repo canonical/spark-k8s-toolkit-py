@@ -324,6 +324,38 @@ def test_create_service_account_when_account_already_exists(service_account, bac
 
 
 @pytest.mark.parametrize("backend", VALID_BACKENDS)
+def test_create_service_account_when_namespace_does_not_exist(backend):
+    """Test creation of service account when the namespace does not exist."""
+    username = str(uuid.uuid4())
+    namespace = str(uuid.uuid4())
+    # Create the service account with same username again
+    stdout, _, ret_code = run_service_account_registry(
+        "create", "--username", username, "--namespace", namespace, "--backend", backend
+    )
+
+    assert ret_code == 0
+
+    stdout, _, ret_code = run_service_account_registry(
+        "delete", "--username", username, "--namespace", namespace, "--backend", backend
+    )
+
+    secret_result = subprocess.run(
+        [
+            "kubectl",
+            "delete",
+            "namespace",
+            namespace,
+            "-o",
+            "json",
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert secret_result.returncode == 0
+
+
+@pytest.mark.parametrize("backend", VALID_BACKENDS)
 def test_delete_service_account(service_account, backend):
     """Test deletion of service account using the CLI.
 
