@@ -344,9 +344,7 @@ def test_create_service_account_when_namespace_does_not_exist(backend):
             "kubectl",
             "delete",
             "namespace",
-            namespace,
-            "-o",
-            "json",
+            namespace
         ],
         check=True,
         capture_output=True,
