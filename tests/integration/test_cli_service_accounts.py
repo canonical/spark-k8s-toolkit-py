@@ -340,12 +340,7 @@ def test_create_service_account_when_namespace_does_not_exist(backend):
     )
 
     secret_result = subprocess.run(
-        [
-            "kubectl",
-            "delete",
-            "namespace",
-            namespace
-        ],
+        ["kubectl", "delete", "namespace", namespace],
         check=True,
         capture_output=True,
         text=True,
