@@ -61,7 +61,7 @@ Spark-accepted command-line parameters. However the following specific one has t
 spark.kubernetes.container.image=ghcr.io/canonical/charmed-spark:<version>
 ```
 
-(See the [Spark ROCK releases GitHub page](https://github.com/canonical/charmed-spark-rock/pkgs/container/charmed-spark) for available versions)
+(See the [Spark rock releases GitHub page](https://github.com/canonical/charmed-spark-rock/pkgs/container/charmed-spark) for available versions)
 
 Then you would need to assign the correct values for the following `spark8t` environment variables:
 
