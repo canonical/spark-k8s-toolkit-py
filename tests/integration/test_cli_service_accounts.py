@@ -352,13 +352,13 @@ def test_create_service_account_when_namespace_does_not_exist(backend):
     )
 
     # delete created namespace
-    secret_result = subprocess.run(
+    namespace_result = subprocess.run(
         ["kubectl", "delete", "namespace", namespace],
         check=True,
         capture_output=True,
         text=True,
     )
-    assert secret_result.returncode == 0
+    assert namespace_result.returncode == 0
 
 
 @pytest.mark.parametrize("backend", VALID_BACKENDS)
