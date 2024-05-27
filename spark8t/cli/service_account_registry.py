@@ -47,7 +47,7 @@ class Actions(str, Enum):
     LIST = "list"
 
 
-def create_namespace_if_needed(kube_interface: AbstractKubeInterface, namespace: str):
+def create_namespace_if_missing(kube_interface: AbstractKubeInterface, namespace: str):
     """Create namespace if does not exist."""
     if not kube_interface.exists(KubernetesResourceType.NAMESPACE, namespace):
         try:
@@ -133,8 +133,8 @@ def main(args: Namespace, logger: Logger):
     if args.action == Actions.CREATE:
         service_account = build_service_account_from_args(args, registry)
 
-        # check if namespace exist otherwise create it if permissions allowed.
-        create_namespace_if_needed(kube_interface, service_account.namespace)
+        # check if namespace exist otherwise create it if permissions allow it.
+        create_namespace_if_missing(kube_interface, service_account.namespace)
 
         service_account.extra_confs = (
             PropertyFile.read(args.properties_file)
