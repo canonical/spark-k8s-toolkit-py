@@ -26,9 +26,9 @@ create_service_account(){
 
 setup_test_pod() {
   NAMESPACE=$1
-  USERNAME= $2
+  USERNAME=$2
 
-  yq ea ".spec.serviceAccountName = \"${USERNAME}\"" \
+  yq ea ".spec.serviceAccount = \"${USERNAME}\"" \
     ./tests/resources/pod.yaml | \
     kubectl -n $NAMESPACE apply -f -
 
