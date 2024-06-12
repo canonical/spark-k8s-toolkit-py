@@ -45,7 +45,7 @@ class AccountNotFound(ResourceNotFound):
 
 
 class NamespaceNotFound(ResourceNotFound):
-    """Requested Spark account that does not exist."""
+    """Requested namespace that does not exist."""
 
     def __init__(self, namespace: str):
         super().__init__(namespace)

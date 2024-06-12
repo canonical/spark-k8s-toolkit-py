@@ -326,11 +326,11 @@ def test_create_service_account_when_account_already_exists(service_account, bac
 @pytest.mark.parametrize("backend", VALID_BACKENDS)
 def test_create_service_account_when_namespace_does_not_exist(backend):
     """Test creation of service account when the namespace does not exist."""
-    # Generate radonm username and namespace names
+    # Generate random username and namespace names
     username = str(uuid.uuid4())
     namespace = str(uuid.uuid4())
 
-    # Create the service account with same username again
+    # Create the service account in a non-existent namespace
     _, _, ret_code = run_service_account_registry(
         "create", "--username", username, "--namespace", namespace, "--backend", backend
     )
@@ -350,6 +350,8 @@ def test_create_service_account_when_namespace_does_not_exist(backend):
     _, _, ret_code = run_service_account_registry(
         "delete", "--username", username, "--namespace", namespace, "--backend", backend
     )
+
+    assert ret_code == 0
 
     # delete created namespace
     namespace_result = subprocess.run(

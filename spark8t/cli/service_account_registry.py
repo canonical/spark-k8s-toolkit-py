@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 
+import subprocess
 from argparse import ArgumentParser, Namespace
 from enum import Enum
 from logging import Logger
+
+from lightkube import ApiError
 
 from spark8t.cli.params import (
     add_config_arguments,
@@ -52,10 +55,15 @@ def create_namespace_if_missing(kube_interface: AbstractKubeInterface, namespace
     if not kube_interface.exists(KubernetesResourceType.NAMESPACE, namespace):
         try:
             kube_interface.create(KubernetesResourceType.NAMESPACE, namespace)
-        except Exception:
-            logger.warn(
-                f"Namespace {namespace} does not exist, and it could not be created."
-            )
+            print("HERE")
+        except ApiError as e:
+            if e.status.code == 401 or e.status.code == 403:
+                print(f"Namespace {namespace} can not be created.")
+                raise NamespaceNotFound(namespace)
+            else:
+                raise e
+        except subprocess.CalledProcessError:
+            print(f"Namespace {namespace} can not be created.")
             raise NamespaceNotFound(namespace)
 
 
