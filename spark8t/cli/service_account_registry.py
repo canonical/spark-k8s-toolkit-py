@@ -55,7 +55,6 @@ def create_namespace_if_missing(kube_interface: AbstractKubeInterface, namespace
     if not kube_interface.exists(KubernetesResourceType.NAMESPACE, namespace):
         try:
             kube_interface.create(KubernetesResourceType.NAMESPACE, namespace)
-            print("HERE")
         except ApiError as e:
             if e.status.code == 401 or e.status.code == 403:
                 print(f"Namespace {namespace} can not be created.")
