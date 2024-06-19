@@ -26,8 +26,11 @@ create_service_account(){
 
 setup_test_pod() {
   NAMESPACE=$1
+  USERNAME=$2
 
-  kubectl -n $NAMESPACE apply -f ./tests/resources/pod.yaml
+  yq ea ".spec.serviceAccount = \"${USERNAME}\"" \
+    ./tests/resources/pod.yaml | \
+    kubectl -n $NAMESPACE apply -f -
 
   SLEEP_TIME=1
   for i in {1..5}
@@ -74,9 +77,8 @@ check_service_accounts_in_pod() {
   echo -e "$(kubectl -n $NAMESPACE exec testpod -- env CMD="$CMD" /bin/bash -c 'python -m spark8t.cli.service_account_registry $CMD')" > spark8t.out
 
   out=$(/bin/bash -c "cat spark8t.out | $CHECK")
-
   if [ "${out}" != "${EXPECTED_RESULT}" ]; then
-      echo "ERROR: Wrong value of fetched Spark service accounts"
+      echo "ERROR: Expected value does not match"
       exit 1
   fi
 }
@@ -90,9 +92,9 @@ check_service_accounts_admin() {
   poetry run python -m spark8t.cli.service_account_registry $CMD > spark8t.out
 
   out=$(cat spark8t.out | $CHECK)
-
+ 
   if [ "${out}" != "${EXPECTED_RESULT}" ]; then
-      echo "ERROR: Wrong value of fetched Spark service accounts"
+      echo "ERROR:  Expected value does not match"
       exit 1
   fi
 }
@@ -128,7 +130,7 @@ cleanup_failure() {
   create_service_account spark test-2 && \
   check_service_accounts_admin "list --backend lightkube" "wc -l" "2" && \
   check_service_accounts_admin "list --backend kubectl" "wc -l" "2" && \
-  setup_test_pod test && \
+  setup_test_pod test spark && \
   check_service_accounts_in_pod "list --backend lightkube" "wc -l" "1" && \
   check_service_accounts_in_pod "list --backend kubectl" "wc -l" "1" && \
   cleanup_success test test-2 \
@@ -138,8 +140,20 @@ cleanup_failure() {
 ( \
   setup_env test && \
   create_service_account spark test && \
-  setup_test_pod test && \
+  setup_test_pod test spark && \
   check_service_accounts_in_pod "get-config --username spark --namespace test --backend lightkube" "grep spark.kubernetes | wc -l" "2" && \
   check_service_accounts_in_pod "get-config --username spark --namespace test --backend kubectl" "grep spark.kubernetes | wc -l" "2" && \
   cleanup_success test  \
 ) || cleanup_failure test
+
+# Test create spark account on a namespace that does not exist
+
+( \
+  kubectl create namespace test-namespace && \
+  kubectl apply -f ./tests/resources/namespace-exp.yaml && \
+  setup_test_pod test-namespace user1 && \
+  check_service_accounts_in_pod "create --username=u1 --namespace=abc --backend lightkube" "grep Namespace" "Namespace abc can not be created." && \
+  check_service_accounts_in_pod "create --username=u1 --namespace=abc --backend kubectl" "grep Namespace" "Namespace abc can not be created." && \
+  kubectl delete -f ./tests/resources/namespace-exp.yaml && \
+  cleanup_success test-namespace \
+) || cleanup_failure test-namespace
