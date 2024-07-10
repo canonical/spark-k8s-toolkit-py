@@ -240,7 +240,7 @@ def test_property_file_io():
     app_name = str(uuid.uuid4())
     test_config_w = dict()
     contents_java_options = (
-        f'-Dscala.shell.histfile = "{scala_hist_file} -Da=A -Db=B -Dc=C'
+        f"-Dscala.shell.histfile={scala_hist_file} -Da=A -Db=B -Dc=C"
     )
 
     test_config_w["spark.kubernetes.authenticate.driver.serviceAccountName"] = name
