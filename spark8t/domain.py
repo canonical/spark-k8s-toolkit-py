@@ -141,7 +141,7 @@ class PropertyFile(WithLogging):
     @staticmethod
     def _construct_options_string(options: Dict) -> str:
         output = " ".join(f"-D{k}={v}" for k, v in options.items())
-        return f'"{output}"'
+        return f"{output}"
 
     @classmethod
     def empty(cls) -> "PropertyFile":
