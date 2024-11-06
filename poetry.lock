@@ -554,13 +554,13 @@ i18n = ["Babel (>=2.7)"]
 
 [[package]]
 name = "lightkube"
-version = "0.15.4"
+version = "0.15.5"
 description = "Lightweight kubernetes client library"
 optional = false
 python-versions = "*"
 files = [
-    {file = "lightkube-0.15.4-py3-none-any.whl", hash = "sha256:7dde49694f2933b757ee6dfee0e028a56d7a13f47476bf54a21ec7cee343b09b"},
-    {file = "lightkube-0.15.4.tar.gz", hash = "sha256:fe7939f8da5b68d80809243c9abf601fca2e5425228bb02c2ad23ed3e56401a8"},
+    {file = "lightkube-0.15.5-py3-none-any.whl", hash = "sha256:0d93be743cbeae022d18a1d3fbb45d1df58f9a603ea0061237842658f68d93fd"},
+    {file = "lightkube-0.15.5.tar.gz", hash = "sha256:5edbfd1aee83398374179f41f4897519e8f89dc9754c866d40bbdc68c49c033f"},
 ]
 
 [package.dependencies]
