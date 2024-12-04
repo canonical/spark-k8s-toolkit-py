@@ -61,6 +61,6 @@ class SparkSession():
         return self.session
 
 
-    def __exit__(self, ):
+    def __exit__(self, *args, **kwargs):
         if self.session is not None:
             self.session.stop()
