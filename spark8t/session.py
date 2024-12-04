@@ -50,7 +50,7 @@ class SparkSession():
         if self.session is not None:
             return self.session
     
-        builder = pyspark.sql.SparkSession()\
+        builder = pyspark.sql.SparkSession\
                         .builder\
                         .appName(self.app_name)\
                         .master(f"k8s://{self._k8s_master}")
