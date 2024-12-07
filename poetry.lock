@@ -554,17 +554,17 @@ i18n = ["Babel (>=2.7)"]
 
 [[package]]
 name = "lightkube"
-version = "0.15.5"
+version = "0.15.6"
 description = "Lightweight kubernetes client library"
 optional = false
 python-versions = "*"
 files = [
-    {file = "lightkube-0.15.5-py3-none-any.whl", hash = "sha256:0d93be743cbeae022d18a1d3fbb45d1df58f9a603ea0061237842658f68d93fd"},
-    {file = "lightkube-0.15.5.tar.gz", hash = "sha256:5edbfd1aee83398374179f41f4897519e8f89dc9754c866d40bbdc68c49c033f"},
+    {file = "lightkube-0.15.6-py3-none-any.whl", hash = "sha256:295ae45aebb300dbb6014672ec794966505072378ec488096916009714384a04"},
+    {file = "lightkube-0.15.6.tar.gz", hash = "sha256:a12908bf2ec122bf0e0708c432af72af2c812dcedec1ba38ca65fca449b346ea"},
 ]
 
 [package.dependencies]
-httpx = ">=0.24.0"
+httpx = ">=0.24.0,<0.28.0 || >0.28.0,<1.0.0"
 lightkube-models = ">=1.15.12.0"
 PyYAML = "*"
 
@@ -828,20 +828,20 @@ files = [
 
 [[package]]
 name = "pyopenssl"
-version = "24.2.1"
+version = "24.3.0"
 description = "Python wrapper module around the OpenSSL library"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "pyOpenSSL-24.2.1-py3-none-any.whl", hash = "sha256:967d5719b12b243588573f39b0c677637145c7a1ffedcd495a487e58177fbb8d"},
-    {file = "pyopenssl-24.2.1.tar.gz", hash = "sha256:4247f0dbe3748d560dcbb2ff3ea01af0f9a1a001ef5f7c4c647956ed8cbf0e95"},
+    {file = "pyOpenSSL-24.3.0-py3-none-any.whl", hash = "sha256:e474f5a473cd7f92221cc04976e48f4d11502804657a08a989fb3be5514c904a"},
+    {file = "pyopenssl-24.3.0.tar.gz", hash = "sha256:49f7a019577d834746bc55c5fce6ecbcec0f2b4ec5ce1cf43a9a173b8138bb36"},
 ]
 
 [package.dependencies]
-cryptography = ">=41.0.5,<44"
+cryptography = ">=41.0.5,<45"
 
 [package.extras]
-docs = ["sphinx (!=5.2.0,!=5.2.0.post0,!=7.2.5)", "sphinx-rtd-theme"]
+docs = ["sphinx (!=5.2.0,!=5.2.0.post0,!=7.2.5)", "sphinx_rtd_theme"]
 test = ["pretend", "pytest (>=3.0.1)", "pytest-rerunfailures"]
 
 [[package]]
@@ -865,13 +865,13 @@ testing = ["covdefaults (>=2.3)", "pytest (>=8.3.3)", "pytest-cov (>=5)", "pytes
 
 [[package]]
 name = "pytest"
-version = "8.3.3"
+version = "8.3.4"
 description = "pytest: simple powerful testing with Python"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "pytest-8.3.3-py3-none-any.whl", hash = "sha256:a6853c7375b2663155079443d2e45de913a911a11d669df02a50814944db57b2"},
-    {file = "pytest-8.3.3.tar.gz", hash = "sha256:70b98107bd648308a7952b06e6ca9a50bc660be218d53c257cc1fc94fda10181"},
+    {file = "pytest-8.3.4-py3-none-any.whl", hash = "sha256:50e16d954148559c9a74109af1eaf0c945ba2d8f30f0a3d3335edde19788b6f6"},
+    {file = "pytest-8.3.4.tar.gz", hash = "sha256:965370d062bce11e73868e0335abac31b4d3de0e82f4007408d242b4f8610761"},
 ]
 
 [package.dependencies]
