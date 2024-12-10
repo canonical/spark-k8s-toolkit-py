@@ -319,7 +319,7 @@ class ServiceAccount:
     @property
     def configurations(self) -> PropertyFile:
         """Return the service account configuration, associated to a given spark service account."""
-        return self.extra_confs + self.integration_hub_confs + self._k8s_configurations
+        return self.integration_hub_confs + self.extra_confs + self._k8s_configurations
 
 
 class KubernetesResourceType(str, Enum):
