@@ -396,3 +396,21 @@ def test_in_memory_registry():
     }
     assert sa2.id, registry.set_configurations(sa2).id == PropertyFile(props=new_props)
     assert registry.get(sa2.id).extra_confs.props, new_props
+
+
+def test_extra_prop_overrides_hub():
+    # Given
+    apiserver = f"k8s://https://{str(uuid.uuid4())}:{str(uuid.uuid4())}"
+    sa = ServiceAccount(
+        name="name",
+        namespace="namespace",
+        api_server=apiserver,
+        extra_confs=PropertyFile(props={"spark.dummy.property": "extra_value"}),
+        integration_hub_confs=PropertyFile(props={"spark.dummy.property": "hub_value"}),
+    )
+
+    # When
+    configuration = sa.configurations
+
+    # Then
+    assert configuration.props.get("spark.dummy.property", "") == "extra_value"
