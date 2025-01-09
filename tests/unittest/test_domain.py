@@ -48,7 +48,7 @@ def test_defaults_kube_config():
 
     from spark8t.utils import environ
 
-    d = Defaults(dict())
+    d = Defaults({})
 
     assert d.kube_config is None
 
@@ -238,7 +238,7 @@ def test_property_file_io():
 
     scala_hist_file = str(uuid.uuid4())
     app_name = str(uuid.uuid4())
-    test_config_w = dict()
+    test_config_w = {}
     contents_java_options = (
         f"-Dscala.shell.histfile={scala_hist_file} -Da=A -Db=B -Dc=C"
     )

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""Service account module."""
 
 import subprocess
 from argparse import ArgumentParser, Namespace
@@ -31,6 +32,7 @@ from spark8t.utils import setup_logging
 
 
 def build_service_account_from_args(args, registry) -> ServiceAccount:
+    """Create service account resource interface."""
     return ServiceAccount(
         name=args.username,
         namespace=args.namespace,
@@ -40,6 +42,8 @@ def build_service_account_from_args(args, registry) -> ServiceAccount:
 
 
 class Actions(str, Enum):
+    """Service account CLI action."""
+
     CREATE = "create"
     DELETE = "delete"
     ADD_CONFIG = "add-config"
@@ -58,15 +62,16 @@ def create_namespace_if_missing(kube_interface: AbstractKubeInterface, namespace
         except ApiError as e:
             if e.status.code == 401 or e.status.code == 403:
                 print(f"Namespace {namespace} can not be created.")
-                raise NamespaceNotFound(namespace)
+                raise NamespaceNotFound(namespace) from None
             else:
                 raise e
-        except subprocess.CalledProcessError:
+        except subprocess.CalledProcessError as err:
             print(f"Namespace {namespace} can not be created.")
-            raise NamespaceNotFound(namespace)
+            raise NamespaceNotFound(namespace) from err
 
 
 def create_service_account_registry_parser(parser: ArgumentParser):
+    """Create parser for service account CLI."""
     base_parser = parse_arguments_with(
         [add_logging_arguments, k8s_parser],
         ArgumentParser(add_help=False),
@@ -128,6 +133,7 @@ def create_service_account_registry_parser(parser: ArgumentParser):
 
 
 def main(args: Namespace, logger: Logger):
+    """Service account main entrypoint."""
     kube_interface = get_kube_interface(args)
     context = args.context or kube_interface.context_name
 

@@ -1,3 +1,6 @@
+"""Package specific exception module."""
+
+
 class K8sClusterNotReachable(Exception):
     """Kubernetes cluster cannot be reached successfully by the client."""
 
@@ -27,6 +30,7 @@ class PrimaryAccountNotFound(ResourceNotFound):
         super().__init__("primary")
 
     def __str__(self) -> str:
+        """Str representation."""
         return "Primary account not found. Please create or tag an account as primary."
 
 
@@ -38,9 +42,11 @@ class AccountNotFound(ResourceNotFound):
 
     @property
     def account(self):
+        """Account name."""
         return self.resource_name
 
     def __str__(self) -> str:
+        """Str representation."""
         return f"Account {self.account} could not be found."
 
 
@@ -52,9 +58,11 @@ class NamespaceNotFound(ResourceNotFound):
 
     @property
     def namespace(self):
+        """Namespace denomination."""
         return self.resource_name
 
     def __str__(self) -> str:
+        """Str representation."""
         return f"Namespace {self.namespace} could not be found."
 
 

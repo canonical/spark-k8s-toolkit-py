@@ -1,4 +1,5 @@
 # mypy: ignore-errors
+"""K8s services module."""
 
 import base64
 import io
@@ -81,7 +82,7 @@ class AbstractKubeInterface(WithLogging, metaclass=ABCMeta):
 
     @cached_property
     def kube_config(self) -> KubeConfig:
-        """Return the kube config file parsed as a dictionary"""
+        """Return the kube config file parsed as a dictionary."""
         if not self.kube_config_file:
             return KubeConfig.from_env()
 
@@ -96,10 +97,12 @@ class AbstractKubeInterface(WithLogging, metaclass=ABCMeta):
 
     @cached_property
     def context_name(self) -> str:
+        """Interface context name."""
         return self._context_name or self.kube_config.current_context
 
     @cached_property
     def single_config(self) -> SingleConfig:
+        """Interface single config."""
         return self.kube_config.get(self.context_name)
 
     @cached_property
@@ -121,6 +124,7 @@ class AbstractKubeInterface(WithLogging, metaclass=ABCMeta):
     def get_service_account(
         self, account_id: str, namespace: Optional[str] = None
     ) -> Dict[str, Any]:
+        """Get service account."""
         pass
 
     @abstractmethod
@@ -163,7 +167,6 @@ class AbstractKubeInterface(WithLogging, metaclass=ABCMeta):
             resource_name: name of the resource to be labeled
             namespace: namespace where the resource is
         """
-
         pass
 
     @abstractmethod
@@ -182,7 +185,6 @@ class AbstractKubeInterface(WithLogging, metaclass=ABCMeta):
             label: label to be removed
             namespace: namespace where the resource is
         """
-
         pass
 
     @abstractmethod
@@ -205,7 +207,6 @@ class AbstractKubeInterface(WithLogging, metaclass=ABCMeta):
                         e.g. {"resource" : ["pods", "configmaps"]} which would translate to something like
                         --resource=pods --resource=configmaps
         """
-
         pass
 
     @abstractmethod
@@ -239,7 +240,7 @@ class AbstractKubeInterface(WithLogging, metaclass=ABCMeta):
         self,
         secret_name: str,
         namespace: Optional[str] = None,
-        configurations: PropertyFile = PropertyFile.empty(),
+        configurations: Optional[PropertyFile] = None,
     ) -> None:
         """Delete the content of the specified secret.
 
@@ -266,6 +267,7 @@ class AbstractKubeInterface(WithLogging, metaclass=ABCMeta):
         pass
 
     def select_by_master(self, master: str):
+        """Get a specific interface."""
         api_servers_clusters = {
             name: cluster.server for name, cluster in self.kube_config.clusters.items()
         }
@@ -293,6 +295,8 @@ class AbstractKubeInterface(WithLogging, metaclass=ABCMeta):
 
 
 class LightKube(AbstractKubeInterface):
+    """Lightkube interface."""
+
     _obj_mapping: dict[KubernetesResourceType, Type[GlobalResource]] = MappingProxyType(
         {
             KubernetesResourceType.ROLE: Role,
@@ -306,6 +310,7 @@ class LightKube(AbstractKubeInterface):
 
     @cached_property
     def client(self):
+        """Lightkube client."""
         return Client(config=self.single_config)
 
     def with_context(self, context_name: str):
@@ -324,7 +329,6 @@ class LightKube(AbstractKubeInterface):
         Args:
             namespace: namespace where to look for the service account. Default is 'default'
         """
-
         try:
             service_account = self.client.get(
                 res=LightKubeServiceAccount,
@@ -335,7 +339,7 @@ class LightKube(AbstractKubeInterface):
             if e.status.code == 404:
                 raise K8sResourceNotFound(
                     account_id, KubernetesResourceType.SERVICEACCOUNT
-                )
+                ) from None
             raise e
         except Exception as e:
             raise e
@@ -355,7 +359,7 @@ class LightKube(AbstractKubeInterface):
                        account in all namespaces
             labels: filter to be applied to retrieve service account which match certain labels.
         """
-        labels_to_pass = dict()
+        labels_to_pass = {}
         if labels:
             for entry in labels:
                 if not PropertyFile.is_line_parsable(entry):
@@ -419,19 +423,22 @@ class LightKube(AbstractKubeInterface):
                 buffer.seek(0)
                 secret = yaml.safe_load(buffer)
 
-                result = dict()
+                result = {}
                 if "data" in secret:
                     for k, v in secret["data"].items():
                         result[k] = base64.b64decode(v).decode("utf-8")
 
                 secret["data"] = result
                 return secret
-        except Exception:
-            raise K8sResourceNotFound(secret_name, KubernetesResourceType.SECRET)
+        except Exception as err:
+            raise K8sResourceNotFound(
+                secret_name, KubernetesResourceType.SECRET
+            ) from err
 
     def delete_secret_content(
         self, secret_name: str, namespace: Optional[str] = None
     ) -> None:
+        """Delete secret content."""
         if len(self.get_secret(secret_name, namespace)["data"]) == 0:
             self.logger.debug(
                 f"Secret: {secret_name} is already empty, no need to delete its content."
@@ -451,7 +458,7 @@ class LightKube(AbstractKubeInterface):
         self,
         secret_name: str,
         namespace: Optional[str] = None,
-        configurations: PropertyFile = PropertyFile.empty(),
+        configurations: Optional[PropertyFile] = None,
     ) -> None:
         """Delete the content of the specified secret.
 
@@ -460,6 +467,9 @@ class LightKube(AbstractKubeInterface):
             namespace: namespace where the secret is contained
             configurations: the desired configuration to insert
         """
+        if configurations is None:
+            configurations = PropertyFile.empty()
+
         patch = {"op": "add", "stringData": configurations.props}
         self.client.patch(res=Secret, namespace=namespace, name=secret_name, obj=patch)
 
@@ -477,7 +487,6 @@ class LightKube(AbstractKubeInterface):
             resource_name: name of the resource to be labeled
             namespace: namespace where the resource is
         """
-
         label_fragments = label.split("=")
         patch = {"metadata": {"labels": {label_fragments[0]: label_fragments[1]}}}
 
@@ -550,7 +559,8 @@ class LightKube(AbstractKubeInterface):
             )
 
     def create_property_file_entries(self, property_file_name) -> Dict[str, str]:
-        entries = dict()
+        """Create property file entries."""
+        entries = {}
         props = PropertyFile.read(property_file_name).props
         for k in props:
             entries[k] = base64.b64encode(str(props[k]).encode("ascii"))
@@ -575,7 +585,6 @@ class LightKube(AbstractKubeInterface):
                         e.g. {"resource" : ["pods", "configmaps"]} which would translate to something like
                         --resource=pods --resource=configmaps
         """
-
         res = None
         if resource_type == KubernetesResourceType.SERVICEACCOUNT:
             with open(self.defaults.template_serviceaccount) as f:
@@ -675,6 +684,7 @@ class LightKube(AbstractKubeInterface):
         resource_name: str,
         namespace: Optional[str] = None,
     ) -> bool:
+        """Check if resource exists."""
         try:
             if namespace is None:
                 obj = self.client.get(self._obj_mapping[resource_type], resource_name)
@@ -699,6 +709,7 @@ class KubeInterface(AbstractKubeInterface):
 
     @cached_property
     def kubectl_cmd(self):
+        """Kubectl command."""
         return self.defaults.kubectl_cmd
 
     def with_context(self, context_name: str):
@@ -731,7 +742,6 @@ class KubeInterface(AbstractKubeInterface):
         Returns:
             Output of the command, either parsed as yaml or string
         """
-
         cmd_list = [self.kubectl_cmd]
         if self.kube_config_file:
             cmd_list += [f"--kubeconfig {self.kube_config_file}"]
@@ -761,7 +771,6 @@ class KubeInterface(AbstractKubeInterface):
         Args:
             namespace: namespace where to look for the service account. Default is 'default'
         """
-
         cmd = f"get serviceaccount {account_id}"
 
         try:
@@ -770,7 +779,7 @@ class KubeInterface(AbstractKubeInterface):
             if "NotFound" in e.stdout.decode("utf-8"):
                 raise K8sResourceNotFound(
                     account_id, KubernetesResourceType.SERVICEACCOUNT
-                )
+                ) from None
             raise e
 
         if isinstance(service_account_raw, str):
@@ -805,7 +814,7 @@ class KubeInterface(AbstractKubeInterface):
             if "NotFound" in e.stdout.decode("utf-8"):
                 raise K8sResourceNotFound(
                     secret_name, KubernetesResourceType.SERVICEACCOUNT
-                )
+                ) from None
             raise e
 
         if isinstance(service_account_raw, str):
@@ -819,7 +828,7 @@ class KubeInterface(AbstractKubeInterface):
         self,
         secret_name: str,
         namespace: Optional[str] = None,
-        configurations: PropertyFile = PropertyFile.empty(),
+        configurations: Optional[PropertyFile] = None,
     ) -> None:
         """Add the content of the specified secret.
 
@@ -834,6 +843,9 @@ class KubeInterface(AbstractKubeInterface):
             secret_name: name of the secret.
             namespace: namespace where to look for the service account. Default is 'default'
         """
+        if configurations is None:
+            configurations = PropertyFile.empty()
+
         if len(configurations.props.keys()) == 0:
             self.logger.debug("Empty configuration! Nothing to write")
             return
@@ -845,7 +857,7 @@ class KubeInterface(AbstractKubeInterface):
             if "NotFound" in e.stdout.decode("utf-8"):
                 raise K8sResourceNotFound(
                     secret_name, KubernetesResourceType.SERVICEACCOUNT
-                )
+                ) from None
             raise e
 
         if isinstance(service_account_raw, str):
@@ -897,13 +909,15 @@ class KubeInterface(AbstractKubeInterface):
                 f"get secret {secret_name} --ignore-not-found",
                 namespace=namespace or self.namespace,
             )
-        except Exception:
-            raise K8sResourceNotFound(secret_name, KubernetesResourceType.SECRET)
+        except Exception as err:
+            raise K8sResourceNotFound(
+                secret_name, KubernetesResourceType.SECRET
+            ) from err
 
         if secret is None or len(secret) == 0 or isinstance(secret, str):
             raise K8sResourceNotFound(secret_name, KubernetesResourceType.SECRET)
 
-        result = dict()
+        result = {}
         # handle empty secret
         if "data" in secret:
             for k, v in secret["data"].items():
@@ -938,6 +952,7 @@ class KubeInterface(AbstractKubeInterface):
         label: str,
         namespace: Optional[str] = None,
     ):
+        """Remove label from to a specified resource."""
         self.exec(
             f"label {resource_type} {resource_name} {label}-",
             namespace=namespace or self.namespace,
@@ -1027,6 +1042,7 @@ class KubeInterface(AbstractKubeInterface):
         resource_name: str,
         namespace: Optional[str] = None,
     ) -> bool:
+        """Check if resource exists."""
         output = self.exec(
             f"get {resource_type} {resource_name} --ignore-not-found",
             namespace=namespace or self.namespace,
@@ -1035,7 +1051,7 @@ class KubeInterface(AbstractKubeInterface):
 
     @classmethod
     def autodetect(
-        cls, context_name: Optional[str] = None, defaults: Defaults = Defaults()
+        cls, context_name: Optional[str] = None, defaults: Optional[Defaults] = None
     ) -> "KubeInterface":
         """
         Return a KubeInterface object by auto-parsing the output of the kubectl command.
@@ -1044,7 +1060,8 @@ class KubeInterface(AbstractKubeInterface):
             context_name: context to be used to export the cluster configuration
             defaults: defaults coming from env variable
         """
-
+        if defaults is None:
+            defaults = Defaults()
         cmd = defaults.kubectl_cmd
 
         if context_name:
@@ -1206,7 +1223,6 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
         Args:
             account_id: account id to be elected as new primary account
         """
-
         # Relabeling primary
         primary_account = self.get_primary(namespace)
 
@@ -1338,7 +1354,7 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
         return serviceaccount
 
     def _create_account_secret(self, service_account: ServiceAccount):
-        """This function create the secret that will contain the user configurations."""
+        """Create the secret that will contain the user configurations."""
         secret_name = self._get_secret_name(service_account.name)
 
         self.kube_interface.create(
@@ -1381,7 +1397,6 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
             account_id: account id for which configuration ought to be set
             configurations: PropertyFile representing the new configuration to be stored
         """
-
         namespace, name = account_id.split(":")
         self._add_account_configuration(
             ServiceAccount(
@@ -1400,7 +1415,6 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
         Args:
             account_id: service account id to be deleted
         """
-
         namespace, name = account_id.split(":")
 
         rolename = name + "-role"
@@ -1444,6 +1458,7 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
         return account_id
 
     def get(self, account_id: str) -> Optional[ServiceAccount]:
+        """Get service account."""
         namespace, username = account_id.split(":")
         try:
             service_account_raw = self.kube_interface.get_service_account(
@@ -1455,6 +1470,8 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
 
 
 class InMemoryAccountRegistry(AbstractServiceAccountRegistry):
+    """In memory implementation for account registry."""
+
     def __init__(self, cache: Dict[str, ServiceAccount]):
         self.cache = cache
 
@@ -1482,14 +1499,13 @@ class InMemoryAccountRegistry(AbstractServiceAccountRegistry):
         Args:
             service_account: ServiceAccount to be stored in the registry
         """
-
         if (service_account.primary is True) and any(
-            [account.primary for account in self.all()]
+            account.primary for account in self.all()
         ):
             self.logger.info(
                 "Primary service account provided. Switching primary account from account"
             )
-            for account_id, account in self.cache.items():
+            for _account_id, account in self.cache.items():
                 if account.primary is True:
                     self.logger.debug(
                         f"Setting primary of account {account.id} to False"
@@ -1516,7 +1532,7 @@ class InMemoryAccountRegistry(AbstractServiceAccountRegistry):
         if account_id not in self.cache.keys():
             raise AccountNotFound(account_id)
 
-        if any([account.primary for account in self.all()]):
+        if any(account.primary for account in self.all()):
             self.logger.info("Switching primary account")
             for account in self.cache.values():
                 if account.primary is True:
@@ -1535,7 +1551,6 @@ class InMemoryAccountRegistry(AbstractServiceAccountRegistry):
             account_id: account id for which configuration ought to be set
             configurations: PropertyFile representing the new configuration to be stored
         """
-
         if account_id not in self.cache.keys():
             raise AccountNotFound(account_id)
 
@@ -1543,20 +1558,23 @@ class InMemoryAccountRegistry(AbstractServiceAccountRegistry):
         return account_id
 
     def get(self, account_id: str) -> Optional[ServiceAccount]:
+        """Get service account."""
         return self.cache.get(account_id)
 
 
 def parse_conf_overrides(
-    conf_args: List, environ_vars: Dict = dict(os.environ)
+    conf_args: List, environ_vars: Optional[Dict] = None
 ) -> PropertyFile:
-    """Parse --conf overrides passed to spark-submit
+    """Parse --conf overrides passed to spark-submit.
 
     Args:
         conf_args: list of all --conf 'k1=v1' type args passed to spark-submit.
             Note v1 expression itself could be containing '='
         environ_vars: dictionary with environment variables as key-value pairs
     """
-    conf_overrides = dict()
+    if environ_vars is None:
+        environ_vars = dict(os.environ)
+    conf_overrides = {}
     if conf_args:
         with environ(*os.environ.keys(), **environ_vars):
             for c in conf_args:
@@ -1565,15 +1583,17 @@ def parse_conf_overrides(
                     k = kv[0]
                     v = "=".join(kv[1:])
                     conf_overrides[k] = os.path.expandvars(v)
-                except IndexError:
+                except IndexError as err:
                     raise FormatError(
                         "Configuration related arguments parsing error. "
                         "Please check input arguments and try again."
-                    )
+                    ) from err
     return PropertyFile(conf_overrides)
 
 
 class SparkDeployMode(str, Enum):
+    """Spark deployment mode."""
+
     CLIENT = "client"
     CLUSTER = "cluster"
 
@@ -1676,7 +1696,6 @@ class SparkInterface(WithLogging):
             cli_property: property-file path provided via command line
             extra_args: extra arguments provided to spark shell
         """
-
         with umask_named_temporary_file(
             mode="w", prefix="spark-conf-", suffix=".conf"
         ) as t:
@@ -1733,7 +1752,6 @@ class SparkInterface(WithLogging):
             cli_property: property-file path provided via command line
             extra_args: extra arguments provided to pyspark
         """
-
         with umask_named_temporary_file(
             mode="w", prefix="spark-conf-", suffix=".conf"
         ) as t:
@@ -1787,7 +1805,6 @@ class SparkInterface(WithLogging):
             cli_property: property-file path provided via command line
             extra_args: extra arguments provided to pyspark
         """
-
         with umask_named_temporary_file(
             mode="w", prefix="spark-conf-", suffix=".conf"
         ) as t:
@@ -1829,6 +1846,7 @@ class SparkInterface(WithLogging):
                 os.system(submit_cmd)
 
     def prefix_optional_detected_driver_host(self, conf: PropertyFile):
+        """Get prefix for driver host."""
         spark_driver_host = self.detect_host()
         if spark_driver_host:
             return PropertyFile({"spark.driver.host": spark_driver_host}) + conf
@@ -1836,6 +1854,9 @@ class SparkInterface(WithLogging):
             return conf
 
     def detect_host(self) -> Any:
+        """Detect host from API server."""
+        host = None
+        port = None
         try:
             host = self.service_account.api_server.split(":")[1].split("/")[-1]
             port = (

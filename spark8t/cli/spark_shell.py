@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""Spark shell module."""
 
 import re
 from argparse import Namespace
@@ -22,6 +23,7 @@ from spark8t.utils import setup_logging
 
 
 def main(args: Namespace, logger: Logger):
+    """Shell main entrypoint."""
     kube_interface = get_kube_interface(args)
 
     registry = K8sServiceAccountRegistry(

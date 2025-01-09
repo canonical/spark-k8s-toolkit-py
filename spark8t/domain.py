@@ -1,3 +1,5 @@
+"""Domain module."""
+
 import io
 import os
 import re
@@ -54,6 +56,7 @@ class PropertyFile(WithLogging):
 
     @staticmethod
     def parse_property_line(line: str) -> Tuple[str, str]:
+        """Parse a single configuration line."""
         prop_assignment = list(filter(None, re.split("=| ", line.strip())))
         prop_key = prop_assignment[0].strip()
         option_assignment = line.split("=", 1)
@@ -67,7 +70,7 @@ class PropertyFile(WithLogging):
         Args:
             name: file name to be read
         """
-        defaults = dict()
+        defaults = {}
         with open(name) as f:
             for line in f:
                 # skip empty or commented line
@@ -107,7 +110,6 @@ class PropertyFile(WithLogging):
             log_func: callable to specify another custom printer function. Default uses the class logger with an
                       INFO level.
         """
-
         printer = (lambda msg: self.logger.info(msg)) if log_func is None else log_func
 
         for k, v in self.props.items():
@@ -116,7 +118,7 @@ class PropertyFile(WithLogging):
 
     @classmethod
     def _parse_options(cls, options_string: Optional[str]) -> Dict:
-        options: Dict[str, str] = dict()
+        options: Dict[str, str] = {}
 
         if not options_string:
             return options
@@ -146,9 +148,10 @@ class PropertyFile(WithLogging):
     @classmethod
     def empty(cls) -> "PropertyFile":
         """Return an empty property file object."""
-        return PropertyFile(dict())
+        return PropertyFile({})
 
     def __add__(self, other: "PropertyFile"):
+        """Addition operator override."""
         return self.union([other])
 
     def union(self, others: List["PropertyFile"]) -> "PropertyFile":
@@ -175,7 +178,6 @@ class PropertyFile(WithLogging):
         Args:
             keys_or_pairs: List of keys to be removed from properties.
         """
-
         keys_to_remove = set()
         for key_or_pair in keys_or_pairs:
             key, *value_list = key_or_pair.split("=")
@@ -193,25 +195,29 @@ class PropertyFile(WithLogging):
 class Defaults:
     """Class containing all relevant defaults for the application."""
 
-    def __init__(self, environ: Dict = dict(os.environ)):
-        """Initialize a Defaults class using the value contained in a dictionary
+    def __init__(self, environ: Optional[Dict] = None):
+        """Initialize a Defaults class using the value contained in a dictionary.
 
         Args:
             environ: dictionary representing the environment. Default uses the os.environ key-value pairs.
         """
-
+        if environ is None:
+            environ = dict(os.environ)
         self.environ = environ if environ is not None else {}
 
     @property
     def spark_home(self):
+        """Spark home directory path."""
         return self.environ["SPARK_HOME"]
 
     @property
     def spark_confs(self):
+        """Spark configuration directory path."""
         return self.environ.get("SPARK_CONFS", os.path.join(self.spark_home, "conf"))
 
     @property
     def kubernetes_api(self):
+        """K8s api endpoint."""
         return (
             f"https://{self.environ['KUBERNETES_SERVICE_HOST']}:"
             + f"{self.environ['KUBERNETES_SERVICE_PORT']}"
@@ -219,6 +225,7 @@ class Defaults:
 
     @property
     def spark_user_data(self):
+        """User data path."""
         return self.environ["SPARK_USER_DATA"]
 
     @property
@@ -244,50 +251,62 @@ class Defaults:
 
     @property
     def service_account(self):
+        """Spark service account."""
         return "spark"
 
     @property
     def namespace(self):
+        """Spark operating namespace."""
         return "defaults"
 
     @property
     def scala_history_file(self):
+        """Scala history file path."""
         return f"{self.spark_user_data}/.scala_history"
 
     @property
     def spark_submit(self) -> str:
+        """spark-submit binary path."""
         return f"{self.spark_home}/bin/spark-submit"
 
     @property
     def spark_shell(self) -> str:
+        """spark-shell binary path."""
         return f"{self.spark_home}/bin/spark-shell"
 
     @property
     def pyspark(self) -> str:
+        """Pyspark binary path."""
         return f"{self.spark_home}/bin/pyspark"
 
     @property
     def spark_sql(self) -> str:
+        """spark-sql binary path."""
         return f"{self.spark_home}/bin/spark-sql"
 
     @property
     def dir_package(self) -> str:
+        """Package directory path."""
         return os.path.dirname(__file__)
 
     @property
     def template_dir(self) -> str:
+        """Template directory path."""
         return f"{self.dir_package}/resources/templates"
 
     @property
     def template_serviceaccount(self) -> str:
+        """Service account template path."""
         return f"{self.template_dir}/serviceaccount_yaml.tmpl"
 
     @property
     def template_role(self) -> str:
+        """Role template path."""
         return f"{self.template_dir}/role_yaml.tmpl"
 
     @property
     def template_rolebinding(self) -> str:
+        """Rolebinding template path."""
         return f"{self.template_dir}/rolebinding_yaml.tmpl"
 
 
@@ -323,6 +342,8 @@ class ServiceAccount:
 
 
 class KubernetesResourceType(str, Enum):
+    """Kubernetes resource."""
+
     SERVICEACCOUNT = "serviceaccount"
     ROLE = "role"
     ROLEBINDING = "rolebinding"
