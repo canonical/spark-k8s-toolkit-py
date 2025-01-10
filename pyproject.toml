@@ -41,6 +41,7 @@ pytest-cov = ">=3.0"
 pytest = ">=6.2"
 pytest-mock = ">=3.10"
 pyOpenSSL = ">=23.1.1"
+tox = "^4.23.2"
 
 [tool.poetry.group.integration]
 optional = true
@@ -48,6 +49,7 @@ optional = true
 [tool.poetry.group.integration.dependencies]
 pytest-cov = ">=3.0"
 pytest = ">=6.2"
+tox = "^4.23.2"
 
 [build-system]
 requires = ["poetry-core"]
