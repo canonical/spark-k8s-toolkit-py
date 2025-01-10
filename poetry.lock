@@ -769,12 +769,8 @@ filelock = ">=3.0"
 mypy = [
     {version = ">=0.900", markers = "python_version >= \"3.11\""},
     {version = ">=0.780", markers = "python_version >= \"3.9\" and python_version < \"3.11\""},
-    {version = ">=0.700", markers = "python_version >= \"3.8\" and python_version < \"3.9\""},
 ]
-pytest = [
-    {version = ">=6.2", markers = "python_version >= \"3.10\""},
-    {version = ">=4.6", markers = "python_version >= \"3.6\" and python_version < \"3.10\""},
-]
+pytest = {version = ">=6.2", markers = "python_version >= \"3.10\""}
 
 [[package]]
 name = "pyyaml"
@@ -937,5 +933,5 @@ markers = {main = "python_version < \"3.11\""}
 
 [metadata]
 lock-version = "2.1"
-python-versions = ">3.8,<4.0"
-content-hash = "33726f9b366f24a88607555785eee629dd214f2e8a62c37aa641759a1647810e"
+python-versions = ">=3.10,<4.0"
+content-hash = "90c696b6b8802537f6c9d55c3717e5e180112459e004bc590c4bc21407a4231d"
