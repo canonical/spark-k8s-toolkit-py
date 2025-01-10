@@ -11,24 +11,13 @@ from copy import deepcopy as copy
 from functools import reduce
 from logging import Logger, config, getLogger
 from tempfile import NamedTemporaryFile
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    List,
-    Literal,
-    Mapping,
-    Optional,
-    TypedDict,
-    TypeVar,
-    Union,
-)
+from typing import Any, Callable, Literal, Mapping, TypedDict, TypeVar, TypeAlias
 from urllib.parse import quote, unquote
 
 import yaml
 from envyaml import EnvYAML
 
-PathLike = Union[str, "os.PathLike[str]"]
+PathLike: TypeAlias = str | os.PathLike[str]
 
 LevelTypes = Literal[
     "CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG", "NOTSET", 50, 40, 30, 20, 10, 0
@@ -132,7 +121,7 @@ class WithLogging:
         return getLogger(nameLogger)
 
     def logResult(
-        self, msg: Union[Callable[..., str], str], level: StrLevelTypes = "INFO"
+        self, msg: Callable[..., str] | str, level: StrLevelTypes = "INFO"
     ) -> Callable[..., Any]:
         """Return a decorator to allow logging of inputs/outputs.
 
@@ -152,7 +141,7 @@ class WithLogging:
 
 
 def setup_logging(
-    log_level: str, config_file: Optional[str] = None, logger_name: Optional[str] = None
+    log_level: str, config_file: str | None = None, logger_name: str | None = None
 ) -> logging.Logger:
     """Set up logging from configuration file."""
     with environ(LOG_LEVEL=log_level) as _:
@@ -193,11 +182,11 @@ def union(*dicts: dict) -> dict:
     return reduce(__dict_merge, dicts)
 
 
-def _check(value: Optional[T]) -> bool:
+def _check(value: Any) -> bool:
     return False if value is None else True
 
 
-def filter_none(_dict: Dict[T, Any]) -> Dict[T, Any]:
+def filter_none(_dict: dict[T, Any]) -> dict[T, Any]:
     """
     Return a dictionary where the key,value pairs are filtered where the value is None.
 
@@ -248,7 +237,7 @@ def create_dir_if_not_exists(directory: PathLike) -> PathLike:
     return directory
 
 
-def parse_yaml_shell_output(cmd: str) -> Union[Dict[str, Any], str]:
+def parse_yaml_shell_output(cmd: str) -> dict[str, Any] | str:
     """
     Execute command and parse output as YAML.
 
@@ -321,7 +310,7 @@ def environ(*remove, **update):
         env.update(update_after)
 
 
-def listify(value: Any) -> List[str]:
+def listify(value: Any) -> list[str]:
     """Flatten potentially nested structure."""
     return [str(v) for v in value] if isinstance(value, list) else [str(value)]
 

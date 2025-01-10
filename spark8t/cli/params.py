@@ -2,7 +2,7 @@
 
 import logging
 from argparse import ArgumentParser, Namespace
-from typing import Callable, List, Optional
+from typing import Callable
 
 from spark8t.cli import defaults
 from spark8t.services import AbstractKubeInterface, KubeInterface, LightKube
@@ -10,8 +10,8 @@ from spark8t.utils import DEFAULT_LOGGING_FILE, config_from_file, environ
 
 
 def parse_arguments_with(
-    parsers: List[Callable[[ArgumentParser], ArgumentParser]],
-    base_parser: Optional[ArgumentParser] = None,
+    parsers: list[Callable[[ArgumentParser], ArgumentParser]],
+    base_parser: ArgumentParser | None = None,
 ):
     """
     Specify a chain of parsers to help parse the list of arguments to main.
@@ -154,7 +154,7 @@ def get_kube_interface(args: Namespace) -> AbstractKubeInterface:
 
 
 def setup_logging(
-    log_level: str, config_file: Optional[str], logger_name: Optional[str] = None
+    log_level: str, config_file: str | None, logger_name: str | None = None
 ) -> logging.Logger:
     """Set up logging from configuration file."""
     with environ(LOG_LEVEL=log_level) as _:

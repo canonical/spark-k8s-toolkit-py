@@ -4,7 +4,6 @@
 import re
 from argparse import Namespace
 from logging import Logger
-from typing import Optional
 
 from spark8t.cli.params import (
     add_config_arguments,
@@ -32,7 +31,7 @@ def main(args: Namespace, logger: Logger):
         else kube_interface
     )
 
-    service_account: Optional[ServiceAccount] = (
+    service_account: ServiceAccount | None = (
         registry.get_primary()
         if args.username is None and args.namespace is None
         else registry.get(f"{args.namespace or 'default'}:{args.username or 'spark'}")

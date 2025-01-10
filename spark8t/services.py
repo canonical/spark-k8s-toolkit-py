@@ -1,6 +1,8 @@
 # mypy: ignore-errors
 """K8s services module."""
 
+from __future__ import annotations
+
 import base64
 import io
 import json
@@ -11,12 +13,11 @@ from abc import ABC, ABCMeta, abstractmethod
 from enum import Enum
 from functools import cached_property
 from types import MappingProxyType
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any
 
 import yaml
 from lightkube import Client, KubeConfig, SingleConfig, codecs
 from lightkube.core.exceptions import ApiError
-from lightkube.core.resource import GlobalResource
 from lightkube.models.meta_v1 import ObjectMeta
 from lightkube.resources.core_v1 import Namespace, Secret
 from lightkube.resources.core_v1 import ServiceAccount as LightKubeServiceAccount
@@ -58,9 +59,9 @@ class AbstractKubeInterface(WithLogging, metaclass=ABCMeta):
 
     def __init__(
         self,
-        kube_config_file: Union[None, str, Dict[str, Any]],
+        kube_config_file: str | dict[str, Any] | None,
         defaults: Defaults,
-        context_name: Optional[str] = None,
+        context_name: str | None = None,
     ):
         """Initialise a KubeInterface class from a kube config file.
 
@@ -122,15 +123,15 @@ class AbstractKubeInterface(WithLogging, metaclass=ABCMeta):
 
     @abstractmethod
     def get_service_account(
-        self, account_id: str, namespace: Optional[str] = None
-    ) -> Dict[str, Any]:
+        self, account_id: str, namespace: str | None = None
+    ) -> dict[str, Any]:
         """Get service account."""
         pass
 
     @abstractmethod
     def get_service_accounts(
-        self, namespace: Optional[str] = None, labels: Optional[List[str]] = None
-    ) -> List[Dict[str, Any]]:
+        self, namespace: str | None = None, labels: list[str] | None = None
+    ) -> list[dict[str, Any]]:
         """Return a list of service accounts, represented as dictionary.
 
         Args:
@@ -142,8 +143,8 @@ class AbstractKubeInterface(WithLogging, metaclass=ABCMeta):
 
     @abstractmethod
     def get_secret(
-        self, secret_name: str, namespace: Optional[str] = None
-    ) -> Dict[str, Any]:
+        self, secret_name: str, namespace: str | None = None
+    ) -> dict[str, Any]:
         """Return the data contained in the specified secret.
 
         Args:
@@ -158,7 +159,7 @@ class AbstractKubeInterface(WithLogging, metaclass=ABCMeta):
         resource_type: KubernetesResourceType,
         resource_name: str,
         label: str,
-        namespace: Optional[str] = None,
+        namespace: str | None = None,
     ):
         """Set label to a specified resource (type and name).
 
@@ -175,7 +176,7 @@ class AbstractKubeInterface(WithLogging, metaclass=ABCMeta):
         resource_type: KubernetesResourceType,
         resource_name: str,
         label: str,
-        namespace: Optional[str] = None,
+        namespace: str | None = None,
     ):
         """Remove label to a specified resource (type and name).
 
@@ -192,7 +193,7 @@ class AbstractKubeInterface(WithLogging, metaclass=ABCMeta):
         self,
         resource_type: KubernetesResourceType,
         resource_name: str,
-        namespace: Optional[str] = None,
+        namespace: str | None = None,
         **extra_args,
     ):
         """Create a K8s resource.
@@ -214,7 +215,7 @@ class AbstractKubeInterface(WithLogging, metaclass=ABCMeta):
         self,
         resource_type: KubernetesResourceType,
         resource_name: str,
-        namespace: Optional[str] = None,
+        namespace: str | None = None,
     ):
         """Delete a K8s resource.
 
@@ -226,7 +227,7 @@ class AbstractKubeInterface(WithLogging, metaclass=ABCMeta):
         pass
 
     def delete_secret_content(
-        self, secret_name: str, namespace: Optional[str] = None
+        self, secret_name: str, namespace: str | None = None
     ) -> None:
         """Delete the content of the specified secret.
 
@@ -239,8 +240,8 @@ class AbstractKubeInterface(WithLogging, metaclass=ABCMeta):
     def add_secret_content(
         self,
         secret_name: str,
-        namespace: Optional[str] = None,
-        configurations: Optional[PropertyFile] = None,
+        namespace: str | None = None,
+        configurations: PropertyFile | None = None,
     ) -> None:
         """Delete the content of the specified secret.
 
@@ -255,7 +256,7 @@ class AbstractKubeInterface(WithLogging, metaclass=ABCMeta):
         self,
         resource_type: KubernetesResourceType,
         resource_name: str,
-        namespace: Optional[str] = None,
+        namespace: str | None = None,
     ) -> bool:
         """Check if a K8s resource exists.
 
@@ -297,7 +298,7 @@ class AbstractKubeInterface(WithLogging, metaclass=ABCMeta):
 class LightKube(AbstractKubeInterface):
     """Lightkube interface."""
 
-    _obj_mapping: dict[KubernetesResourceType, Type[GlobalResource]] = MappingProxyType(
+    _obj_mapping = MappingProxyType(
         {
             KubernetesResourceType.ROLE: Role,
             KubernetesResourceType.SERVICEACCOUNT: LightKubeServiceAccount,
@@ -322,8 +323,8 @@ class LightKube(AbstractKubeInterface):
         return LightKube(self.kube_config_file, self.defaults, context_name)
 
     def get_service_account(
-        self, account_id: str, namespace: Optional[str] = None
-    ) -> Dict[str, Any]:
+        self, account_id: str, namespace: str | None = None
+    ) -> dict[str, Any]:
         """Return the  named service account entry.
 
         Args:
@@ -350,8 +351,8 @@ class LightKube(AbstractKubeInterface):
             return yaml.safe_load(buffer)
 
     def get_service_accounts(
-        self, namespace: Optional[str] = None, labels: Optional[List[str]] = None
-    ) -> List[Dict[str, Any]]:
+        self, namespace: str | None = None, labels: list[str] | None = None
+    ) -> list[dict[str, Any]]:
         """Return a list of service accounts, represented as dictionary.
 
         Args:
@@ -402,8 +403,8 @@ class LightKube(AbstractKubeInterface):
         return result
 
     def get_secret(
-        self, secret_name: str, namespace: Optional[str] = None
-    ) -> Dict[str, Any]:
+        self, secret_name: str, namespace: str | None = None
+    ) -> dict[str, Any]:
         """Return the data contained in the specified secret.
 
         Args:
@@ -436,7 +437,7 @@ class LightKube(AbstractKubeInterface):
             ) from err
 
     def delete_secret_content(
-        self, secret_name: str, namespace: Optional[str] = None
+        self, secret_name: str, namespace: str | None = None
     ) -> None:
         """Delete secret content."""
         if len(self.get_secret(secret_name, namespace)["data"]) == 0:
@@ -457,8 +458,8 @@ class LightKube(AbstractKubeInterface):
     def add_secret_content(
         self,
         secret_name: str,
-        namespace: Optional[str] = None,
-        configurations: Optional[PropertyFile] = None,
+        namespace: str | None = None,
+        configurations: PropertyFile | None = None,
     ) -> None:
         """Delete the content of the specified secret.
 
@@ -478,7 +479,7 @@ class LightKube(AbstractKubeInterface):
         resource_type: KubernetesResourceType,
         resource_name: str,
         label: str,
-        namespace: Optional[str] = None,
+        namespace: str | None = None,
     ):
         """Set label to a specified resource (type and name).
 
@@ -515,7 +516,7 @@ class LightKube(AbstractKubeInterface):
         resource_type: KubernetesResourceType,
         resource_name: str,
         label: str,
-        namespace: Optional[str] = None,
+        namespace: str | None = None,
     ):
         """Remove label to a specified resource (type and name).
 
@@ -558,7 +559,7 @@ class LightKube(AbstractKubeInterface):
                 f"Label setting for resource name {resource_type} not supported yet."
             )
 
-    def create_property_file_entries(self, property_file_name) -> Dict[str, str]:
+    def create_property_file_entries(self, property_file_name) -> dict[str, str]:
         """Create property file entries."""
         entries = {}
         props = PropertyFile.read(property_file_name).props
@@ -570,7 +571,7 @@ class LightKube(AbstractKubeInterface):
         self,
         resource_type: KubernetesResourceType,
         resource_name: str,
-        namespace: Optional[str] = None,
+        namespace: str | None = None,
         **extra_args,
     ):
         """Create a K8s resource.
@@ -649,7 +650,7 @@ class LightKube(AbstractKubeInterface):
         self,
         resource_type: KubernetesResourceType,
         resource_name: str,
-        namespace: Optional[str] = None,
+        namespace: str | None = None,
     ):
         """Delete a K8s resource.
 
@@ -682,7 +683,7 @@ class LightKube(AbstractKubeInterface):
         self,
         resource_type: KubernetesResourceType,
         resource_name: str,
-        namespace: Optional[str] = None,
+        namespace: str | None = None,
     ) -> bool:
         """Check if resource exists."""
         try:
@@ -699,7 +700,7 @@ class LightKube(AbstractKubeInterface):
             return obj is not None
 
         except ApiError as e:
-            if "not found" in e.status.message:
+            if "not found" in str(e.status.message):
                 return False
             raise e
 
@@ -723,10 +724,10 @@ class KubeInterface(AbstractKubeInterface):
     def exec(
         self,
         cmd: str,
-        namespace: Optional[str] = None,
-        context: Optional[str] = None,
-        output: Optional[str] = None,
-    ) -> Union[str, Dict[str, Any]]:
+        namespace: str | None = None,
+        context: str | None = None,
+        output: str | None = None,
+    ) -> str | dict[str, Any]:
         """Execute command provided as a string.
 
         Args:
@@ -765,7 +766,7 @@ class KubeInterface(AbstractKubeInterface):
 
     def get_service_account(
         self, account_id: str, namespace: str = "default"
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Return the  named service account entry.
 
         Args:
@@ -792,7 +793,7 @@ class KubeInterface(AbstractKubeInterface):
         return service_account_raw
 
     def delete_secret_content(
-        self, secret_name: str, namespace: Optional[str] = None
+        self, secret_name: str, namespace: str | None = None
     ) -> None:
         """Delete the content of the secret name entry.
 
@@ -827,8 +828,8 @@ class KubeInterface(AbstractKubeInterface):
     def add_secret_content(
         self,
         secret_name: str,
-        namespace: Optional[str] = None,
-        configurations: Optional[PropertyFile] = None,
+        namespace: str | None = None,
+        configurations: PropertyFile | None = None,
     ) -> None:
         """Add the content of the specified secret.
 
@@ -868,8 +869,8 @@ class KubeInterface(AbstractKubeInterface):
         self.logger.debug(service_account_raw)
 
     def get_service_accounts(
-        self, namespace: Optional[str] = None, labels: Optional[List[str]] = None
-    ) -> List[Dict[str, Any]]:
+        self, namespace: str | None = None, labels: list[str] | None = None
+    ) -> list[dict[str, Any]]:
         """Return a list of service accounts, represented as dictionary.
 
         Args:
@@ -896,8 +897,8 @@ class KubeInterface(AbstractKubeInterface):
         return all_service_accounts_raw["items"]
 
     def get_secret(
-        self, secret_name: str, namespace: Optional[str] = None
-    ) -> Dict[str, Any]:
+        self, secret_name: str, namespace: str | None = None
+    ) -> dict[str, Any]:
         """Return the data contained in the specified secret.
 
         Args:
@@ -931,7 +932,7 @@ class KubeInterface(AbstractKubeInterface):
         resource_type: str,
         resource_name: str,
         label: str,
-        namespace: Optional[str] = None,
+        namespace: str | None = None,
     ):
         """Set label to a specified resource (type and name).
 
@@ -950,7 +951,7 @@ class KubeInterface(AbstractKubeInterface):
         resource_type: str,
         resource_name: str,
         label: str,
-        namespace: Optional[str] = None,
+        namespace: str | None = None,
     ):
         """Remove label from to a specified resource."""
         self.exec(
@@ -962,7 +963,7 @@ class KubeInterface(AbstractKubeInterface):
         self,
         resource_type: str,
         resource_name: str,
-        namespace: Optional[str] = None,
+        namespace: str | None = None,
         **extra_args,
     ):
         """Create a K8s resource.
@@ -1021,7 +1022,7 @@ class KubeInterface(AbstractKubeInterface):
             )
 
     def delete(
-        self, resource_type: str, resource_name: str, namespace: Optional[str] = None
+        self, resource_type: str, resource_name: str, namespace: str | None = None
     ):
         """Delete a K8s resource.
 
@@ -1040,7 +1041,7 @@ class KubeInterface(AbstractKubeInterface):
         self,
         resource_type: KubernetesResourceType,
         resource_name: str,
-        namespace: Optional[str] = None,
+        namespace: str | None = None,
     ) -> bool:
         """Check if resource exists."""
         output = self.exec(
@@ -1051,7 +1052,7 @@ class KubeInterface(AbstractKubeInterface):
 
     @classmethod
     def autodetect(
-        cls, context_name: Optional[str] = None, defaults: Optional[Defaults] = None
+        cls, context_name: str | None = None, defaults: Defaults | None = None
     ) -> "KubeInterface":
         """
         Return a KubeInterface object by auto-parsing the output of the kubectl command.
@@ -1076,7 +1077,7 @@ class AbstractServiceAccountRegistry(WithLogging, ABC):
     """Abstract class for implementing service that manages spark ServiceAccount resources."""
 
     @abstractmethod
-    def all(self, namespace: Optional[str] = None) -> List["ServiceAccount"]:
+    def all(self, namespace: str | None = None) -> list[ServiceAccount]:
         """Return all existing service accounts."""
         pass
 
@@ -1109,7 +1110,7 @@ class AbstractServiceAccountRegistry(WithLogging, ABC):
         pass
 
     @abstractmethod
-    def set_primary(self, account_id: str, namespace: Optional[str]) -> Optional[str]:
+    def set_primary(self, account_id: str, namespace: str | None) -> str | None:
         """Set the primary account to the one related to the provided account id.
 
         Args:
@@ -1117,7 +1118,7 @@ class AbstractServiceAccountRegistry(WithLogging, ABC):
         """
         pass
 
-    def get_primary(self, namespace: Optional[str] = None) -> Optional[ServiceAccount]:
+    def get_primary(self, namespace: str | None = None) -> ServiceAccount | None:
         """Return the primary service account. None is there is no primary service account."""
         all_accounts = self.all(namespace)
 
@@ -1142,7 +1143,7 @@ class AbstractServiceAccountRegistry(WithLogging, ABC):
         return primary_accounts[0]
 
     @abstractmethod
-    def get(self, account_id: str) -> Optional[ServiceAccount]:
+    def get(self, account_id: str) -> ServiceAccount | None:
         """Return the service account associated with the provided account id. None if no account was found.
 
         Args:
@@ -1159,7 +1160,7 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
     def __init__(self, kube_interface: AbstractKubeInterface):
         self.kube_interface = kube_interface
 
-    def all(self, namespace: Optional[str] = None) -> List["ServiceAccount"]:
+    def all(self, namespace: str | None = None) -> list[ServiceAccount]:
         """Return all existing service accounts."""
         service_accounts = self.kube_interface.get_service_accounts(
             namespace=namespace, labels=[f"{MANAGED_BY_LABELNAME}={SPARK8S_LABEL}"]
@@ -1194,7 +1195,7 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
             }
         )
 
-    def _build_service_account_from_raw(self, metadata: Dict[str, Any]):
+    def _build_service_account_from_raw(self, metadata: dict[str, Any]):
         name = metadata["name"]
         namespace = metadata["namespace"]
         primary = PRIMARY_LABELNAME in metadata["labels"]
@@ -1215,9 +1216,7 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
             ),
         )
 
-    def set_primary(
-        self, account_id: str, namespace: Optional[str] = None
-    ) -> Optional[str]:
+    def set_primary(self, account_id: str, namespace: str | None = None) -> str | None:
         """Set the primary account to the one related to the provided account id.
 
         Args:
@@ -1457,7 +1456,7 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
 
         return account_id
 
-    def get(self, account_id: str) -> Optional[ServiceAccount]:
+    def get(self, account_id: str) -> ServiceAccount | None:
         """Get service account."""
         namespace, username = account_id.split(":")
         try:
@@ -1472,7 +1471,7 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
 class InMemoryAccountRegistry(AbstractServiceAccountRegistry):
     """In memory implementation for account registry."""
 
-    def __init__(self, cache: Dict[str, ServiceAccount]):
+    def __init__(self, cache: dict[str, ServiceAccount]):
         self.cache = cache
 
         self._consistency_check()
@@ -1485,7 +1484,7 @@ class InMemoryAccountRegistry(AbstractServiceAccountRegistry):
                 "There exists more than one primary in the service account registry."
             )
 
-    def all(self, namespace: Optional[str] = None) -> List["ServiceAccount"]:
+    def all(self, namespace: str | None = None) -> list[ServiceAccount]:
         """Return all existing service accounts."""
         return [
             service_account
@@ -1523,7 +1522,7 @@ class InMemoryAccountRegistry(AbstractServiceAccountRegistry):
         """
         return self.cache.pop(account_id).id
 
-    def set_primary(self, account_id: str, namespace: Optional[str] = None) -> str:
+    def set_primary(self, account_id: str, namespace: str | None = None) -> str:
         """Set the primary account to the one related to the provided account id.
 
         Args:
@@ -1557,13 +1556,13 @@ class InMemoryAccountRegistry(AbstractServiceAccountRegistry):
         self.cache[account_id].extra_confs = configurations
         return account_id
 
-    def get(self, account_id: str) -> Optional[ServiceAccount]:
+    def get(self, account_id: str) -> ServiceAccount | None:
         """Get service account."""
         return self.cache.get(account_id)
 
 
 def parse_conf_overrides(
-    conf_args: List, environ_vars: Optional[Dict] = None
+    conf_args: list, environ_vars: dict | None = None
 ) -> PropertyFile:
     """Parse --conf overrides passed to spark-submit.
 
@@ -1618,7 +1617,7 @@ class SparkInterface(WithLogging):
         self.defaults = defaults
 
     @staticmethod
-    def _read_properties_file(namefile: Optional[str]) -> PropertyFile:
+    def _read_properties_file(namefile: str | None) -> PropertyFile:
         return (
             PropertyFile.read(namefile)
             if namefile is not None
@@ -1626,7 +1625,7 @@ class SparkInterface(WithLogging):
         )
 
     @staticmethod
-    def _generate_properties_file_from_arguments(confs: List[str]):
+    def _generate_properties_file_from_arguments(confs: list[str]):
         if not confs:
             return PropertyFile({})
 
@@ -1641,9 +1640,9 @@ class SparkInterface(WithLogging):
     def spark_submit(
         self,
         deploy_mode: SparkDeployMode,
-        confs: List[str],
-        cli_property: Optional[str],
-        extra_args: List[str],
+        confs: list[str],
+        cli_property: str | None,
+        extra_args: list[str],
     ):
         """Submit a spark job.
 
@@ -1687,7 +1686,7 @@ class SparkInterface(WithLogging):
                 os.system(submit_cmd)
 
     def spark_shell(
-        self, confs: List[str], cli_property: Optional[str], extra_args: List[str]
+        self, confs: list[str], cli_property: str | None, extra_args: list[str]
     ):
         """Start an interactinve spark shell.
 
@@ -1743,7 +1742,7 @@ class SparkInterface(WithLogging):
                 os.system(submit_cmd)
 
     def pyspark_shell(
-        self, confs: List[str], cli_property: Optional[str], extra_args: List[str]
+        self, confs: list[str], cli_property: str | None, extra_args: list[str]
     ):
         """Start an interactinve pyspark shell.
 
@@ -1794,9 +1793,9 @@ class SparkInterface(WithLogging):
 
     def spark_sql(
         self,
-        confs: List[str],
-        cli_property: Optional[str],
-        extra_args: List[str],
+        confs: list[str],
+        cli_property: str | None,
+        extra_args: list[str],
     ):
         """Start an interactive Spark SQL shell.
 
