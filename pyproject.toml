@@ -51,6 +51,9 @@ license = "Apache-2.0"
 readme = "README.md"
 packages = []
 
+[tool.poetry.requires-plugins]
+poetry-plugin-export = ">=1.0"
+
 [tool.poetry.dependencies]
 python = ">3.8,<4.0"
 lightkube = ">=0.11"
