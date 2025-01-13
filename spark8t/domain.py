@@ -352,3 +352,10 @@ class KubernetesResourceType(str, Enum):
     SECRET = "secret"
     SECRET_GENERIC = "secret generic"
     NAMESPACE = "namespace"
+
+    def __str__(self) -> str:
+        """Define string representation.
+
+        TODO(py310): replace inheritance with StrEnum once we drop py310
+        """
+        return str.__str__(self)

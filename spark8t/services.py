@@ -1596,6 +1596,13 @@ class SparkDeployMode(str, Enum):
     CLIENT = "client"
     CLUSTER = "cluster"
 
+    def __str__(self) -> str:
+        """Define string representation.
+
+        TODO(py310): replace inheritance with StrEnum once we drop py310
+        """
+        return str.__str__(self)
+
 
 class SparkInterface(WithLogging):
     """Class for providing interfaces for spark commands."""
