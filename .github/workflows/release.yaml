@@ -72,10 +72,6 @@ jobs:
         id: build
         run: |
           VERSION=$(poetry version -s)
-          if [ "$(git tag -l "${VERSION}")" ]; then
-            echo "Tag ${VERSION} already exists. Please bump the project to a greater version."
-            exit 1
-          fi
           echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
           poetry build
       - name: Store the distribution packages
