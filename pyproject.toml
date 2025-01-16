@@ -42,7 +42,7 @@ ignore_missing_imports = true
 
 [tool.poetry]
 name = "spark8t"
-version = "0.0.10"
+version = "0.0.11"
 description = "This project provides some utilities function and CLI commands to run Spark on K8s."
 authors = [
     "Canonical Data Platform <data-platform@lists.launchpad.net>"
@@ -50,6 +50,9 @@ authors = [
 license = "Apache-2.0"
 readme = "README.md"
 packages = []
+
+[tool.poetry.requires-plugins]
+poetry-plugin-export = ">=1.0"
 
 [tool.poetry.dependencies]
 python = ">3.8,<4.0"
