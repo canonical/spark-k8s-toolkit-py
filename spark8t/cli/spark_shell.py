@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
+"""Spark shell module."""
 
 import re
 from argparse import Namespace
 from logging import Logger
-from typing import Optional
 
 from spark8t.cli.params import (
     add_config_arguments,
@@ -22,6 +22,7 @@ from spark8t.utils import setup_logging
 
 
 def main(args: Namespace, logger: Logger):
+    """Shell main entrypoint."""
     kube_interface = get_kube_interface(args)
 
     registry = K8sServiceAccountRegistry(
@@ -30,7 +31,7 @@ def main(args: Namespace, logger: Logger):
         else kube_interface
     )
 
-    service_account: Optional[ServiceAccount] = (
+    service_account: ServiceAccount | None = (
         registry.get_primary()
         if args.username is None and args.namespace is None
         else registry.get(f"{args.namespace or 'default'}:{args.username or 'spark'}")

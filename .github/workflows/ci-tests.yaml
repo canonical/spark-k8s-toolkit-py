@@ -17,8 +17,8 @@ jobs:
       fail-fast: true
       matrix:
         python-version:
-          - "3.9"
           - "3.10"
+          - "3.12"
     needs:
       - checks
     steps:

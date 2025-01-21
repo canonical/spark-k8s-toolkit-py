@@ -11,24 +11,13 @@ from copy import deepcopy as copy
 from functools import reduce
 from logging import Logger, config, getLogger
 from tempfile import NamedTemporaryFile
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    List,
-    Literal,
-    Mapping,
-    Optional,
-    TypedDict,
-    TypeVar,
-    Union,
-)
+from typing import Any, Callable, Literal, Mapping, TypedDict, TypeVar, TypeAlias
 from urllib.parse import quote, unquote
 
 import yaml
 from envyaml import EnvYAML
 
-PathLike = Union[str, "os.PathLike[str]"]
+PathLike: TypeAlias = str | os.PathLike[str]
 
 LevelTypes = Literal[
     "CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG", "NOTSET", 50, 40, 30, 20, 10, 0
@@ -39,6 +28,8 @@ T = TypeVar("T")
 
 
 class LevelsDict(TypedDict):
+    """Logger levels."""
+
     CRITICAL: Literal[50]
     ERROR: Literal[40]
     WARNING: Literal[30]
@@ -65,7 +56,7 @@ DEFAULT_LOGGING_FILE = os.path.join(
 
 def config_from_json(path_to_file: str = DEFAULT_LOGGING_FILE) -> None:
     """
-    Configure logger from json
+    Configure logger from json.
 
     :param path_to_file: path to configuration file
 
@@ -80,7 +71,7 @@ def config_from_json(path_to_file: str = DEFAULT_LOGGING_FILE) -> None:
 
 def config_from_yaml(path_to_file: str = DEFAULT_LOGGING_FILE) -> None:
     """
-    Configure logger from yaml
+    Configure logger from yaml.
 
     :param path_to_file: path to configuration file
 
@@ -93,7 +84,7 @@ def config_from_yaml(path_to_file: str = DEFAULT_LOGGING_FILE) -> None:
 
 def config_from_file(path_to_file: str = DEFAULT_LOGGING_FILE) -> None:
     """
-    Configure logger from file
+    Configure logger from file.
 
     :param path_to_file: path to configuration file
 
@@ -101,7 +92,6 @@ def config_from_file(path_to_file: str = DEFAULT_LOGGING_FILE) -> None:
 
     :return: configuration for logger
     """
-
     readers = {
         ".yml": config_from_yaml,
         ".yaml": config_from_yaml,
@@ -123,21 +113,21 @@ class WithLogging:
 
     @property
     def logger(self) -> Logger:
-        """
-        Create logger.
-        :return: default logger
+        """Create logger.
+
+        :return: default logger.
         """
         nameLogger = str(self.__class__).replace("<class '", "").replace("'>", "")
         return getLogger(nameLogger)
 
     def logResult(
-        self, msg: Union[Callable[..., str], str], level: StrLevelTypes = "INFO"
+        self, msg: Callable[..., str] | str, level: StrLevelTypes = "INFO"
     ) -> Callable[..., Any]:
-        """
-        Return a decorator to allow logging of inputs/outputs.
+        """Return a decorator to allow logging of inputs/outputs.
+
         :param msg: message to log
         :param level: logging level
-        :return: wrapped method
+        :return: wrapped method.
         """
 
         def wrap(x: Any) -> Any:
@@ -151,8 +141,9 @@ class WithLogging:
 
 
 def setup_logging(
-    log_level: str, config_file: Optional[str] = None, logger_name: Optional[str] = None
+    log_level: str, config_file: str | None = None, logger_name: str | None = None
 ) -> logging.Logger:
+    """Set up logging from configuration file."""
     with environ(LOG_LEVEL=log_level) as _:
         config_from_file(config_file or DEFAULT_LOGGING_FILE)
     return logging.getLogger(logger_name) if logger_name else logging.root
@@ -161,21 +152,23 @@ def setup_logging(
 def union(*dicts: dict) -> dict:
     """
     Return a dictionary that results from the recursive merge of the input dictionaries.
+
     :param dicts: list of dicts
-    :return: merged dict
+    :return: merged dict.
     """
 
     def __dict_merge(dct: dict, merge_dct: dict):
         """
         Recursive dict merge.
+
         Inspired by :meth:``dict.update()``, instead of updating only top-level keys, dict_merge recurses down into
         dicts nested to an arbitrary depth, updating keys. The ``merge_dct`` is merged into ``dct``.
         :param dct: dict onto which the merge is executed
         :param merge_dct: dct merged into dct
-        :return: None
+        :return: None.
         """
         merged = copy(dct)
-        for k, v in merge_dct.items():
+        for k, _v in merge_dct.items():
             if (
                 k in dct
                 and isinstance(dct[k], dict)
@@ -189,11 +182,11 @@ def union(*dicts: dict) -> dict:
     return reduce(__dict_merge, dicts)
 
 
-def _check(value: Optional[T]) -> bool:
+def _check(value: Any) -> bool:
     return False if value is None else True
 
 
-def filter_none(_dict: Dict[T, Any]) -> Dict[T, Any]:
+def filter_none(_dict: dict[T, Any]) -> dict[T, Any]:
     """
     Return a dictionary where the key,value pairs are filtered where the value is None.
 
@@ -219,10 +212,10 @@ def umask_named_temporary_file(*args, **kargs):
 
 
 def mkdir(path: PathLike) -> None:
-    """
-    Create a dir, using a formulation consistent between 2.x and 3.x python versions.
+    """Create a dir, using a formulation consistent between 2.x and 3.x python versions.
+
     :param path: path to create
-    :raises OSError: whenever OSError is raised by makedirs and it's not because the directory exists
+    :raises OSError: whenever OSError is raised by makedirs and it's not because the directory exists.
     """
     try:
         os.makedirs(path)
@@ -234,17 +227,17 @@ def mkdir(path: PathLike) -> None:
 
 
 def create_dir_if_not_exists(directory: PathLike) -> PathLike:
-    """
-    Create a directory if it does not exist.
+    """Create a directory if it does not exist.
+
     :param directory: path
-    :return: directory, str
+    :return: directory, str.
     """
     if not os.path.exists(directory):
         os.makedirs(directory)
     return directory
 
 
-def parse_yaml_shell_output(cmd: str) -> Union[Dict[str, Any], str]:
+def parse_yaml_shell_output(cmd: str) -> dict[str, Any] | str:
     """
     Execute command and parse output as YAML.
 
@@ -317,7 +310,8 @@ def environ(*remove, **update):
         env.update(update_after)
 
 
-def listify(value: Any) -> List[str]:
+def listify(value: Any) -> list[str]:
+    """Flatten potentially nested structure."""
     return [str(v) for v in value] if isinstance(value, list) else [str(value)]
 
 
@@ -340,6 +334,7 @@ class PercentEncodingSerializer:
         return "".join([self.percent_char] * 2)
 
     def serialize(self, input_string: str) -> str:
+        """Serialize percent encoded input."""
         return (
             quote(input_string)
             .replace(self.percent_char, self._double_percent_char)
@@ -347,6 +342,7 @@ class PercentEncodingSerializer:
         )
 
     def deserialize(self, input_string: str) -> str:
+        """Deserialize percent encoded input."""
         return unquote(
             input_string.replace(self._double_percent_char, self._SPECIAL)
             .replace(self.percent_char, "%")

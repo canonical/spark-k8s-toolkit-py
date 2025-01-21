@@ -744,7 +744,7 @@ def test_service_account_add_config(service_account, backend, request):
     # Check if newly added configs are added successfully
     added_configs = updated_configs - original_configs
 
-    assert added_configs == set([config_to_add])
+    assert added_configs == {config_to_add}
 
 
 @pytest.mark.parametrize("backend", VALID_BACKENDS)

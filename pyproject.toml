@@ -1,61 +1,19 @@
-[tool.pytest.ini_options]
-addopts = "--doctest-modules --cov=./spark8t"
-
-[tool.flake8]
-per-file-ignores = [
-    '__init__.py:F401',
-    'tests/*: D',
-    'tests/test_utils.py: D, F601'
-]
-ignore = [
-    # Ignored by black
-    'E203', 'E266', 'E501', 'W503',
-    # Ignored to conform to PEP257
-    'D203', 'D212', 'D213', 'D214', 'D215', 'D404', 'D405', 'D406', 'D407', 'D408', 'D409', 'D410', 'D411',
-    'D413', 'D415', 'D416', 'D417',
-    # Ignored to work with Sphinx
-    'RST303', 'RST304', 'RST307'
-]
-# line length is intentionally set to 80 here because black uses Bugbear
-# See https://black.readthedocs.io/en/stable/the_black_code_style/current_style.html#line-length for more details
-max-line-length = "120"
-max-complexity = "18"
-select = ['B','C','D','E','F','W','T4','B9','RST','DAR']
-docstring_style = "sphinx"
-
-[tool.isort]
-py_version = 3
-profile = 'black'
-known_first_party = ['spark8t','tests']
-skip_gitignore = true
-
-[tool.mypy]
-follow_imports = "silent"
-
-[[tool.mypy.overrides]]
-module = [
-    "parameterized",
-    "envyaml",
-    "pytest"
-]
-ignore_missing_imports = true
-
 [tool.poetry]
 name = "spark8t"
 version = "0.0.11"
 description = "This project provides some utilities function and CLI commands to run Spark on K8s."
 authors = [
-    "Canonical Data Platform <data-platform@lists.launchpad.net>"
+  "Canonical Data Platform <data-platform@lists.launchpad.net>",
 ]
 license = "Apache-2.0"
 readme = "README.md"
-packages = []
+requires-poetry = ">=2.0.0"
 
 [tool.poetry.requires-plugins]
 poetry-plugin-export = ">=1.0"
 
 [tool.poetry.dependencies]
-python = ">3.8,<4.0"
+python = ">=3.10,<4.0"
 lightkube = ">=0.11"
 jinja2 = ">=3.1.2"
 envyaml = ">=1.10.211231"
@@ -64,46 +22,91 @@ envyaml = ">=1.10.211231"
 optional = true
 
 [tool.poetry.group.fmt.dependencies]
-black = ">=21.12b0"
-isort = ">=5.10"
-lightkube = ">=0.11"
+ruff = "^0.8.6"
 
 [tool.poetry.group.lint]
 optional = true
 
 [tool.poetry.group.lint.dependencies]
+ruff = "^0.8.6"
 codespell = "^2.1.0"
-flake8 = ">=4.0.1"
-Flake8-pyproject = ">=1.1.0"
-mypy = ">=0.910"
+mypy = "^1.0.0"
 pytest-mypy = ">=0.10.3"
-lightkube = ">=0.11"
+types-pyyaml = "^6.0.12.20241230"
+types-pygments = "^2.19.0.20250107"
+types-colorama = "^0.4.15.20240311"
+types-pyopenssl = "^24.1.0.20240722"
 
 [tool.poetry.group.unit]
 optional = true
 
 [tool.poetry.group.unit.dependencies]
-tox = ">3.21.4"
-mypy = ">=0.910"
 pytest-cov = ">=3.0"
 pytest = ">=6.2"
 pytest-mock = ">=3.10"
-lightkube = ">=0.11"
 pyOpenSSL = ">=23.1.1"
+tox = "^4.23.2"
 
 [tool.poetry.group.integration]
 optional = true
 
 [tool.poetry.group.integration.dependencies]
-tox = ">3.21.4"
-mypy = ">=0.910"
 pytest-cov = ">=3.0"
 pytest = ">=6.2"
-pytest-mock = ">=3.10"
-lightkube = ">=0.11"
-parameterized = ">=0.9.0"
+tox = "^4.23.2"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
+[tool.pytest.ini_options]
+addopts = "--doctest-modules --cov=./spark8t"
+
+[tool.ruff]
+extend-exclude = ["__pycache__", "*.egg_info"]
+target-version = "py38"
+src = ["spark8t", "tests"]
+
+[tool.ruff.lint]
+select = ['B', 'C', 'D', 'E', 'F', 'W', 'B9']
+ignore = ["E501", "D107"]
+extend-ignore = [
+  # Ignored by black
+  'E203',
+  'E266',
+  'E501',
+  # Ignored to conform to PEP257
+  'D203',
+  'D212',
+  'D213',
+  'D214',
+  'D215',
+  'D404',
+  'D405',
+  'D406',
+  'D407',
+  'D408',
+  'D409',
+  'D410',
+  'D411',
+  'D413',
+  'D415',
+  'D416',
+  'D417',
+]
+per-file-ignores = { "__init__.py" = ["F401"], "tests/*" = ["D"], "tests/test_utils.py" = ["F601"] }
+mccabe.max-complexity = 18
+
+[tool.ruff.lint.isort]
+known-first-party = ["spark8t", "tests"]
+
+[tool.mypy]
+follow_imports = "silent"
+
+[[tool.mypy.overrides]]
+module = [
+  "parameterized",
+  "envyaml",
+  "pytest",
+]
+ignore_missing_imports = true

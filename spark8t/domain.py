@@ -1,9 +1,13 @@
+"""Domain module."""
+
+from __future__ import annotations
+
 import io
 import os
 import re
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable
 
 from spark8t.utils import WithLogging, union
 
@@ -11,7 +15,7 @@ from spark8t.utils import WithLogging, union
 class PropertyFile(WithLogging):
     """Class for providing basic functionalities for IO properties files."""
 
-    def __init__(self, props: Dict[str, Any]):
+    def __init__(self, props: dict[str, Any]):
         """Initialize a PropertyFile class with data provided by a dictionary.
 
         Args:
@@ -53,7 +57,8 @@ class PropertyFile(WithLogging):
         return True
 
     @staticmethod
-    def parse_property_line(line: str) -> Tuple[str, str]:
+    def parse_property_line(line: str) -> tuple[str, str]:
+        """Parse a single configuration line."""
         prop_assignment = list(filter(None, re.split("=| ", line.strip())))
         prop_key = prop_assignment[0].strip()
         option_assignment = line.split("=", 1)
@@ -61,13 +66,13 @@ class PropertyFile(WithLogging):
         return prop_key, value
 
     @classmethod
-    def _read_property_file_unsafe(cls, name: str) -> Dict:
+    def _read_property_file_unsafe(cls, name: str) -> dict:
         """Read properties in given file into a dictionary.
 
         Args:
             name: file name to be read
         """
-        defaults = dict()
+        defaults = {}
         with open(name) as f:
             for line in f:
                 # skip empty or commented line
@@ -78,7 +83,7 @@ class PropertyFile(WithLogging):
         return defaults
 
     @classmethod
-    def read(cls, filename: str) -> "PropertyFile":
+    def read(cls, filename: str) -> PropertyFile:
         """Read properties file and return a PropertyFile object.
 
         Args:
@@ -89,7 +94,7 @@ class PropertyFile(WithLogging):
         except FileNotFoundError as e:
             raise e
 
-    def write(self, fp: io.TextIOWrapper) -> "PropertyFile":
+    def write(self, fp: io.TextIOWrapper) -> PropertyFile:
         """Write out a property file to disk.
 
         Args:
@@ -100,14 +105,13 @@ class PropertyFile(WithLogging):
             fp.write(line + "\n")
         return self
 
-    def log(self, log_func: Optional[Callable[[str], None]] = None) -> "PropertyFile":
+    def log(self, log_func: Callable[[str], None] | None = None) -> PropertyFile:
         """Print a given dictionary to screen.
 
         Args:
             log_func: callable to specify another custom printer function. Default uses the class logger with an
                       INFO level.
         """
-
         printer = (lambda msg: self.logger.info(msg)) if log_func is None else log_func
 
         for k, v in self.props.items():
@@ -115,8 +119,8 @@ class PropertyFile(WithLogging):
         return self
 
     @classmethod
-    def _parse_options(cls, options_string: Optional[str]) -> Dict:
-        options: Dict[str, str] = dict()
+    def _parse_options(cls, options_string: str | None) -> dict:
+        options: dict[str, str] = {}
 
         if not options_string:
             return options
@@ -130,7 +134,7 @@ class PropertyFile(WithLogging):
         return options
 
     @property
-    def options(self) -> Dict[str, Dict]:
+    def options(self) -> dict[str, dict]:
         """Extract properties which are known to be options-like requiring special parsing."""
         return {
             k: self._parse_options(v)
@@ -139,19 +143,20 @@ class PropertyFile(WithLogging):
         }
 
     @staticmethod
-    def _construct_options_string(options: Dict) -> str:
+    def _construct_options_string(options: dict) -> str:
         output = " ".join(f"-D{k}={v}" for k, v in options.items())
         return f"{output}"
 
     @classmethod
-    def empty(cls) -> "PropertyFile":
+    def empty(cls) -> PropertyFile:
         """Return an empty property file object."""
-        return PropertyFile(dict())
+        return PropertyFile({})
 
-    def __add__(self, other: "PropertyFile"):
+    def __add__(self, other: PropertyFile):
+        """Addition operator override."""
         return self.union([other])
 
-    def union(self, others: List["PropertyFile"]) -> "PropertyFile":
+    def union(self, others: list[PropertyFile]) -> PropertyFile:
         """Merge multiple PropertyFile objects, with right to left priority.
 
         Args:
@@ -166,7 +171,7 @@ class PropertyFile(WithLogging):
         }
         return PropertyFile(union(*[simple_properties, merged_options]))
 
-    def remove(self, keys_or_pairs: List[str]) -> "PropertyFile":
+    def remove(self, keys_or_pairs: list[str]) -> PropertyFile:
         """Remove keys from PropertyFile properties.
 
         Note that keys may also be in the form k=v. In this case, matching with the value is
@@ -175,7 +180,6 @@ class PropertyFile(WithLogging):
         Args:
             keys_or_pairs: List of keys to be removed from properties.
         """
-
         keys_to_remove = set()
         for key_or_pair in keys_or_pairs:
             key, *value_list = key_or_pair.split("=")
@@ -193,25 +197,29 @@ class PropertyFile(WithLogging):
 class Defaults:
     """Class containing all relevant defaults for the application."""
 
-    def __init__(self, environ: Dict = dict(os.environ)):
-        """Initialize a Defaults class using the value contained in a dictionary
+    def __init__(self, environ: dict | None = None):
+        """Initialize a Defaults class using the value contained in a dictionary.
 
         Args:
             environ: dictionary representing the environment. Default uses the os.environ key-value pairs.
         """
-
+        if environ is None:
+            environ = dict(os.environ)
         self.environ = environ if environ is not None else {}
 
     @property
     def spark_home(self):
+        """Spark home directory path."""
         return self.environ["SPARK_HOME"]
 
     @property
     def spark_confs(self):
+        """Spark configuration directory path."""
         return self.environ.get("SPARK_CONFS", os.path.join(self.spark_home, "conf"))
 
     @property
     def kubernetes_api(self):
+        """K8s api endpoint."""
         return (
             f"https://{self.environ['KUBERNETES_SERVICE_HOST']}:"
             + f"{self.environ['KUBERNETES_SERVICE_PORT']}"
@@ -219,6 +227,7 @@ class Defaults:
 
     @property
     def spark_user_data(self):
+        """User data path."""
         return self.environ["SPARK_USER_DATA"]
 
     @property
@@ -227,7 +236,7 @@ class Defaults:
         return self.environ.get("SPARK_KUBECTL", "kubectl")
 
     @property
-    def kube_config(self) -> Union[None, str]:
+    def kube_config(self) -> str | None:
         """Return default kubeconfig to use if provided in env variable."""
         filename = self.environ.get("KUBECONFIG", None)
         return filename if filename else None
@@ -238,56 +247,68 @@ class Defaults:
         return f"{self.spark_confs}/spark-defaults.conf"
 
     @property
-    def env_conf_file(self) -> Optional[str]:
+    def env_conf_file(self) -> str | None:
         """Return env var provided by user to point to the config properties file with conf overrides."""
         return self.environ.get("SPARK_CLIENT_ENV_CONF")
 
     @property
     def service_account(self):
+        """Spark service account."""
         return "spark"
 
     @property
     def namespace(self):
+        """Spark operating namespace."""
         return "defaults"
 
     @property
     def scala_history_file(self):
+        """Scala history file path."""
         return f"{self.spark_user_data}/.scala_history"
 
     @property
     def spark_submit(self) -> str:
+        """spark-submit binary path."""
         return f"{self.spark_home}/bin/spark-submit"
 
     @property
     def spark_shell(self) -> str:
+        """spark-shell binary path."""
         return f"{self.spark_home}/bin/spark-shell"
 
     @property
     def pyspark(self) -> str:
+        """Pyspark binary path."""
         return f"{self.spark_home}/bin/pyspark"
 
     @property
     def spark_sql(self) -> str:
+        """spark-sql binary path."""
         return f"{self.spark_home}/bin/spark-sql"
 
     @property
     def dir_package(self) -> str:
+        """Package directory path."""
         return os.path.dirname(__file__)
 
     @property
     def template_dir(self) -> str:
+        """Template directory path."""
         return f"{self.dir_package}/resources/templates"
 
     @property
     def template_serviceaccount(self) -> str:
+        """Service account template path."""
         return f"{self.template_dir}/serviceaccount_yaml.tmpl"
 
     @property
     def template_role(self) -> str:
+        """Role template path."""
         return f"{self.template_dir}/role_yaml.tmpl"
 
     @property
     def template_rolebinding(self) -> str:
+        """Rolebinding template path."""
         return f"{self.template_dir}/rolebinding_yaml.tmpl"
 
 
@@ -323,9 +344,18 @@ class ServiceAccount:
 
 
 class KubernetesResourceType(str, Enum):
+    """Kubernetes resource."""
+
     SERVICEACCOUNT = "serviceaccount"
     ROLE = "role"
     ROLEBINDING = "rolebinding"
     SECRET = "secret"
     SECRET_GENERIC = "secret generic"
     NAMESPACE = "namespace"
+
+    def __str__(self) -> str:
+        """Define string representation.
+
+        TODO(py310): replace inheritance with StrEnum once we drop py310
+        """
+        return str.__str__(self)
