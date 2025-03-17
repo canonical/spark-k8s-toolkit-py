@@ -22,13 +22,13 @@ envyaml = ">=1.10.211231"
 optional = true
 
 [tool.poetry.group.fmt.dependencies]
-ruff = "^0.8.6"
+ruff = "^0.11.0"
 
 [tool.poetry.group.lint]
 optional = true
 
 [tool.poetry.group.lint.dependencies]
-ruff = "^0.8.6"
+ruff = "^0.11.0"
 codespell = "^2.1.0"
 mypy = "^1.0.0"
 pytest-mypy = ">=0.10.3"
