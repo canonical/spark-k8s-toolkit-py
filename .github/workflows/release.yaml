@@ -30,7 +30,7 @@ jobs:
         name: Setup Python
         uses: actions/setup-python@v5.5.0
         with:
-          python-version: "3.13"
+          python-version: "3.12"
           architecture: x64
       - id: install_environment
         name: Set up build environment
