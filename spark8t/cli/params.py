@@ -99,10 +99,32 @@ def k8s_parser(parser: ArgumentParser) -> ArgumentParser:
     )
     parser.add_argument(
         "--backend",
-        default="kubectl",
+        default="lightkube",
         choices=["kubectl", "lightkube"],
         type=str,
         help="Kind of backend to be used for talking to K8s",
+    )
+
+    return parser
+
+
+
+def create_sa_parser(parser: ArgumentParser) -> ArgumentParser:
+    """
+    Add resource-creation related argument parsing to the existing parser context.
+
+    :param parser: Input parser to decorate with parsing support for Spark params.
+    """
+    parser.add_argument(
+        "--skip-labels",
+        action="store_true",
+        help="Skip applying managed-by labels to the created K8s resources.",
+    )
+    parser.add_argument(
+        "--dump-manifest",
+        nargs="?",
+        const=True,
+        help="Dump manifest to the given file. If a file name is not supplied, dump it to stdout.",
     )
     return parser
 
