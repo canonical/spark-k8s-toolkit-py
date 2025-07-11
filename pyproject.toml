@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "spark8t"
-version = "0.0.12"
+version = "1.0.0"
 description = "This project provides some utilities function and CLI commands to run Spark on K8s."
 authors = [
   "Canonical Data Platform <data-platform@lists.launchpad.net>",
@@ -22,13 +22,13 @@ envyaml = ">=1.10.211231"
 optional = true
 
 [tool.poetry.group.fmt.dependencies]
-ruff = "^0.8.6"
+ruff = "^0.11.0"
 
 [tool.poetry.group.lint]
 optional = true
 
 [tool.poetry.group.lint.dependencies]
-ruff = "^0.8.6"
+ruff = "^0.11.0"
 codespell = "^2.1.0"
 mypy = "^1.0.0"
 pytest-mypy = ">=0.10.3"
