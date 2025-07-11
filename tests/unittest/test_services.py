@@ -1175,9 +1175,7 @@ def test_kube_interface_autodetect(mocker, tmp_path):
     with open(kube_config_file, "w") as fid:
         yaml.dump(kubeconfig_yaml, fid, sort_keys=False)
 
-    cmd_autodetect = (
-        f"kubectl --context {context} config view --raw " "--minify -o yaml"
-    )
+    cmd_autodetect = f"kubectl --context {context} config view --raw --minify -o yaml"
     output_autodetect_yaml = {
         "apiVersion": "v1",
         "items": [
