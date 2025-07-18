@@ -1,6 +1,6 @@
 # spark8t toolkit
 
-[![Release](https://github.com/canonical/spark-k8s-toolkit-py/actions/workflows/release_github.yaml/badge.svg)](https://github.com/canonical/spark-k8s-toolkit-py/actions/workflows/release_github.yaml)
+[![PyPI - Version](https://img.shields.io/pypi/v/spark8t)](https://pypi.org/project/spark8t/)
 [![Tests](https://github.com/canonical/spark-k8s-toolkit-py/actions/workflows/ci-tests.yaml/badge.svg?branch=main)](https://github.com/canonical/spark-k8s-toolkit-py/actions/workflows/ci-tests.yaml?query=branch%3Amain)
 
 A set of Python scripts facilitating Spark interactions over Kubernetes, using an OCI image.
