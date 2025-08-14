@@ -5,6 +5,7 @@ import io
 import json
 import logging
 import os
+import re
 import subprocess
 from contextlib import contextmanager
 from copy import deepcopy as copy
@@ -14,8 +15,11 @@ from tempfile import NamedTemporaryFile
 from typing import Any, Callable, Literal, Mapping, TypedDict, TypeVar, TypeAlias
 from urllib.parse import quote, unquote
 
+from typing_extensions import Self
 import yaml
 from envyaml import EnvYAML
+
+from spark8t.exceptions import FormatError
 
 PathLike: TypeAlias = str | os.PathLike[str]
 
@@ -347,4 +351,215 @@ class PercentEncodingSerializer:
             input_string.replace(self._double_percent_char, self._SPECIAL)
             .replace(self.percent_char, "%")
             .replace(self._SPECIAL, self.percent_char)
+        )
+
+
+class PropertyFile(WithLogging):
+    """Class for providing basic functionalities for IO properties files."""
+
+    def __init__(self, props: dict[str, Any]):
+        """Initialize a PropertyFile class with data provided by a dictionary.
+
+        Args:
+            props: input dictionary
+        """
+        self.props = props
+
+    def __len__(self):
+        """Return the size of the property dictionary, i.e. the number of configuration parameters."""
+        return len(self.props)
+
+    @classmethod
+    def parse_conf_overrides(
+        cls, conf_args: list, environ_vars: dict | None = None
+    ) -> Self:
+        """Parse --conf overrides passed to spark-submit.
+
+        Args:
+            conf_args: list of all --conf 'k1=v1' type args passed to spark-submit.
+                Note v1 expression itself could be containing '='
+            environ_vars: dictionary with environment variables as key-value pairs
+        """
+        if environ_vars is None:
+            environ_vars = dict(os.environ)
+        conf_overrides = {}
+        if conf_args:
+            with environ(*os.environ.keys(), **environ_vars):
+                for c in conf_args:
+                    try:
+                        kv = c.split("=")
+                        k = kv[0]
+                        v = "=".join(kv[1:])
+                        conf_overrides[k] = os.path.expandvars(v)
+                    except IndexError as err:
+                        raise FormatError(
+                            "Configuration related arguments parsing error. "
+                            "Please check input arguments and try again."
+                        ) from err
+        return cls(conf_overrides)
+
+    @staticmethod
+    def _is_property_with_options(key: str) -> bool:
+        """Check if a given property is known to be options-like requiring special parsing.
+
+        Args:
+            key: Property for which special options-like parsing decision has to be taken
+        """
+        return key in [
+            "spark.driver.defaultJavaOptions",
+            "spark.driver.extraJavaOptions",
+            "spark.executor.defaultJavaOptions",
+            "spark.executor.extraJavaOptions",
+        ]
+
+    @staticmethod
+    def is_line_parsable(line: str) -> bool:
+        """Check if a given line is parsable(not empty or commented).
+
+        Args:
+            line: a line of the configuration
+        """
+        # empty line
+        if len(line.strip()) == 0:
+            return False
+        # commented line
+        elif line.strip().startswith("#"):
+            return False
+        return True
+
+    @staticmethod
+    def parse_property_line(line: str) -> tuple[str, str]:
+        """Parse a single configuration line."""
+        prop_assignment = list(filter(None, re.split("=| ", line.strip())))
+        prop_key = prop_assignment[0].strip()
+        option_assignment = line.split("=", 1)
+        value = option_assignment[1].strip()
+        return prop_key, value
+
+    @classmethod
+    def _read_property_file_unsafe(cls, name: str) -> dict:
+        """Read properties in given file into a dictionary.
+
+        Args:
+            name: file name to be read
+        """
+        defaults = {}
+        with open(name) as f:
+            for line in f:
+                # skip empty or commented line
+                if not PropertyFile.is_line_parsable(line):
+                    continue
+                key, value = cls.parse_property_line(line)
+                defaults[key] = os.path.expandvars(value)
+        return defaults
+
+    @classmethod
+    def read(cls, filename: str) -> "PropertyFile":
+        """Read properties file and return a PropertyFile object.
+
+        Args:
+            filename: input filename
+        """
+        try:
+            return PropertyFile(cls._read_property_file_unsafe(filename))
+        except FileNotFoundError as e:
+            raise e
+
+    def write(self, fp: io.TextIOWrapper) -> "PropertyFile":
+        """Write out a property file to disk.
+
+        Args:
+            fp: file pointer to write to
+        """
+        for k, v in self.props.items():
+            line = f"{k}={v.strip()}"
+            fp.write(line + "\n")
+        return self
+
+    def log(self, log_func: Callable[[str], None] | None = None) -> "PropertyFile":
+        """Print a given dictionary to screen.
+
+        Args:
+            log_func: callable to specify another custom printer function. Default uses the class logger with an
+                      INFO level.
+        """
+        printer = (lambda msg: self.logger.info(msg)) if log_func is None else log_func
+
+        for k, v in self.props.items():
+            printer(f"{k}={v}")
+        return self
+
+    @classmethod
+    def _parse_options(cls, options_string: str | None) -> dict:
+        options: dict[str, str] = {}
+
+        if not options_string:
+            return options
+
+        # cleanup quotes
+        line = options_string.strip().replace("'", "").replace('"', "")
+        for arg in line.split("-D")[1:]:
+            kv = arg.split("=")
+            options[kv[0].strip()] = kv[1].strip()
+
+        return options
+
+    @property
+    def options(self) -> dict[str, dict]:
+        """Extract properties which are known to be options-like requiring special parsing."""
+        return {
+            k: self._parse_options(v)
+            for k, v in self.props.items()
+            if self._is_property_with_options(k)
+        }
+
+    @staticmethod
+    def _construct_options_string(options: dict) -> str:
+        output = " ".join(f"-D{k}={v}" for k, v in options.items())
+        return f"{output}"
+
+    @classmethod
+    def empty(cls) -> "PropertyFile":
+        """Return an empty property file object."""
+        return PropertyFile({})
+
+    def __add__(self, other: "PropertyFile"):
+        """Addition operator override."""
+        return self.union([other])
+
+    def union(self, others: list["PropertyFile"]) -> "PropertyFile":
+        """Merge multiple PropertyFile objects, with right to left priority.
+
+        Args:
+            others: List of Property file to be merged.
+        """
+        all_together = [self] + others
+
+        simple_properties = union(*[prop.props for prop in all_together])
+        merged_options = {
+            k: self._construct_options_string(v)
+            for k, v in union(*[prop.options for prop in all_together]).items()
+        }
+        return PropertyFile(union(*[simple_properties, merged_options]))
+
+    def remove(self, keys_or_pairs: list[str]) -> "PropertyFile":
+        """Remove keys from PropertyFile properties.
+
+        Note that keys may also be in the form k=v. In this case, matching with the value is
+        also done before removing the item.
+
+        Args:
+            keys_or_pairs: List of keys to be removed from properties.
+        """
+        keys_to_remove = set()
+        for key_or_pair in keys_or_pairs:
+            key, *value_list = key_or_pair.split("=")
+            value = "=".join(value_list) if value_list else None
+            if key in self.props and (not value or self.props[key] == value):
+                keys_to_remove.add(key)
+
+        return PropertyFile(
+            {key: self.props[key] for key in self.props if key not in keys_to_remove}
+            if keys_to_remove
+            else self.props
         )

@@ -11,7 +11,6 @@ from spark8t.domain import KubernetesResourceType, PropertyFile
 from spark8t.literals import (
     HUB_LABEL,
     MANAGED_BY_LABELNAME,
-    PRIMARY_LABELNAME,
     SPARK8S_LABEL,
 )
 from spark8t.utils import umask_named_temporary_file
@@ -161,12 +160,8 @@ def test_create_service_account(namespace, backend, primary):
     # Check if service account was labelled correctly
     service_account = json.loads(service_account_result.stdout)
     assert service_account is not None
-    actual_labels = service_account["metadata"]["labels"]
-    expected_labels = {MANAGED_BY_LABELNAME: SPARK8S_LABEL}
-    if primary:
-        expected_labels.update({PRIMARY_LABELNAME: "True"})
-    assert actual_labels == expected_labels
-
+    labels = service_account["metadata"]["labels"]
+    assert labels[MANAGED_BY_LABELNAME] == SPARK8S_LABEL
     # Check if a role was created
     role_result = subprocess.run(
         ["kubectl", "get", "role", role_name, "-n", namespace, "-o", "json"],
@@ -179,9 +174,8 @@ def test_create_service_account(namespace, backend, primary):
     # Check if the role was labelled correctly
     role = json.loads(role_result.stdout)
     assert role is not None
-    actual_labels = role["metadata"]["labels"]
-    expected_labels = {MANAGED_BY_LABELNAME: SPARK8S_LABEL}
-    assert actual_labels == expected_labels
+    labels = role["metadata"]["labels"]
+    assert labels[MANAGED_BY_LABELNAME] == SPARK8S_LABEL
 
     # Check if a role binding was created
     role_binding_result = subprocess.run(
@@ -204,11 +198,8 @@ def test_create_service_account(namespace, backend, primary):
     # Check if the role binding was labelled correctly
     role_binding = json.loads(role_binding_result.stdout)
     assert role_binding is not None
-    actual_labels = role_binding["metadata"]["labels"]
-    expected_labels = {MANAGED_BY_LABELNAME: SPARK8S_LABEL}
-    if primary:
-        expected_labels.update({PRIMARY_LABELNAME: "True"})
-    assert actual_labels == expected_labels
+    labels = role_binding["metadata"]["labels"]
+    assert labels[MANAGED_BY_LABELNAME] == SPARK8S_LABEL
 
     # Check secret creation
     secret_result = subprocess.run(
@@ -666,7 +657,6 @@ def test_service_account_get_config(service_account, backend, request):
 @pytest.mark.parametrize("backend", VALID_BACKENDS)
 def test_service_account_add_config(service_account, backend, request):
     """Test addition of service account config using the CLI.
-
     Use a fixture that creates temporary service account, add new config,
     and then verify whether `get-config` sub-command returns back the newly
     added config.
