@@ -134,7 +134,7 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
 
         return account_id
 
-    def create(self, service_account: ServiceAccount) -> str:
+    def create(self, service_account: ServiceAccount, dry_run=False) -> str:
         """Create a new service account and return ids associated id.
 
         Args:
@@ -150,7 +150,7 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
         secretname = self._get_secret_name(username)
 
         # Check if the resources to be created already exist in K8s cluster
-        if self.kube_interface.exists(
+        if not dry_run and self.kube_interface.exists(
             resource_type=KubernetesResourceType.SERVICEACCOUNT,
             resource_name=username,
             namespace=namespace,
@@ -160,7 +160,7 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
                 f"A {KubernetesResourceType.SERVICEACCOUNT} with name '{username}' already exists."
             )
 
-        if self.kube_interface.exists(
+        if not dry_run and self.kube_interface.exists(
             resource_type=KubernetesResourceType.ROLE,
             resource_name=rolename,
             namespace=namespace,
@@ -170,7 +170,7 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
                 f"A {KubernetesResourceType.ROLE} with name '{rolename}' already exists."
             )
 
-        if self.kube_interface.exists(
+        if not dry_run and self.kube_interface.exists(
             resource_type=KubernetesResourceType.ROLEBINDING,
             resource_name=rolebindingname,
             namespace=namespace,
@@ -184,12 +184,14 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
             resource_type=KubernetesResourceType.SERVICEACCOUNT,
             resource_name=username,
             namespace=namespace,
+            dry_run=dry_run,
             **{"username": username},
         )
         role_manifest = self.kube_interface.create(
             resource_type=KubernetesResourceType.ROLE,
             resource_name=rolename,
             namespace=namespace,
+            dry_run=dry_run,
             **{"username": username},
         )
         role_binding_manifest = self.kube_interface.create(
@@ -197,6 +199,7 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
             resource_name=rolebindingname,
             namespace=namespace,
             role=rolename,
+            dry_run=dry_run,
             serviceaccount=account_id,
             username=username,
         )
@@ -204,35 +207,38 @@ class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
             resource_type=KubernetesResourceType.SECRET_GENERIC,
             resource_name=secretname,
             namespace=namespace,
+            dry_run=dry_run,
             # configurations=configurations
         )
-        self.kube_interface.set_label(
-            resource_type=KubernetesResourceType.SERVICEACCOUNT,
-            resource_name=username,
-            label=f"{MANAGED_BY_LABELNAME}={SPARK8S_LABEL}",
-            namespace=namespace,
-        )
-        self.kube_interface.set_label(
-            resource_type=KubernetesResourceType.ROLE,
-            resource_name=rolename,
-            label=f"{MANAGED_BY_LABELNAME}={SPARK8S_LABEL}",
-            namespace=namespace,
-        )
-        self.kube_interface.set_label(
-            resource_type=KubernetesResourceType.ROLEBINDING,
-            resource_name=rolebindingname,
-            label=f"{MANAGED_BY_LABELNAME}={SPARK8S_LABEL}",
-            namespace=namespace,
-        )
-        if service_account.primary is True:
-            self.set_primary(account_id=account_id, namespace=namespace)
-
-        if len(service_account.extra_confs) > 0:
-            self.set_configurations(
-                account_id=account_id, configurations=configurations
+        if not dry_run:
+            self.kube_interface.set_label(
+                resource_type=KubernetesResourceType.SERVICEACCOUNT,
+                resource_name=username,
+                label=f"{MANAGED_BY_LABELNAME}={SPARK8S_LABEL}",
+                namespace=namespace,
             )
+            self.kube_interface.set_label(
+                resource_type=KubernetesResourceType.ROLE,
+                resource_name=rolename,
+                label=f"{MANAGED_BY_LABELNAME}={SPARK8S_LABEL}",
+                namespace=namespace,
+            )
+            self.kube_interface.set_label(
+                resource_type=KubernetesResourceType.ROLEBINDING,
+                resource_name=rolebindingname,
+                label=f"{MANAGED_BY_LABELNAME}={SPARK8S_LABEL}",
+                namespace=namespace,
+            )
+            if service_account.primary is True:
+                self.set_primary(account_id=account_id, namespace=namespace)
 
-        return account_id
+            if len(service_account.extra_confs) > 0:
+                self.set_configurations(
+                    account_id=account_id, configurations=configurations
+                )
+
+        manifests = [sa_manifest, role_manifest, role_binding_manifest, secret_manifest]
+        return "---\n".join(manifests)
 
     def _create_account_secret(self, service_account: ServiceAccount):
         """Create the secret that will contain the user configurations."""

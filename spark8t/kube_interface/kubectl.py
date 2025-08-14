@@ -296,6 +296,7 @@ class KubeCtlInterface(AbstractKubeInterface):
         resource_type: str,
         resource_name: str,
         namespace: str | None = None,
+        dry_run: bool = False,
         **extra_args,
     ):
         """Create a K8s resource.
@@ -310,9 +311,10 @@ class KubeCtlInterface(AbstractKubeInterface):
                         e.g. {"resource" : ["pods", "configmaps"]} which would translate to something like
                         --resource=pods --resource=configmaps
         """
+        dry_run_arg = "--dry-run=client" if dry_run else ""
         if resource_type == KubernetesResourceType.NAMESPACE:
             manifest = self.exec(
-                f"create {resource_type} {resource_name}",
+                f"create {resource_type} {resource_name} {dry_run_arg}",
                 namespace=None,
                 output="yaml",
             )
@@ -337,7 +339,7 @@ class KubeCtlInterface(AbstractKubeInterface):
                 ) as t:
                     codecs.dump_all_yaml(res, t)
                     manifest = self.exec(
-                        f"apply -f {t.name}",
+                        f"apply -f {t.name} {dry_run_arg}",
                         namespace=namespace,
                         output="yaml",
                     )
@@ -355,12 +357,12 @@ class KubeCtlInterface(AbstractKubeInterface):
                     for v in listify(values)
                 ]
             )
-            self.exec(
-                f"create {resource_type} {resource_name} {formatted_extra_args}",
+            manifest = self.exec(
+                f"create {resource_type} {resource_name} {formatted_extra_args} {dry_run_arg}",
                 namespace=namespace or self.namespace,
-                output="name",
+                output="yaml",
             )
-
+            return yaml.dump(manifest)
 
     def delete(
         self, resource_type: str, resource_name: str, namespace: str | None = None

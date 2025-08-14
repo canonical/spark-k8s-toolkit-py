@@ -892,3 +892,178 @@ def test_service_account_clear_config(service_account, backend):
     # Ensure that none of the custom configs exist now
     new_configs = set(stdout.splitlines())
     assert not any(config in new_configs for config in configs_to_add)
+
+
+@pytest.mark.parametrize("backend", VALID_BACKENDS)
+def test_service_account_get_manifest(namespace, backend):
+    """Test get-manifest action of the service_account_registry CLI.
+
+    Verify that the command indeed returns a manifest of K8s resources,
+    which when applied will create appropriate kubernetes resources for
+    the Spark service account to be created.
+    """
+
+    username = "manifest-user"
+    role_name = f"{username}-role"
+    role_binding_name = f"{username}-role-binding"
+    secret_name = f"{SPARK8S_LABEL}-sa-conf-{username}"
+    hub_secret_name = f"{HUB_LABEL}-{username}"
+
+    create_args = [
+        "get-manifest",
+        "--username",
+        username,
+        "--namespace",
+        namespace,
+        "--backend",
+        backend,
+    ]
+
+    # Create the service account
+    stdout, stderr, retcode = run_service_account_registry(*create_args)
+    assert retcode == 0
+
+    # Write the manifest to a temporary file
+    with umask_named_temporary_file(
+        mode="w+", prefix="manifest-", suffix=".yaml"
+    ) as tmp:
+        tmp.write(stdout)
+        tmp.flush()
+
+        # Now try applying the manifest file
+        apply_result = subprocess.run(
+            ["kubectl", "apply", "-f", tmp.name],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        assert apply_result.returncode == 0
+
+    # Check if service account was created
+    service_account_result = subprocess.run(
+        ["kubectl", "get", "serviceaccount", username, "-n", namespace, "-o", "json"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert service_account_result.returncode == 0
+
+    # Check if a role was created
+    role_result = subprocess.run(
+        ["kubectl", "get", "role", role_name, "-n", namespace, "-o", "json"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert role_result.returncode == 0
+
+    # Check if a role binding was created
+    role_binding_result = subprocess.run(
+        [
+            "kubectl",
+            "get",
+            "rolebinding",
+            role_binding_name,
+            "-n",
+            namespace,
+            "-o",
+            "json",
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert role_binding_result.returncode == 0
+
+    # Check secret creation
+    secret_result = subprocess.run(
+        [
+            "kubectl",
+            "get",
+            "secret",
+            secret_name,
+            "-n",
+            namespace,
+            "-o",
+            "json",
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert secret_result.returncode == 0
+
+    # Check for RBAC permissions
+    sa_identifier = f"system:serviceaccount:{namespace}:{username}"
+    for resource, actions in ALLOWED_PERMISSIONS.items():
+        for action in actions:
+            rbac_check = subprocess.run(
+                [
+                    "kubectl",
+                    "auth",
+                    "can-i",
+                    action,
+                    resource,
+                    "--namespace",
+                    namespace,
+                    "--as",
+                    sa_identifier,
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            assert rbac_check.returncode == 0
+            assert rbac_check.stdout.strip() == "yes"
+
+    # Check for RBAC permissions for named resources
+    resource_name_actions = {
+        secret_name: ALLOWED_PERMISSIONS_USER_SECRET,
+        hub_secret_name: ALLOWED_PERMISSIONS_HUB_SECRET,
+    }
+
+    for resource_name, actions in resource_name_actions.items():
+        for action in actions:
+            rbac_check = subprocess.run(
+                [
+                    "kubectl",
+                    "auth",
+                    "can-i",
+                    action,
+                    f"secret/{resource_name}",
+                    "--namespace",
+                    namespace,
+                    "--as",
+                    sa_identifier,
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            assert rbac_check.returncode == 0
+            assert rbac_check.stdout.strip() == "yes"
+
+        not_allowed_actions = set(ALL_ACTIONS).difference(actions)
+        print(not_allowed_actions)
+        for action in not_allowed_actions:
+            command = [
+                "kubectl",
+                "auth",
+                "can-i",
+                action,
+                f"secret/{resource_name}",
+                "--namespace",
+                namespace,
+                "--as",
+                sa_identifier,
+            ]
+            print(" ".join(command))
+            rbac_check = subprocess.run(
+                command,
+                capture_output=True,
+                text=True,
+            )
+            print(f"Return code: {rbac_check.returncode}")
+            print(f"Return stdout: {rbac_check.stdout.strip()}")
+            assert rbac_check.returncode != 0
+            assert rbac_check.stdout.strip() == "no"
