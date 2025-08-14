@@ -5,7 +5,10 @@ from argparse import ArgumentParser, Namespace
 from typing import Callable
 
 from spark8t.cli import defaults
-from spark8t.services import AbstractKubeInterface, KubeInterface, LightKube
+from spark8t.kube_interface.base import AbstractKubeInterface
+from spark8t.kube_interface.kubectl import KubeCtlInterface
+from spark8t.kube_interface.lightkube import LightKubeInterface
+
 from spark8t.utils import DEFAULT_LOGGING_FILE, config_from_file, environ
 
 
@@ -99,7 +102,7 @@ def k8s_parser(parser: ArgumentParser) -> ArgumentParser:
     )
     parser.add_argument(
         "--backend",
-        default="kubectl",
+        default="lightkube",
         choices=["kubectl", "lightkube"],
         type=str,
         help="Kind of backend to be used for talking to K8s",
@@ -146,7 +149,7 @@ def add_deploy_arguments(parser: ArgumentParser) -> ArgumentParser:
 
 def get_kube_interface(args: Namespace) -> AbstractKubeInterface:
     """Get configured kube interface."""
-    _class = LightKube if args.backend == "lightkube" else KubeInterface
+    _class = KubeCtlInterface if args.backend == "kubectl" else LightKubeInterface
 
     return _class(
         args.kubeconfig or defaults.kube_config, defaults, context_name=args.context

@@ -16,19 +16,17 @@ from spark8t.cli.params import (
     parse_arguments_with,
     spark_user_parser,
 )
-from spark8t.domain import KubernetesResourceType, PropertyFile, ServiceAccount
+from spark8t.domain import KubernetesResourceType, ServiceAccount
 from spark8t.exceptions import (
     AccountNotFound,
     NamespaceNotFound,
     PrimaryAccountNotFound,
     ResourceAlreadyExists,
 )
-from spark8t.services import (
-    AbstractKubeInterface,
-    K8sServiceAccountRegistry,
-    parse_conf_overrides,
-)
-from spark8t.utils import setup_logging
+
+from spark8t.kube_interface.base import AbstractKubeInterface
+from spark8t.registry.k8s import K8sServiceAccountRegistry
+from spark8t.utils import setup_logging, PropertyFile
 
 
 def build_service_account_from_args(args, registry) -> ServiceAccount:
@@ -52,6 +50,7 @@ class Actions(str, Enum):
     CLEAR_CONFIG = "clear-config"
     PRIMARY = "get-primary"
     LIST = "list"
+    GET_MANIFEST = "get-manifest"
 
     def __str__(self) -> str:
         """Define string representation.
@@ -124,6 +123,13 @@ def create_service_account_registry_parser(parser: ArgumentParser):
         action="store_true",
         help="Boolean to ignore Spark Integration Hub generated options.",
     )
+
+    #  subparser for get-manifest
+    parse_arguments_with(
+        [spark_user_parser],
+        subparsers.add_parser(Actions.GET_MANIFEST.value, parents=[base_parser]),
+    )
+
     #  subparser for sa-conf-del
     parse_arguments_with(
         [spark_user_parser],
@@ -160,9 +166,13 @@ def main(args: Namespace, logger: Logger):
             PropertyFile.read(args.properties_file)
             if args.properties_file is not None
             else PropertyFile.empty()
-        ) + parse_conf_overrides(args.conf)
-
+        ) + PropertyFile.parse_conf_overrides(args.conf)
         registry.create(service_account)
+
+    elif args.action == Actions.GET_MANIFEST:
+        service_account = build_service_account_from_args(args, registry)
+        manifest = registry.create(service_account, dry_run=True)
+        print(manifest)
 
     elif args.action == Actions.DELETE:
         user_id = build_service_account_from_args(args, registry).id
@@ -184,7 +194,7 @@ def main(args: Namespace, logger: Logger):
                 if args.properties_file is not None
                 else PropertyFile.empty()
             )
-            + parse_conf_overrides(args.conf)
+            + PropertyFile.parse_conf_overrides(args.conf)
         )
 
         registry.set_configurations(input_service_account.id, account_configuration)
