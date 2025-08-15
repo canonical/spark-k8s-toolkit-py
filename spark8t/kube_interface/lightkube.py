@@ -306,6 +306,7 @@ class LightKubeInterface(AbstractKubeInterface):
         resource_type: KubernetesResourceType,
         resource_name: str,
         namespace: str | None = None,
+        dry_run: bool = False,
         **extra_args,
     ):
         """Create a K8s resource.
@@ -314,6 +315,7 @@ class LightKubeInterface(AbstractKubeInterface):
             resource_type: type of the resource to be created, e.g. service account, rolebindings, etc.
             resource_name: name of the resource to be created
             namespace: namespace where the resource is
+            dry_run: whether to skip actual creation of resources
             extra_args: extra parameters that should be provided when creating the resource. Note that each parameter
                         will be prepended with the -- in the cmd, e.g. {"role": "view"} will translate as
                         --role=view in the command. List of parameter values against a parameter key are also accepted.
@@ -371,6 +373,7 @@ class LightKubeInterface(AbstractKubeInterface):
                         "metadata": {
                             "name": resource_name,
                             "namespace": namespace,
+                            "labels": {GENERATED_BY_LABELNAME: SPARK8S_LABEL},
                         },
                     }
                 )
@@ -382,7 +385,11 @@ class LightKubeInterface(AbstractKubeInterface):
                 f"Label setting for resource name {resource_type} not supported yet."
             )
 
-        self.client.create(obj=res, name=resource_name, namespace=namespace)
+        if not dry_run:
+            self.client.create(obj=res, name=resource_name, namespace=namespace)
+        if res is None:
+            return ""
+        return codecs.dump_all_yaml([cast(AnyResource, res)])  # mypy: ignore
 
     def delete(
         self,

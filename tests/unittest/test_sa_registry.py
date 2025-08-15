@@ -1359,7 +1359,8 @@ def test_k8s_registry_set_primary(mocker):
     )
 
 
-def test_k8s_registry_create(mocker):
+@pytest.mark.parametrize("dry_run", [True, False])
+def test_k8s_registry_create(mocker, dry_run):
     mock_kube_interface = mocker.patch(
         "spark8t.kube_interface.kubectl.KubeCtlInterface"
     )
@@ -1417,7 +1418,7 @@ def test_k8s_registry_create(mocker):
     mock_kube_interface.exists.return_value = False
 
     registry = K8sServiceAccountRegistry(mock_kube_interface)
-    registry.create(sa3_obj)
+    assert registry.create(sa3_obj, dry_run=dry_run) == "---\n".join(["<manifest>"] * 4)
 
     for call in mock_kube_interface.create.call_args_list:
         print(call)
@@ -1427,6 +1428,7 @@ def test_k8s_registry_create(mocker):
         resource_name=name3,
         namespace=namespace3,
         username=name3,
+        dry_run=dry_run,
     )
 
     mock_kube_interface.create.assert_any_call(
@@ -1434,6 +1436,7 @@ def test_k8s_registry_create(mocker):
         resource_name=f"{name3}-role",
         namespace=namespace3,
         **{"username": f"{name3}"},
+        dry_run=dry_run,
     )
 
     mock_kube_interface.create.assert_any_call(
@@ -1445,49 +1448,51 @@ def test_k8s_registry_create(mocker):
             "serviceaccount": sa3_obj.id,
             "username": name3,
         },
+        dry_run=dry_run,
     )
 
-    mock_kube_interface.set_label.assert_any_call(
-        resource_type=KubernetesResourceType.SERVICEACCOUNT,
-        resource_name=name3,
-        label=f"{MANAGED_BY_LABELNAME}={SPARK8S_LABEL}",
-        namespace=namespace3,
-    )
+    if not dry_run:
+        mock_kube_interface.set_label.assert_any_call(
+            resource_type=KubernetesResourceType.SERVICEACCOUNT,
+            resource_name=name3,
+            label=f"{MANAGED_BY_LABELNAME}={SPARK8S_LABEL}",
+            namespace=namespace3,
+        )
 
-    mock_kube_interface.set_label.assert_any_call(
-        resource_type=KubernetesResourceType.ROLEBINDING,
-        resource_name=f"{name3}-role-binding",
-        label=f"{MANAGED_BY_LABELNAME}={SPARK8S_LABEL}",
-        namespace=namespace3,
-    )
+        mock_kube_interface.set_label.assert_any_call(
+            resource_type=KubernetesResourceType.ROLEBINDING,
+            resource_name=f"{name3}-role-binding",
+            label=f"{MANAGED_BY_LABELNAME}={SPARK8S_LABEL}",
+            namespace=namespace3,
+        )
 
-    mock_kube_interface.remove_label.assert_any_call(
-        resource_type=KubernetesResourceType.SERVICEACCOUNT,
-        resource_name=name1,
-        label=f"{PRIMARY_LABELNAME}",
-        namespace=namespace1,
-    )
+        mock_kube_interface.remove_label.assert_any_call(
+            resource_type=KubernetesResourceType.SERVICEACCOUNT,
+            resource_name=name1,
+            label=f"{PRIMARY_LABELNAME}",
+            namespace=namespace1,
+        )
 
-    mock_kube_interface.remove_label.assert_any_call(
-        resource_type=KubernetesResourceType.ROLEBINDING,
-        resource_name=f"{name1}-role-binding",
-        label=f"{PRIMARY_LABELNAME}",
-        namespace=namespace1,
-    )
+        mock_kube_interface.remove_label.assert_any_call(
+            resource_type=KubernetesResourceType.ROLEBINDING,
+            resource_name=f"{name1}-role-binding",
+            label=f"{PRIMARY_LABELNAME}",
+            namespace=namespace1,
+        )
 
-    mock_kube_interface.set_label.assert_any_call(
-        resource_type=KubernetesResourceType.SERVICEACCOUNT,
-        resource_name=name3,
-        label=f"{PRIMARY_LABELNAME}=True",
-        namespace=namespace3,
-    )
+        mock_kube_interface.set_label.assert_any_call(
+            resource_type=KubernetesResourceType.SERVICEACCOUNT,
+            resource_name=name3,
+            label=f"{PRIMARY_LABELNAME}=True",
+            namespace=namespace3,
+        )
 
-    mock_kube_interface.set_label.assert_any_call(
-        resource_type=KubernetesResourceType.ROLEBINDING,
-        resource_name=f"{name3}-role-binding",
-        label=f"{PRIMARY_LABELNAME}=True",
-        namespace=namespace3,
-    )
+        mock_kube_interface.set_label.assert_any_call(
+            resource_type=KubernetesResourceType.ROLEBINDING,
+            resource_name=f"{name3}-role-binding",
+            label=f"{PRIMARY_LABELNAME}=True",
+            namespace=namespace3,
+        )
 
 
 def test_k8s_registry_delete(mocker):

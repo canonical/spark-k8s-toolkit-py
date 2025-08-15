@@ -50,6 +50,7 @@ class Actions(str, Enum):
     CLEAR_CONFIG = "clear-config"
     PRIMARY = "get-primary"
     LIST = "list"
+    GET_MANIFEST = "get-manifest"
 
     def __str__(self) -> str:
         """Define string representation.
@@ -122,6 +123,13 @@ def create_service_account_registry_parser(parser: ArgumentParser):
         action="store_true",
         help="Boolean to ignore Spark Integration Hub generated options.",
     )
+
+    #  subparser for get-manifest
+    parse_arguments_with(
+        [spark_user_parser],
+        subparsers.add_parser(Actions.GET_MANIFEST.value, parents=[base_parser]),
+    )
+
     #  subparser for sa-conf-del
     parse_arguments_with(
         [spark_user_parser],
@@ -160,6 +168,11 @@ def main(args: Namespace, logger: Logger):
             else PropertyFile.empty()
         ) + PropertyFile.parse_conf_overrides(args.conf)
         registry.create(service_account)
+
+    elif args.action == Actions.GET_MANIFEST:
+        service_account = build_service_account_from_args(args, registry)
+        manifest = registry.create(service_account, dry_run=True)
+        print(manifest)
 
     elif args.action == Actions.DELETE:
         user_id = build_service_account_from_args(args, registry).id
