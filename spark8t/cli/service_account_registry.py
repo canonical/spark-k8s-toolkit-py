@@ -16,19 +16,17 @@ from spark8t.cli.params import (
     parse_arguments_with,
     spark_user_parser,
 )
-from spark8t.domain import KubernetesResourceType, PropertyFile, ServiceAccount
+from spark8t.domain import KubernetesResourceType, ServiceAccount
 from spark8t.exceptions import (
     AccountNotFound,
     NamespaceNotFound,
     PrimaryAccountNotFound,
     ResourceAlreadyExists,
 )
-from spark8t.services import (
-    AbstractKubeInterface,
-    K8sServiceAccountRegistry,
-    parse_conf_overrides,
-)
-from spark8t.utils import setup_logging
+
+from spark8t.kube_interface.base import AbstractKubeInterface
+from spark8t.registry.k8s import K8sServiceAccountRegistry
+from spark8t.utils import setup_logging, PropertyFile
 
 
 def build_service_account_from_args(args, registry) -> ServiceAccount:
@@ -160,8 +158,7 @@ def main(args: Namespace, logger: Logger):
             PropertyFile.read(args.properties_file)
             if args.properties_file is not None
             else PropertyFile.empty()
-        ) + parse_conf_overrides(args.conf)
-
+        ) + PropertyFile.parse_conf_overrides(args.conf)
         registry.create(service_account)
 
     elif args.action == Actions.DELETE:
@@ -184,7 +181,7 @@ def main(args: Namespace, logger: Logger):
                 if args.properties_file is not None
                 else PropertyFile.empty()
             )
-            + parse_conf_overrides(args.conf)
+            + PropertyFile.parse_conf_overrides(args.conf)
         )
 
         registry.set_configurations(input_service_account.id, account_configuration)

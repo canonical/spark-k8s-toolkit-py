@@ -6,7 +6,9 @@ import pytest
 from lightkube.resources.core_v1 import Namespace
 
 from spark8t.domain import Defaults
-from spark8t.services import K8sServiceAccountRegistry, KubeInterface, LightKube
+from spark8t.registry.k8s import K8sServiceAccountRegistry
+from spark8t.kube_interface.kubectl import KubeCtlInterface
+from spark8t.kube_interface.lightkube import LightKubeInterface
 
 integration_test_flag = bool(int(os.environ.get("IE_TEST", "0")))
 
@@ -36,7 +38,7 @@ def _get_kube_namespaces(interface):
 
 @pytest.fixture
 def kubeinterface(defs_with_kubeconf):
-    interface = KubeInterface(defs_with_kubeconf.kube_config, defs_with_kubeconf)
+    interface = KubeCtlInterface(defs_with_kubeconf.kube_config, defs_with_kubeconf)
     ns_before = _get_kube_namespaces(interface)
     yield interface
     ns_after = _get_kube_namespaces(interface)
@@ -50,7 +52,7 @@ def _get_lightkube_namespaces(iface):
 
 @pytest.fixture
 def lightkubeinterface(defs_with_kubeconf):
-    interface = LightKube(defs_with_kubeconf.kube_config, defs_with_kubeconf)
+    interface = LightKubeInterface(defs_with_kubeconf.kube_config, defs_with_kubeconf)
     ns_before = _get_lightkube_namespaces(interface)
     yield interface
     ns_after = _get_lightkube_namespaces(interface)

@@ -5,9 +5,9 @@ import uuid
 
 import pytest
 
-from spark8t.domain import Defaults, PropertyFile, ServiceAccount
-from spark8t.services import InMemoryAccountRegistry
-from spark8t.utils import umask_named_temporary_file
+from spark8t.domain import Defaults, ServiceAccount
+from spark8t.utils import PropertyFile, umask_named_temporary_file
+from spark8t.registry.memory import InMemoryAccountRegistry
 
 
 def test_defaults():
@@ -318,13 +318,13 @@ def test_property_file_log(caplog):
 
     # test logic
     conf = PropertyFile(props={k: v})
-    caplog.set_level("INFO", logger="spark8t.domain.PropertyFile")
+    caplog.set_level("INFO", logger="spark8t.utils.PropertyFile")
     with caplog.at_level("INFO"):
         conf.log()
         assert len(caplog.records) == 1
         assert caplog.records[0].message == f"{k}={v}"
         assert caplog.records[0].levelno == logging.INFO
-        assert caplog.records[0].name == "spark8t.domain.PropertyFile"
+        assert caplog.records[0].name == "spark8t.utils.PropertyFile"
 
 
 def test_in_memory_registry():
