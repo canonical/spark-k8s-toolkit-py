@@ -3,8 +3,7 @@ import os
 
 import pytest
 
-from spark8t.services import PropertyFile
-from spark8t.utils import setup_logging
+from spark8t.utils import setup_logging, PropertyFile
 
 TEST_LOGGING_FILE = os.path.join(
     os.path.dirname(__file__), "..", "resources", "logging.yaml"

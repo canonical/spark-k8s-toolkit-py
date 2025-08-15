@@ -14,14 +14,18 @@ from lightkube.types import PatchType
 from OpenSSL import crypto
 
 from spark8t.cli import defaults
-from spark8t.domain import KubernetesResourceType, PropertyFile, ServiceAccount
-from spark8t.literals import MANAGED_BY_LABELNAME, PRIMARY_LABELNAME, SPARK8S_LABEL
-from spark8t.services import (
-    K8sServiceAccountRegistry,
-    KubeInterface,
-    LightKube,
-    parse_conf_overrides,
+from spark8t.domain import KubernetesResourceType, ServiceAccount
+from spark8t.utils import PropertyFile
+from spark8t.literals import (
+    MANAGED_BY_LABELNAME,
+    PRIMARY_LABELNAME,
+    SPARK8S_LABEL,
+    GENERATED_BY_LABELNAME,
 )
+from spark8t.registry.k8s import K8sServiceAccountRegistry
+from spark8t.kube_interface.kubectl import KubeCtlInterface
+from spark8t.kube_interface.lightkube import LightKubeInterface
+
 
 ####################################################################################################
 # Helpers
@@ -167,7 +171,7 @@ def cert_gen(
 def test_conf_expansion_cli():
     home_var = "/this/is/my/home"
 
-    parsed_property = parse_conf_overrides(
+    parsed_property = PropertyFile.parse_conf_overrides(
         ["my-conf=$HOME/folder", "my-other-conf=/this/does/$NOT/change"],
         environ_vars={"HOME": home_var},
     )
@@ -246,7 +250,7 @@ def test_kube_interface():
         ],
     }
 
-    k = KubeInterface(kube_config_file=kubeconfig_yaml, defaults=defaults)
+    k = KubeCtlInterface(kube_config_file=kubeconfig_yaml, defaults=defaults)
 
     assert k.context_name == context2
     assert k.with_context(context3).context_name == context3
@@ -275,7 +279,7 @@ def test_lightkube(tmp_kubeconf):
     context2 = "context2"
     context3 = "context3"
 
-    k = LightKube(
+    k = LightKubeInterface(
         kube_config_file=tmp_kubeconf,
         defaults=defaults,
     )
@@ -321,7 +325,7 @@ def test_lightkube_get_secret(mocker, tmp_kubeconf):
 
     mock_lightkube_client_get.side_effect = side_effect
 
-    k = LightKube(kube_config_file=kubeconfig, defaults=defaults)
+    k = LightKubeInterface(kube_config_file=kubeconfig, defaults=defaults)
     secret_result = k.get_secret(secret_name, namespace)
     assert conf_value == secret_result["data"][conf_key]
 
@@ -397,7 +401,7 @@ def test_kube_interface_get_secret(mocker, tmp_path):
 
     secret_mock = mocker.patch("spark8t.utils.parse_yaml_shell_output")
     secret_mock.side_effect = output_get_secret
-    k = KubeInterface(kube_config_file=kube_config_file, defaults=defaults)
+    k = KubeCtlInterface(kube_config_file=kube_config_file, defaults=defaults)
     secret_result = k.get_secret(secret_name, namespace)
     assert conf_value == secret_result["data"][conf_key]
 
@@ -417,7 +421,7 @@ def test_lightkube_set_label_service_account(mocker, tmp_kubeconf):
 
     mock_lightkube_client_patch.return_value = 0
 
-    k = LightKube(kube_config_file=kubeconfig, defaults=defaults)
+    k = LightKubeInterface(kube_config_file=kubeconfig, defaults=defaults)
     k.set_label("serviceaccount", resource_name, label, namespace)
 
     patch = {"metadata": {"labels": {label_key: label_value}}}
@@ -447,7 +451,7 @@ def test_lightkube_set_label_role(mocker, tmp_kubeconf):
     mock_lightkube_client_patch.side_effect = side_effect
     mock_lightkube_client_patch.return_value = 0
 
-    k = LightKube(kube_config_file=kubeconfig, defaults=defaults)
+    k = LightKubeInterface(kube_config_file=kubeconfig, defaults=defaults)
     k.set_label("role", resource_name, label, namespace)
 
 
@@ -468,7 +472,7 @@ def test_lightkube_set_label_role_binding(mocker, tmp_kubeconf):
     mock_lightkube_client_patch.side_effect = side_effect
     mock_lightkube_client_patch.return_value = 0
 
-    k = LightKube(kube_config_file=kubeconfig, defaults=defaults)
+    k = LightKubeInterface(kube_config_file=kubeconfig, defaults=defaults)
     k.set_label("rolebinding", resource_name, label, namespace)
 
 
@@ -481,7 +485,7 @@ def test_lightkube_remove_label_service_account(mocker, tmp_kubeconf):
 
     mock_lightkube_client_patch.return_value = 0
 
-    k = LightKube(kube_config_file=kubeconfig, defaults=defaults)
+    k = LightKubeInterface(kube_config_file=kubeconfig, defaults=defaults)
     k.remove_label("serviceaccount", resource_name, label_key, namespace)
 
     patch = [
@@ -506,7 +510,7 @@ def test_lightkube_remove_label_role(mocker, tmp_kubeconf):
 
     mock_lightkube_client_patch.return_value = 0
 
-    k = LightKube(kube_config_file=kubeconfig, defaults=defaults)
+    k = LightKubeInterface(kube_config_file=kubeconfig, defaults=defaults)
     k.remove_label("role", resource_name, label_key, namespace)
 
     patch = [
@@ -531,7 +535,7 @@ def test_lightkube_remove_label_role_binding(mocker, tmp_kubeconf):
 
     mock_lightkube_client_patch.return_value = 0
 
-    k = LightKube(kube_config_file=kubeconfig, defaults=defaults)
+    k = LightKubeInterface(kube_config_file=kubeconfig, defaults=defaults)
     k.remove_label("rolebinding", resource_name, label_key, namespace)
 
     patch = [
@@ -603,7 +607,7 @@ def test_kube_interface_set_label(mocker, tmp_path):
 
     set_label_mock = mocker.patch("spark8t.utils.parse_yaml_shell_output")
     set_label_mock.side_effect = output_set_label
-    k = KubeInterface(kube_config_file=kube_config_file, defaults=defaults)
+    k = KubeCtlInterface(kube_config_file=kube_config_file, defaults=defaults)
     k.set_label(resource_type, resource_name, label, namespace)
 
     mock_subprocess.assert_any_call(cmd_set_label, shell=True, stderr=subprocess.STDOUT)
@@ -642,7 +646,7 @@ def test_lightkube_create_service_account(mocker, tmp_kubeconf):
     mock_lightkube_codecs_load_all_yaml.return_value = [mock_created_resource]
 
     with patch("builtins.open", mock_open(read_data=kubeconfig_yaml_str)):
-        k = LightKube(kube_config_file=kubeconfig, defaults=defaults)
+        k = LightKubeInterface(kube_config_file=kubeconfig, defaults=defaults)
         k.create(
             KubernetesResourceType.SERVICEACCOUNT,
             resource_name,
@@ -650,7 +654,9 @@ def test_lightkube_create_service_account(mocker, tmp_kubeconf):
         )
 
     mock_lightkube_client_create.assert_any_call(
-        obj=mock_created_resource, name=resource_name, namespace=namespace
+        obj=mock_created_resource,
+        name=resource_name,
+        namespace=namespace,
     )
 
 
@@ -687,7 +693,7 @@ def test_lightkube_create_role(mocker, tmp_kubeconf):
     mock_lightkube_codecs_load_all_yaml.return_value = [mock_created_resource]
 
     with patch("builtins.open", mock_open(read_data=kubeconfig_yaml_str)):
-        k = LightKube(kube_config_file=kubeconfig, defaults=defaults)
+        k = LightKubeInterface(kube_config_file=kubeconfig, defaults=defaults)
         k.create(
             KubernetesResourceType.ROLE,
             resource_name,
@@ -695,7 +701,9 @@ def test_lightkube_create_role(mocker, tmp_kubeconf):
         )
 
     mock_lightkube_client_create.assert_any_call(
-        obj=mock_created_resource, name=resource_name, namespace=namespace
+        obj=mock_created_resource,
+        name=resource_name,
+        namespace=namespace,
     )
 
 
@@ -733,7 +741,7 @@ def test_lightkube_create_rolebinding(mocker, tmp_kubeconf):
     mock_lightkube_codecs_load_all_yaml.return_value = [mock_created_resource]
 
     with patch("builtins.open", mock_open(read_data=kubeconfig_yaml_str)):
-        k = LightKube(kube_config_file=kubeconfig, defaults=defaults)
+        k = LightKubeInterface(kube_config_file=kubeconfig, defaults=defaults)
         print(f"rn: {resource_name}, namespace: {namespace}")
         k.create(
             KubernetesResourceType.ROLEBINDING,
@@ -742,7 +750,9 @@ def test_lightkube_create_rolebinding(mocker, tmp_kubeconf):
         )
 
     mock_lightkube_client_create.assert_any_call(
-        obj=mock_created_resource, name=resource_name, namespace=namespace
+        obj=mock_created_resource,
+        name=resource_name,
+        namespace=namespace,
     )
 
 
@@ -762,7 +772,11 @@ def test_lightkube_create_secret(mocker, tmp_kubeconf):
         {
             "apiVersion": "v1",
             "kind": "Secret",
-            "metadata": {"name": resource_name, "namespace": namespace},
+            "metadata": {
+                "name": resource_name,
+                "namespace": namespace,
+                "labels": {GENERATED_BY_LABELNAME: SPARK8S_LABEL},
+            },
             "stringData": None,
         }
     )
@@ -778,7 +792,7 @@ def test_lightkube_create_secret(mocker, tmp_kubeconf):
     mock_lightkube_codecs_load_all_yaml.return_value = mock_created_resource
 
     with patch("builtins.open", mock_open(read_data=kubeconfig_yaml_str)):
-        k = LightKube(kube_config_file=kubeconfig, defaults=defaults)
+        k = LightKubeInterface(kube_config_file=kubeconfig, defaults=defaults)
         k.create(
             KubernetesResourceType.SECRET_GENERIC,
             resource_name,
@@ -787,7 +801,9 @@ def test_lightkube_create_secret(mocker, tmp_kubeconf):
         )
 
     mock_lightkube_client_create.assert_any_call(
-        obj=mock_created_resource, name=resource_name, namespace=namespace
+        obj=mock_created_resource,
+        name=resource_name,
+        namespace=namespace,
     )
 
 
@@ -799,7 +815,7 @@ def test_lightkube_delete_secret(mocker, tmp_kubeconf):
 
     mock_lightkube_client_delete.return_value = 0
 
-    k = LightKube(kube_config_file=kubeconfig, defaults=defaults)
+    k = LightKubeInterface(kube_config_file=kubeconfig, defaults=defaults)
     k.delete("secret", resource_name, namespace)
 
     mock_lightkube_client_delete.assert_any_call(
@@ -815,7 +831,7 @@ def test_lightkube_delete_service_account(mocker, tmp_kubeconf):
 
     mock_lightkube_client_delete.return_value = 0
 
-    k = LightKube(kube_config_file=kubeconfig, defaults=defaults)
+    k = LightKubeInterface(kube_config_file=kubeconfig, defaults=defaults)
     k.delete("serviceaccount", resource_name, namespace)
 
     mock_lightkube_client_delete.assert_any_call(
@@ -831,7 +847,7 @@ def test_lightkube_delete_role(mocker, tmp_kubeconf):
 
     mock_lightkube_client_delete.return_value = 0
 
-    k = LightKube(kube_config_file=kubeconfig.strip(), defaults=defaults)
+    k = LightKubeInterface(kube_config_file=kubeconfig.strip(), defaults=defaults)
     k.delete("role", resource_name, namespace)
 
     mock_lightkube_client_delete.assert_any_call(
@@ -847,7 +863,7 @@ def test_lightkube_delete_role_binding(mocker, tmp_kubeconf):
 
     mock_lightkube_client_delete.return_value = 0
 
-    k = LightKube(kube_config_file=kubeconfig, defaults=defaults)
+    k = LightKubeInterface(kube_config_file=kubeconfig, defaults=defaults)
     k.delete("rolebinding", resource_name, namespace)
 
     mock_lightkube_client_delete.assert_any_call(
@@ -860,6 +876,7 @@ def test_kube_interface_create(mocker, tmp_path):
 
     # mock logic
     def side_effect(*args, **kwargs):
+        print(values)
         return values[args[0]]
 
     mock_subprocess.side_effect = side_effect
@@ -901,7 +918,7 @@ def test_kube_interface_create(mocker, tmp_path):
     with open(kube_config_file, "w") as fid:
         yaml.dump(kubeconfig_yaml, fid, sort_keys=False)
 
-    cmd_create = f"kubectl --kubeconfig {kube_config_file} --namespace {namespace} --context {context} create {resource_type} {resource_name} --k1=v1 --k2=v21 --k2=v22 -o name"
+    cmd_create = f"kubectl --kubeconfig {kube_config_file} --namespace {namespace} --context {context} create {resource_type} {resource_name} --k1=v1 --k2=v21 --k2=v22  -o yaml"
     output_create = "0".encode("utf-8")
     values = {
         cmd_create: output_create,
@@ -910,12 +927,13 @@ def test_kube_interface_create(mocker, tmp_path):
     create_mock = mocker.patch("spark8t.utils.parse_yaml_shell_output")
     create_mock.side_effect = output_create
 
-    k = KubeInterface(kube_config_file=kube_config_file, defaults=defaults)
+    k = KubeCtlInterface(kube_config_file=kube_config_file, defaults=defaults)
     k.create(
         resource_type,
         resource_name,
         namespace,
         **{"k1": "v1", "k2": ["v21", "v22"]},
+        dry_run=False,
     )
 
     mock_subprocess.assert_any_call(cmd_create, shell=True, stderr=subprocess.STDOUT)
@@ -976,7 +994,7 @@ def test_kube_interface_delete(mocker, tmp_path):
     delete_mock = mocker.patch("spark8t.utils.parse_yaml_shell_output")
     delete_mock.side_effect = output_delete
 
-    k = KubeInterface(kube_config_file=kube_config_file, defaults=defaults)
+    k = KubeCtlInterface(kube_config_file=kube_config_file, defaults=defaults)
     k.delete(resource_type, resource_name, namespace)
 
     mock_subprocess.assert_any_call(cmd_delete, shell=True, stderr=subprocess.STDOUT)
@@ -997,7 +1015,7 @@ def test_kube_interface_delete_no_kubeconfig(mocker):
 
     cmd_delete = f"kubectl --namespace {namespace} delete {resource_type} {resource_name} --ignore-not-found -o name"
 
-    k = KubeInterface(kube_config_file=None, defaults=defaults)
+    k = KubeCtlInterface(kube_config_file=None, defaults=defaults)
     k.delete(resource_type, resource_name, namespace)
 
     mock_subprocess.assert_any_call(cmd_delete, shell=True, stderr=subprocess.STDOUT)
@@ -1027,7 +1045,7 @@ def test_lightkube_get_service_accounts(mocker, tmp_kubeconf):
     mock_lightkube_client_list.return_value = [mock_service_account]
     mock_lightkube_codecs_dump_all_yaml.side_effect = side_effect
 
-    k = LightKube(kube_config_file=kubeconfig, defaults=defaults)
+    k = LightKubeInterface(kube_config_file=kubeconfig, defaults=defaults)
     k.get_service_accounts(labels=[label])
 
 
@@ -1052,7 +1070,7 @@ def test_lightkube_get_service_account(mocker, tmp_kubeconf):
     mock_lightkube_client_get.return_value = mock_service_account
     mock_lightkube_codecs_dump_all_yaml.side_effect = side_effect
 
-    k = LightKube(kube_config_file=kubeconfig, defaults=defaults)
+    k = LightKubeInterface(kube_config_file=kubeconfig, defaults=defaults)
     k.get_service_account(resource_name)
 
 
@@ -1128,7 +1146,7 @@ def test_kube_interface_get_service_accounts(mocker, tmp_path):
 
     mock_subprocess.side_effect = side_effect
 
-    k = KubeInterface(kube_config_file=kube_config_file, defaults=defaults)
+    k = KubeCtlInterface(kube_config_file=kube_config_file, defaults=defaults)
     sa_list = k.get_service_accounts(namespace, labels)
     assert sa_list[0].get("metadata").get("name") == username
     assert sa_list[0].get("metadata").get("namespace") == namespace
@@ -1208,7 +1226,7 @@ def test_kube_interface_autodetect(mocker, tmp_path):
 
     mock_subprocess.side_effect = side_effect
 
-    ki = KubeInterface.autodetect(context, defaults)
+    ki = KubeCtlInterface.autodetect(context, defaults)
     assert ki.context_name == context
     assert ki.kubectl_cmd == "kubectl"
 
@@ -1218,7 +1236,9 @@ def test_kube_interface_autodetect(mocker, tmp_path):
 
 
 def test_k8s_registry_secret_account_configurations(mocker):
-    mock_kube_interface = mocker.patch("spark8t.services.KubeInterface")
+    mock_kube_interface = mocker.patch(
+        "spark8t.kube_interface.kubectl.KubeCtlInterface"
+    )
     data = {"k": "v"}
     mock_kube_interface.get_secret.return_value = {"data": data}
     registry = K8sServiceAccountRegistry(mock_kube_interface)
@@ -1231,7 +1251,9 @@ def test_k8s_registry_secret_account_configurations(mocker):
 
 
 def test_k8s_registry_all(mocker):
-    mock_kube_interface = mocker.patch("spark8t.services.KubeInterface")
+    mock_kube_interface = mocker.patch(
+        "spark8t.kube_interface.kubectl.KubeCtlInterface"
+    )
     data = {"k": "v"}
     mock_kube_interface.get_secret.return_value = {"data": data}
 
@@ -1271,7 +1293,9 @@ def test_k8s_registry_all(mocker):
 
 
 def test_k8s_registry_set_primary(mocker):
-    mock_kube_interface = mocker.patch("spark8t.services.KubeInterface")
+    mock_kube_interface = mocker.patch(
+        "spark8t.kube_interface.kubectl.KubeCtlInterface"
+    )
     data = {"k": "v"}
     mock_kube_interface.get_secret.return_value = {"data": data}
 
@@ -1307,36 +1331,38 @@ def test_k8s_registry_set_primary(mocker):
     assert registry.set_primary(f"{namespace2}:{name2}") == f"{namespace2}:{name2}"
 
     mock_kube_interface.remove_label.assert_any_call(
-        "serviceaccount",
-        name1,
-        f"{PRIMARY_LABELNAME}",
-        namespace1,
+        resource_type="serviceaccount",
+        resource_name=name1,
+        label=f"{PRIMARY_LABELNAME}",
+        namespace=namespace1,
     )
 
     mock_kube_interface.remove_label.assert_any_call(
-        "rolebinding",
-        f"{name1}-role-binding",
-        f"{PRIMARY_LABELNAME}",
-        namespace1,
+        resource_type="rolebinding",
+        resource_name=f"{name1}-role-binding",
+        label=f"{PRIMARY_LABELNAME}",
+        namespace=namespace1,
     )
 
     mock_kube_interface.set_label.assert_any_call(
-        "serviceaccount",
-        name2,
-        f"{PRIMARY_LABELNAME}=True",
-        namespace2,
+        resource_type="serviceaccount",
+        resource_name=name2,
+        label=f"{PRIMARY_LABELNAME}=True",
+        namespace=namespace2,
     )
 
     mock_kube_interface.set_label.assert_any_call(
-        "rolebinding",
-        f"{name2}-role-binding",
-        f"{PRIMARY_LABELNAME}=True",
-        namespace2,
+        resource_type="rolebinding",
+        resource_name=f"{name2}-role-binding",
+        label=f"{PRIMARY_LABELNAME}=True",
+        namespace=namespace2,
     )
 
 
 def test_k8s_registry_create(mocker):
-    mock_kube_interface = mocker.patch("spark8t.services.KubeInterface")
+    mock_kube_interface = mocker.patch(
+        "spark8t.kube_interface.kubectl.KubeCtlInterface"
+    )
     data = {"k": "v"}
     mock_kube_interface.get_secret.return_value = {"data": data}
 
@@ -1387,32 +1413,32 @@ def test_k8s_registry_create(mocker):
     mock_kube_interface.get_service_account.return_value = sa3
     mock_kube_interface.set_label.return_value = 0
     mock_kube_interface.remove_label.return_value = 0
-    mock_kube_interface.create.return_value = 0
+    mock_kube_interface.create.return_value = "<manifest>"
     mock_kube_interface.exists.return_value = False
 
     registry = K8sServiceAccountRegistry(mock_kube_interface)
-    assert registry.create(sa3_obj) == sa3_obj.id
+    registry.create(sa3_obj)
 
     for call in mock_kube_interface.create.call_args_list:
         print(call)
 
     mock_kube_interface.create.assert_any_call(
-        KubernetesResourceType.SERVICEACCOUNT,
-        name3,
+        resource_type=KubernetesResourceType.SERVICEACCOUNT,
+        resource_name=name3,
         namespace=namespace3,
         username=name3,
     )
 
     mock_kube_interface.create.assert_any_call(
-        "role",
-        f"{name3}-role",
+        resource_type=KubernetesResourceType.ROLE,
+        resource_name=f"{name3}-role",
         namespace=namespace3,
         **{"username": f"{name3}"},
     )
 
     mock_kube_interface.create.assert_any_call(
-        KubernetesResourceType.ROLEBINDING,
-        f"{name3}-role-binding",
+        resource_type=KubernetesResourceType.ROLEBINDING,
+        resource_name=f"{name3}-role-binding",
         namespace=namespace3,
         **{
             "role": f"{name3}-role",
@@ -1422,50 +1448,52 @@ def test_k8s_registry_create(mocker):
     )
 
     mock_kube_interface.set_label.assert_any_call(
-        KubernetesResourceType.SERVICEACCOUNT,
-        name3,
-        f"{MANAGED_BY_LABELNAME}={SPARK8S_LABEL}",
+        resource_type=KubernetesResourceType.SERVICEACCOUNT,
+        resource_name=name3,
+        label=f"{MANAGED_BY_LABELNAME}={SPARK8S_LABEL}",
         namespace=namespace3,
     )
 
     mock_kube_interface.set_label.assert_any_call(
-        KubernetesResourceType.ROLEBINDING,
-        f"{name3}-role-binding",
-        f"{MANAGED_BY_LABELNAME}={SPARK8S_LABEL}",
+        resource_type=KubernetesResourceType.ROLEBINDING,
+        resource_name=f"{name3}-role-binding",
+        label=f"{MANAGED_BY_LABELNAME}={SPARK8S_LABEL}",
         namespace=namespace3,
     )
 
     mock_kube_interface.remove_label.assert_any_call(
-        KubernetesResourceType.SERVICEACCOUNT,
-        name1,
-        f"{PRIMARY_LABELNAME}",
-        namespace1,
+        resource_type=KubernetesResourceType.SERVICEACCOUNT,
+        resource_name=name1,
+        label=f"{PRIMARY_LABELNAME}",
+        namespace=namespace1,
     )
 
     mock_kube_interface.remove_label.assert_any_call(
-        KubernetesResourceType.ROLEBINDING,
-        f"{name1}-role-binding",
-        f"{PRIMARY_LABELNAME}",
-        namespace1,
+        resource_type=KubernetesResourceType.ROLEBINDING,
+        resource_name=f"{name1}-role-binding",
+        label=f"{PRIMARY_LABELNAME}",
+        namespace=namespace1,
     )
 
     mock_kube_interface.set_label.assert_any_call(
-        KubernetesResourceType.SERVICEACCOUNT,
-        name3,
-        f"{PRIMARY_LABELNAME}=True",
-        namespace3,
+        resource_type=KubernetesResourceType.SERVICEACCOUNT,
+        resource_name=name3,
+        label=f"{PRIMARY_LABELNAME}=True",
+        namespace=namespace3,
     )
 
     mock_kube_interface.set_label.assert_any_call(
-        KubernetesResourceType.ROLEBINDING,
-        f"{name3}-role-binding",
-        f"{PRIMARY_LABELNAME}=True",
-        namespace3,
+        resource_type=KubernetesResourceType.ROLEBINDING,
+        resource_name=f"{name3}-role-binding",
+        label=f"{PRIMARY_LABELNAME}=True",
+        namespace=namespace3,
     )
 
 
 def test_k8s_registry_delete(mocker):
-    mock_kube_interface = mocker.patch("spark8t.services.KubeInterface")
+    mock_kube_interface = mocker.patch(
+        "spark8t.kube_interface.kubectl.KubeCtlInterface"
+    )
     data = {"k": "v"}
     mock_kube_interface.get_secret.return_value = {"data": data}
 
