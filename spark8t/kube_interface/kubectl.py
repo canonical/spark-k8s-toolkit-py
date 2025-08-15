@@ -296,6 +296,7 @@ class KubeCtlInterface(AbstractKubeInterface):
         resource_type: str,
         resource_name: str,
         namespace: str | None = None,
+        dry_run: bool = False,
         **extra_args,
     ):
         """Create a K8s resource.
@@ -310,9 +311,10 @@ class KubeCtlInterface(AbstractKubeInterface):
                         e.g. {"resource" : ["pods", "configmaps"]} which would translate to something like
                         --resource=pods --resource=configmaps
         """
+        dry_run_arg = "--dry-run=client" if dry_run else ""
         if resource_type == KubernetesResourceType.NAMESPACE:
-            self.exec(
-                f"create {resource_type} {resource_name}",
+            manifest = self.exec(
+                f"create {resource_type} {resource_name} {dry_run_arg}",
                 namespace=None,
                 output="yaml",
             )
@@ -336,11 +338,12 @@ class KubeCtlInterface(AbstractKubeInterface):
                     dir=os.path.expanduser("~"),
                 ) as t:
                     codecs.dump_all_yaml(res, t)
-                    self.exec(
-                        f"apply -f {t.name}",
+                    manifest = self.exec(
+                        f"apply -f {t.name} {dry_run_arg}",
                         namespace=namespace,
                         output="yaml",
                     )
+                    return yaml.dump(manifest)
         else:
             # NOTE: removing 'username' to avoid interference with KUBECONFIG
             # ERROR: more than one authentication method found for admin; found [token basicAuth], only one is allowed
@@ -354,11 +357,12 @@ class KubeCtlInterface(AbstractKubeInterface):
                     for v in listify(values)
                 ]
             )
-            self.exec(
-                f"create {resource_type} {resource_name} {formatted_extra_args}",
+            manifest = self.exec(
+                f"create {resource_type} {resource_name} {formatted_extra_args} {dry_run_arg}",
                 namespace=namespace or self.namespace,
                 output="yaml",
             )
+            return yaml.dump(manifest)
 
     def delete(
         self, resource_type: str, resource_name: str, namespace: str | None = None
