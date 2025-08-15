@@ -154,6 +154,7 @@ class AbstractKubeInterface(WithLogging, metaclass=ABCMeta):
         resource_type: KubernetesResourceType,
         resource_name: str,
         namespace: str | None = None,
+        dry_run: bool = False,
         **extra_args,
     ) -> str:
         """Create a K8s resource.
