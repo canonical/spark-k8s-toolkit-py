@@ -11,7 +11,7 @@ jobs:
 
   test:
     name: Unit and Integration Tests
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     strategy:
       fail-fast: true
@@ -23,7 +23,7 @@ jobs:
       - checks
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - id: setup-python
         name: Setup Python
         uses: actions/setup-python@v5.6.0

@@ -22,7 +22,7 @@ jobs:
     steps:
       - id: checkout
         name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ env.BRANCH }}
           fetch-depth: 0
@@ -63,7 +63,7 @@ jobs:
       VERSION: ${{ steps.build.outputs.VERSION }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - name: Install poetry
@@ -90,12 +90,12 @@ jobs:
     steps:
       - id: checkout
         name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ env.BRANCH }}
           fetch-depth: 0
       - name: Download all the dists
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: distfiles
           path: dist/
@@ -126,7 +126,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download all the dists
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: distfiles
           path: dist/
