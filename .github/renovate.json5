@@ -13,4 +13,5 @@
     "enabled": true,
     "schedule": ["* 3 * * 5"]
   },
+  "ignoreDeps": ["ubuntu"]
 }
