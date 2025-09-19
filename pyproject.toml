@@ -42,7 +42,7 @@ types-pyopenssl = "^24.1.0.20240722"
 optional = true
 
 [tool.poetry.group.unit.dependencies]
-pytest-cov = ">=6.2.1"
+pytest-cov = ">=7.0.0"
 pytest = ">=8.4.1"
 pytest-mock = ">=3.14.1"
 pyOpenSSL = ">=25.1.0"
@@ -52,7 +52,7 @@ tox = "^4.28.4"
 optional = true
 
 [tool.poetry.group.integration.dependencies]
-pytest-cov = ">=6.2.1"
+pytest-cov = ">=7.0.0"
 pytest = ">=8.4.1"
 tox = "^4.28.4"
 
