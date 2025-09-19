@@ -17,21 +17,21 @@ python = ">=3.10,<4.0"
 lightkube = ">=0.17.2"
 jinja2 = ">=3.1.6"
 envyaml = ">=1.10.211231"
-typing-extensions = "^4.14.1"
+typing-extensions = "^4.15.0"
 
 [tool.poetry.group.fmt]
 optional = true
 
 [tool.poetry.group.fmt.dependencies]
-ruff = "^0.12.10"
+ruff = "^0.13.1"
 
 [tool.poetry.group.lint]
 optional = true
 
 [tool.poetry.group.lint.dependencies]
-ruff = "^0.12.10"
+ruff = "^0.13.1"
 codespell = "^2.4.1"
-mypy = "^1.17.1"
+mypy = "^1.18.2"
 pytest-mypy = ">=1.0.1"
 types-pyyaml = "^6.0.12.20241230"
 types-pygments = "^2.19.0.20250107"
@@ -42,19 +42,19 @@ types-pyopenssl = "^24.1.0.20240722"
 optional = true
 
 [tool.poetry.group.unit.dependencies]
-pytest-cov = ">=6.2.1"
-pytest = ">=8.4.1"
-pytest-mock = ">=3.14.1"
-pyOpenSSL = ">=25.1.0"
-tox = "^4.28.4"
+pytest-cov = ">=6.3.0"
+pytest = ">=8.4.2"
+pytest-mock = ">=3.15.1"
+pyOpenSSL = ">=25.3.0"
+tox = "^4.30.2"
 
 [tool.poetry.group.integration]
 optional = true
 
 [tool.poetry.group.integration.dependencies]
-pytest-cov = ">=6.2.1"
-pytest = ">=8.4.1"
-tox = "^4.28.4"
+pytest-cov = ">=6.3.0"
+pytest = ">=8.4.2"
+tox = "^4.30.2"
 
 [build-system]
 requires = ["poetry-core"]
