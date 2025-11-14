@@ -43,7 +43,7 @@ optional = true
 
 [tool.poetry.group.unit.dependencies]
 pytest-cov = ">=7.0.0"
-pytest = ">=8.4.2"
+pytest = "^9.0.1"
 pytest-mock = ">=3.15.1"
 pyOpenSSL = ">=25.3.0"
 tox = "^4.32.0"
@@ -53,7 +53,7 @@ optional = true
 
 [tool.poetry.group.integration.dependencies]
 pytest-cov = ">=7.0.0"
-pytest = ">=8.4.2"
+pytest = "^9.0.1"
 tox = "^4.32.0"
 
 [build-system]
