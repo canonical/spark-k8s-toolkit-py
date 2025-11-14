@@ -60,8 +60,9 @@ tox = "^4.32.0"
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
-[tool.pytest.ini_options]
-addopts = "--doctest-modules --cov=./spark8t"
+[tool.pytest]
+minversion = "9.0"
+addopts = ["--doctest-modules", "--cov=./spark8t"]
 
 [tool.ruff]
 extend-exclude = ["__pycache__", "*.egg_info"]
