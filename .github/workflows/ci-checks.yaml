@@ -17,7 +17,7 @@ jobs:
     steps:
       - id: checkout
         name: Checkout repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - id: setup-python
         name: Setup Python
         uses: actions/setup-python@v6.0.0
