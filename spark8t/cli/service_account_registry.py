@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""Service account module."""
 
 import subprocess
 from argparse import ArgumentParser, Namespace
@@ -15,22 +16,21 @@ from spark8t.cli.params import (
     parse_arguments_with,
     spark_user_parser,
 )
-from spark8t.domain import KubernetesResourceType, PropertyFile, ServiceAccount
+from spark8t.domain import KubernetesResourceType, ServiceAccount
 from spark8t.exceptions import (
     AccountNotFound,
     NamespaceNotFound,
     PrimaryAccountNotFound,
     ResourceAlreadyExists,
 )
-from spark8t.services import (
-    AbstractKubeInterface,
-    K8sServiceAccountRegistry,
-    parse_conf_overrides,
-)
-from spark8t.utils import setup_logging
+
+from spark8t.kube_interface.base import AbstractKubeInterface
+from spark8t.registry.k8s import K8sServiceAccountRegistry
+from spark8t.utils import setup_logging, PropertyFile
 
 
 def build_service_account_from_args(args, registry) -> ServiceAccount:
+    """Create service account resource interface."""
     return ServiceAccount(
         name=args.username,
         namespace=args.namespace,
@@ -40,6 +40,8 @@ def build_service_account_from_args(args, registry) -> ServiceAccount:
 
 
 class Actions(str, Enum):
+    """Service account CLI action."""
+
     CREATE = "create"
     DELETE = "delete"
     ADD_CONFIG = "add-config"
@@ -48,6 +50,14 @@ class Actions(str, Enum):
     CLEAR_CONFIG = "clear-config"
     PRIMARY = "get-primary"
     LIST = "list"
+    GET_MANIFEST = "get-manifest"
+
+    def __str__(self) -> str:
+        """Define string representation.
+
+        TODO(py310): replace inheritance with StrEnum once we drop py310
+        """
+        return str.__str__(self)
 
 
 def create_namespace_if_missing(kube_interface: AbstractKubeInterface, namespace: str):
@@ -58,15 +68,16 @@ def create_namespace_if_missing(kube_interface: AbstractKubeInterface, namespace
         except ApiError as e:
             if e.status.code == 401 or e.status.code == 403:
                 print(f"Namespace {namespace} can not be created.")
-                raise NamespaceNotFound(namespace)
+                raise NamespaceNotFound(namespace) from None
             else:
                 raise e
-        except subprocess.CalledProcessError:
+        except subprocess.CalledProcessError as err:
             print(f"Namespace {namespace} can not be created.")
-            raise NamespaceNotFound(namespace)
+            raise NamespaceNotFound(namespace) from err
 
 
 def create_service_account_registry_parser(parser: ArgumentParser):
+    """Create parser for service account CLI."""
     base_parser = parse_arguments_with(
         [add_logging_arguments, k8s_parser],
         ArgumentParser(add_help=False),
@@ -112,6 +123,13 @@ def create_service_account_registry_parser(parser: ArgumentParser):
         action="store_true",
         help="Boolean to ignore Spark Integration Hub generated options.",
     )
+
+    #  subparser for get-manifest
+    parse_arguments_with(
+        [spark_user_parser],
+        subparsers.add_parser(Actions.GET_MANIFEST.value, parents=[base_parser]),
+    )
+
     #  subparser for sa-conf-del
     parse_arguments_with(
         [spark_user_parser],
@@ -128,6 +146,7 @@ def create_service_account_registry_parser(parser: ArgumentParser):
 
 
 def main(args: Namespace, logger: Logger):
+    """Service account main entrypoint."""
     kube_interface = get_kube_interface(args)
     context = args.context or kube_interface.context_name
 
@@ -147,9 +166,13 @@ def main(args: Namespace, logger: Logger):
             PropertyFile.read(args.properties_file)
             if args.properties_file is not None
             else PropertyFile.empty()
-        ) + parse_conf_overrides(args.conf)
-
+        ) + PropertyFile.parse_conf_overrides(args.conf)
         registry.create(service_account)
+
+    elif args.action == Actions.GET_MANIFEST:
+        service_account = build_service_account_from_args(args, registry)
+        manifest = registry.create(service_account, dry_run=True)
+        print(manifest)
 
     elif args.action == Actions.DELETE:
         user_id = build_service_account_from_args(args, registry).id
@@ -171,7 +194,7 @@ def main(args: Namespace, logger: Logger):
                 if args.properties_file is not None
                 else PropertyFile.empty()
             )
-            + parse_conf_overrides(args.conf)
+            + PropertyFile.parse_conf_overrides(args.conf)
         )
 
         registry.set_configurations(input_service_account.id, account_configuration)

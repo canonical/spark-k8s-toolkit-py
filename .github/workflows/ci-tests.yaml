@@ -2,7 +2,7 @@ name: Run Tests
 
 on:
   schedule:
-    - cron: '53 0 * * *' # Daily at 00:53 UTC
+    - cron: "53 0 * * *" # Daily at 00:53 UTC
   workflow_call:
 
 jobs:
@@ -11,22 +11,22 @@ jobs:
 
   test:
     name: Unit and Integration Tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     timeout-minutes: 60
     strategy:
       fail-fast: true
       matrix:
         python-version:
-          - '3.9'
-          - '3.10'
+          - "3.10"
+          - "3.12"
     needs:
       - checks
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - id: setup-python
         name: Setup Python
-        uses: actions/setup-python@v5.3.0
+        uses: actions/setup-python@v6.0.0
         with:
           python-version: ${{matrix.python-version}}
           architecture: x64

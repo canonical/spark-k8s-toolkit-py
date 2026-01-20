@@ -1,18 +1,23 @@
+"""Parameters module."""
+
 import logging
 from argparse import ArgumentParser, Namespace
-from typing import Callable, List, Optional
+from typing import Callable
 
 from spark8t.cli import defaults
-from spark8t.services import AbstractKubeInterface, KubeInterface, LightKube
+from spark8t.kube_interface.base import AbstractKubeInterface
+from spark8t.kube_interface.kubectl import KubeCtlInterface
+from spark8t.kube_interface.lightkube import LightKubeInterface
+
 from spark8t.utils import DEFAULT_LOGGING_FILE, config_from_file, environ
 
 
 def parse_arguments_with(
-    parsers: List[Callable[[ArgumentParser], ArgumentParser]],
-    base_parser: Optional[ArgumentParser] = None,
+    parsers: list[Callable[[ArgumentParser], ArgumentParser]],
+    base_parser: ArgumentParser | None = None,
 ):
     """
-    Specify a chain of parsers to help parse the list of arguments to main
+    Specify a chain of parsers to help parse the list of arguments to main.
 
     :param parsers: List of parsers to be applied.
     :param namespace: Namespace to be used for parsing.
@@ -26,7 +31,7 @@ def parse_arguments_with(
 
 def add_logging_arguments(parser: ArgumentParser) -> ArgumentParser:
     """
-    Add logging argument parsing to the existing parser context
+    Add logging argument parsing to the existing parser context.
 
     :param parser: Input parser to decorate with parsing support for logging args.
     """
@@ -46,7 +51,7 @@ def add_logging_arguments(parser: ArgumentParser) -> ArgumentParser:
 
 def add_ignore_integration_hub(parser: ArgumentParser) -> ArgumentParser:
     """
-    Add option to exclude the configuration provided by the Spark Integration Hub
+    Add option to exclude the configuration provided by the Spark Integration Hub.
 
     :param parser: Input parser to decorate with parsing support for logging args.
     """
@@ -61,7 +66,7 @@ def add_ignore_integration_hub(parser: ArgumentParser) -> ArgumentParser:
 
 def spark_user_parser(parser: ArgumentParser) -> ArgumentParser:
     """
-    Add Spark user related argument parsing to the existing parser context
+    Add Spark user related argument parsing to the existing parser context.
 
     :param parser: Input parser to decorate with parsing support for Spark params.
     """
@@ -82,7 +87,7 @@ def spark_user_parser(parser: ArgumentParser) -> ArgumentParser:
 
 def k8s_parser(parser: ArgumentParser) -> ArgumentParser:
     """
-    Add K8s related argument parsing to the existing parser context
+    Add K8s related argument parsing to the existing parser context.
 
     :param parser: Input parser to decorate with parsing support for Spark params.
     """
@@ -97,7 +102,7 @@ def k8s_parser(parser: ArgumentParser) -> ArgumentParser:
     )
     parser.add_argument(
         "--backend",
-        default="kubectl",
+        default="lightkube",
         choices=["kubectl", "lightkube"],
         type=str,
         help="Kind of backend to be used for talking to K8s",
@@ -107,7 +112,7 @@ def k8s_parser(parser: ArgumentParser) -> ArgumentParser:
 
 def add_config_arguments(parser: ArgumentParser) -> ArgumentParser:
     """
-    Add arguments to provide extra configurations for the spark properties
+    Add arguments to provide extra configurations for the spark properties.
 
     :param parser: Input parser to decorate with parsing support for deploy arguments.
     """
@@ -128,7 +133,7 @@ def add_config_arguments(parser: ArgumentParser) -> ArgumentParser:
 
 def add_deploy_arguments(parser: ArgumentParser) -> ArgumentParser:
     """
-    Add deployment related argument parsing to the existing parser context
+    Add deployment related argument parsing to the existing parser context.
 
     :param parser: Input parser to decorate with parsing support for deploy arguments.
     """
@@ -143,7 +148,8 @@ def add_deploy_arguments(parser: ArgumentParser) -> ArgumentParser:
 
 
 def get_kube_interface(args: Namespace) -> AbstractKubeInterface:
-    _class = LightKube if args.backend == "lightkube" else KubeInterface
+    """Get configured kube interface."""
+    _class = KubeCtlInterface if args.backend == "kubectl" else LightKubeInterface
 
     return _class(
         args.kubeconfig or defaults.kube_config, defaults, context_name=args.context
@@ -151,8 +157,9 @@ def get_kube_interface(args: Namespace) -> AbstractKubeInterface:
 
 
 def setup_logging(
-    log_level: str, config_file: Optional[str], logger_name: Optional[str] = None
+    log_level: str, config_file: str | None, logger_name: str | None = None
 ) -> logging.Logger:
+    """Set up logging from configuration file."""
     with environ(LOG_LEVEL=log_level) as _:
         config_from_file(config_file or DEFAULT_LOGGING_FILE)
     return logging.getLogger(logger_name) if logger_name else logging.root

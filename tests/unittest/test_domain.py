@@ -5,9 +5,9 @@ import uuid
 
 import pytest
 
-from spark8t.domain import Defaults, PropertyFile, ServiceAccount
-from spark8t.services import InMemoryAccountRegistry
-from spark8t.utils import umask_named_temporary_file
+from spark8t.domain import Defaults, ServiceAccount
+from spark8t.utils import PropertyFile, umask_named_temporary_file
+from spark8t.registry.memory import InMemoryAccountRegistry
 
 
 def test_defaults():
@@ -48,7 +48,7 @@ def test_defaults_kube_config():
 
     from spark8t.utils import environ
 
-    d = Defaults(dict())
+    d = Defaults({})
 
     assert d.kube_config is None
 
@@ -238,7 +238,7 @@ def test_property_file_io():
 
     scala_hist_file = str(uuid.uuid4())
     app_name = str(uuid.uuid4())
-    test_config_w = dict()
+    test_config_w = {}
     contents_java_options = (
         f"-Dscala.shell.histfile={scala_hist_file} -Da=A -Db=B -Dc=C"
     )
@@ -318,13 +318,13 @@ def test_property_file_log(caplog):
 
     # test logic
     conf = PropertyFile(props={k: v})
-    caplog.set_level("INFO", logger="spark8t.domain.PropertyFile")
+    caplog.set_level("INFO", logger="spark8t.utils.PropertyFile")
     with caplog.at_level("INFO"):
         conf.log()
         assert len(caplog.records) == 1
         assert caplog.records[0].message == f"{k}={v}"
         assert caplog.records[0].levelno == logging.INFO
-        assert caplog.records[0].name == "spark8t.domain.PropertyFile"
+        assert caplog.records[0].name == "spark8t.utils.PropertyFile"
 
 
 def test_in_memory_registry():
@@ -396,3 +396,21 @@ def test_in_memory_registry():
     }
     assert sa2.id, registry.set_configurations(sa2).id == PropertyFile(props=new_props)
     assert registry.get(sa2.id).extra_confs.props, new_props
+
+
+def test_extra_prop_overrides_hub():
+    # Given
+    apiserver = f"k8s://https://{str(uuid.uuid4())}:{str(uuid.uuid4())}"
+    sa = ServiceAccount(
+        name="name",
+        namespace="namespace",
+        api_server=apiserver,
+        extra_confs=PropertyFile(props={"spark.dummy.property": "extra_value"}),
+        integration_hub_confs=PropertyFile(props={"spark.dummy.property": "hub_value"}),
+    )
+
+    # When
+    configuration = sa.configurations
+
+    # Then
+    assert configuration.props.get("spark.dummy.property", "") == "extra_value"

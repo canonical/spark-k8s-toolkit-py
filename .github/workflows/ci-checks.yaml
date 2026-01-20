@@ -6,21 +6,21 @@ on:
 jobs:
   checks:
     name: Code checks
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     timeout-minutes: 5
     strategy:
       fail-fast: true
       matrix:
         python-version:
-          - '3.9'
-          - '3.10'
+          - "3.10"
+          - "3.12"
     steps:
       - id: checkout
         name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - id: setup-python
         name: Setup Python
-        uses: actions/setup-python@v5.3.0
+        uses: actions/setup-python@v6.0.0
         with:
           python-version: ${{matrix.python-version}}
           architecture: x64

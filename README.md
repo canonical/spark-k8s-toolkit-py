@@ -1,14 +1,14 @@
 # spark8t toolkit
 
-[![Release](https://github.com/canonical/spark-k8s-toolkit-py/actions/workflows/release_github.yaml/badge.svg)](https://github.com/canonical/spark-k8s-toolkit-py/actions/workflows/release_github.yaml)
+[![PyPI - Version](https://img.shields.io/pypi/v/spark8t)](https://pypi.org/project/spark8t/)
 [![Tests](https://github.com/canonical/spark-k8s-toolkit-py/actions/workflows/ci-tests.yaml/badge.svg?branch=main)](https://github.com/canonical/spark-k8s-toolkit-py/actions/workflows/ci-tests.yaml?query=branch%3Amain)
 
-A set of Python scripts facilitating Spark interactions over Kunernetes, using an OCI image.
+A set of Python scripts facilitating Spark interactions over Kubernetes, using an OCI image.
 
 ## Description
 
-The main purpose of the `spark8t` toolkit is to provide a seemless, user-friendly interface
-to Spark functionalities over Kubernetes. As much for administator tasks (such as account registration)
+The main purpose of the `spark8t` toolkit is to provide a seamless, user-friendly interface
+to Spark functionalities over Kubernetes. As much for administrator tasks (such as account registration)
 or data scientist functions (such as job submission or Spark interactive shell access). Various
 wrapper scripts allow for persistent (and user-friendly) configuration and execution of related tools.
 
@@ -21,7 +21,7 @@ wrapper scripts allow for persistent (and user-friendly) configuration and execu
 
 Below we describe the essential steps on how to set up a Spark cluster together with the `spark8t` tool.
 
-(However note that most of the "hassle" desribed below can be saved, in case you choose to use the 
+(However note that most of the "hassle" described below can be saved, in case you choose to use the 
 [canonical/spark-client-snap](canonical/spark-client-snap) Snap installation, that would both install
 dependencies, both prepare critical parts of the environment for you.)
 
@@ -50,7 +50,7 @@ Related settings:
 You could install the contents of this repository either by direct checkout, or using `pip` such as
 
 ```
-pip insatll git+https://github.com/canonical/spark-k8s-toolkit-py.git
+pip install git+https://github.com/canonical/spark-k8s-toolkit-py.git
 ```
 
 You'll need to add a mandatory configuration for the tool, which points to the OCI image to be used for the Spark workers.
