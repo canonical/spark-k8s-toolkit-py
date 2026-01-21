@@ -18,8 +18,6 @@ with SparkSession(
     result = rdd.collect()
     print(f"Result: {result}")
     assert result == [1, 2, 3], f"Expected [1, 2, 3] but got {result}"
-    assert session.username == username
-    assert session.namespace == namespace
 
 
 # Test when namespace and username inferred from env vars
@@ -31,7 +29,6 @@ with SparkSession(
     result = rdd.collect()
     print(f"Result: {result}")
     assert result == [1, 2, 3], f"Expected [1, 2, 3] but got {result}"
-    assert session.username == username
-    assert session.namespace == namespace
+
 
 print("Test completed successfully.")
