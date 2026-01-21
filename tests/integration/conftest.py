@@ -87,3 +87,29 @@ def namespace():
     yield namespace_name
     destroy_command = ["kubectl", "delete", "namespace", namespace_name]
     subprocess.run(destroy_command, check=True)
+
+
+def run_service_account_registry(*args):
+    """Run service_account_registry CLI command with given set of args
+
+    Returns:
+        Tuple: A tuple with the content of stdout, stderr and the return code
+            obtained when the command is run.
+    """
+    command = ["python3", "-m", "spark8t.cli.service_account_registry", *args]
+    try:
+        output = subprocess.run(command, check=True, capture_output=True)
+        return output.stdout.decode("utf-8"), None, output.returncode
+    except subprocess.CalledProcessError as e:
+        return None, e.stderr.decode("utf-8"), e.returncode
+
+
+@pytest.fixture
+def service_account(namespace):
+    """A temporary service account that gets cleaned up automatically."""
+    username = str(uuid.uuid4())
+
+    run_service_account_registry(
+        "create", "--username", username, "--namespace", namespace
+    )
+    return username, namespace

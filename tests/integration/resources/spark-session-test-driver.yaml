@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: spark-session-test-{{ NAMESPACE }}
+  namespace: {{ NAMESPACE }}
+spec:
+  serviceAccountName: {{ SERVICE_ACCOUNT_NAME }}
+  restartPolicy: Never
+  containers:
+  - name: test-runner
+    image: ghcr.io/canonical/charmed-spark:3.5.5-22.04_edge
+    imagePullPolicy: Always
+    command:
+      - bash
+      - -c
+      - |
+        set -e
+        
+        echo "Installing spark8t..."
+        cd /workspace
+        python3 -m pip install .
+
+        user_site_packages_path=$(python3 -c 'import site;print(site.getusersitepackages())')  
+        export PYTHONPATH=$user_site_packages_path:$PYTHONPATH
+        
+        echo "Running Spark integration test..."
+        export SPARK_NAMESPACE={{ NAMESPACE }}
+        export SPARK_USERNAME={{ SERVICE_ACCOUNT_NAME }}
+        python3 tests/integration/resources/spark_job.py
+        
+        echo "Spark integration test completed successfully!"
+    volumeMounts:
+    - name: workspace
+      mountPath: /workspace
+  volumes:
+  - name: workspace
+    hostPath:
+      path: {{ REPO_PATH }}
+      type: Directory
