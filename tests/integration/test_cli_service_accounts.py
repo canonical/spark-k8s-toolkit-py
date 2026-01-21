@@ -3,7 +3,6 @@ import os
 import subprocess
 import uuid
 from collections import defaultdict
-from subprocess import CalledProcessError
 
 import pytest
 
@@ -15,10 +14,8 @@ from spark8t.literals import (
 )
 from spark8t.utils import umask_named_temporary_file
 
-VALID_BACKENDS = [
-    "kubectl",
-    "lightkube",
-]
+from .conftest import run_service_account_registry, VALID_BACKENDS
+
 
 ALLOWED_PERMISSIONS = {
     "pods": [
@@ -66,33 +63,6 @@ ALL_ACTIONS = [
 
 ALLOWED_PERMISSIONS_USER_SECRET = ["get", "patch", "update"]
 ALLOWED_PERMISSIONS_HUB_SECRET = ["get"]
-
-
-def run_service_account_registry(*args):
-    """Run service_account_registry CLI command with given set of args
-
-    Returns:
-        Tuple: A tuple with the content of stdout, stderr and the return code
-            obtained when the command is run.
-    """
-    command = ["python3", "-m", "spark8t.cli.service_account_registry", *args]
-    try:
-        output = subprocess.run(command, check=True, capture_output=True)
-        return output.stdout.decode(), output.stderr.decode(), output.returncode
-    except CalledProcessError as e:
-        return e.stdout.decode(), e.stderr.decode(), e.returncode
-
-
-@pytest.fixture(params=VALID_BACKENDS)
-def service_account(namespace, request):
-    """A temporary service account that gets cleaned up automatically."""
-    username = str(uuid.uuid4())
-    backend = request.param
-
-    run_service_account_registry(
-        "create", "--username", username, "--namespace", namespace, "--backend", backend
-    )
-    return username, namespace
 
 
 @pytest.fixture

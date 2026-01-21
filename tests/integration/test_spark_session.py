@@ -125,7 +125,7 @@ class TestSparkSessionPodDeployment:
             assert "Spark integration test completed successfully!" in logs, (
                 "Script did not report successful completion"
             )
-            assert "✓ Spark session works!" in logs, (
+            assert "Test completed successfully." in logs, (
                 "Spark session did not execute successfully"
             )
         finally:

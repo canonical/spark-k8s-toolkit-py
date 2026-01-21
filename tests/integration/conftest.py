@@ -12,6 +12,11 @@ from spark8t.kube_interface.lightkube import LightKubeInterface
 
 integration_test_flag = bool(int(os.environ.get("IE_TEST", "0")))
 
+VALID_BACKENDS = [
+    "kubectl",
+    "lightkube",
+]
+
 
 @pytest.fixture
 def integration_test():
@@ -104,12 +109,13 @@ def run_service_account_registry(*args):
         return None, e.stderr.decode("utf-8"), e.returncode
 
 
-@pytest.fixture
-def service_account(namespace):
+@pytest.fixture(params=VALID_BACKENDS)
+def service_account(namespace, request):
     """A temporary service account that gets cleaned up automatically."""
     username = str(uuid.uuid4())
+    backend = request.param
 
     run_service_account_registry(
-        "create", "--username", username, "--namespace", namespace
+        "create", "--username", username, "--namespace", namespace, "--backend", backend
     )
     return username, namespace
