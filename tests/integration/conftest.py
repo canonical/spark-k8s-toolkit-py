@@ -104,9 +104,9 @@ def run_service_account_registry(*args):
     command = ["python3", "-m", "spark8t.cli.service_account_registry", *args]
     try:
         output = subprocess.run(command, check=True, capture_output=True)
-        return output.stdout.decode("utf-8"), None, output.returncode
+        return output.stdout.decode(), output.stderr.decode(), output.returncode
     except subprocess.CalledProcessError as e:
-        return None, e.stderr.decode("utf-8"), e.returncode
+        return e.stdout.decode(), e.stderr.decode(), e.returncode
 
 
 @pytest.fixture(params=VALID_BACKENDS)
