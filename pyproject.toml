@@ -110,5 +110,6 @@ module = [
   "parameterized",
   "envyaml",
   "pytest",
+  "pyspark",
 ]
 ignore_missing_imports = true
