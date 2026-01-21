@@ -26,7 +26,7 @@ spec:
         echo "Running Spark integration test..."
         export SPARK_NAMESPACE={{ NAMESPACE }}
         export SPARK_USERNAME={{ SERVICE_ACCOUNT_NAME }}
-        python3 tests/integration/resources/spark_job.py
+        python3 tests/integration/resources/spark_session_job.py
         
         echo "Spark integration test completed successfully!"
     volumeMounts:
