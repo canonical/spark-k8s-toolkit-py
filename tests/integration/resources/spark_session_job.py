@@ -1,3 +1,7 @@
+#!/usr/bin/env python3
+# Copyright 2026 Canonical Limited
+# See LICENSE file for licensing details.
+
 """Simple Spark test that runs inside the pod with real Spark runtime."""
 
 import os

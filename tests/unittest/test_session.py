@@ -1,3 +1,7 @@
+#!/usr/bin/env python3
+# Copyright 2026 Canonical Limited
+# See LICENSE file for licensing details.
+
 """Unit tests for the SparkSession module."""
 
 import os

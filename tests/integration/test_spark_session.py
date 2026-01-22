@@ -1,3 +1,7 @@
+#!/usr/bin/env python3
+# Copyright 2026 Canonical Limited
+# See LICENSE file for licensing details.
+
 """Orchestrator integration tests that deploy SparkSession tests to a pod."""
 
 import os

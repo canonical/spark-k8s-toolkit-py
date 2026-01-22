@@ -1,3 +1,6 @@
+# Copyright 2026 Canonical Limited
+# See LICENSE file for licensing details.
+
 apiVersion: v1
 kind: Pod
 metadata:
