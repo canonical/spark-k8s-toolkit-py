@@ -6,13 +6,14 @@
 
 import os
 import socket
-import pyspark
-
 from urllib.parse import urlparse
+
+import pyspark
 from lightkube import Client
 from lightkube.core.exceptions import ApiError
-from spark8t.registry.k8s import K8sServiceAccountRegistry
+
 from spark8t.kube_interface.lightkube import LightKubeInterface as LightKube
+from spark8t.registry.k8s import K8sServiceAccountRegistry
 from spark8t.utils import environ
 
 
