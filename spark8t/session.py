@@ -8,6 +8,7 @@ import os
 import socket
 import pyspark
 
+from urllib.parse import urlparse
 from lightkube import Client
 from lightkube.core.exceptions import ApiError
 from spark8t.registry.k8s import K8sServiceAccountRegistry
@@ -65,14 +66,14 @@ class SparkSession:
         registry = K8sServiceAccountRegistry(interface)
 
         NO_PROXY = (
-            os.environ.get("NO_PROXY", "") + f",{self._k8s_master_ip}"
+            os.environ.get("NO_PROXY", "") + f",{self._k8s_master_hostname}"
             if os.environ.get("NO_PROXY")
-            else self._k8s_master_ip
+            else self._k8s_master_hostname
         )
         no_proxy = (
-            os.environ.get("no_proxy", "") + f",{self._k8s_master_ip}"
+            os.environ.get("no_proxy", "") + f",{self._k8s_master_hostname}"
             if os.environ.get("no_proxy")
-            else self._k8s_master_ip
+            else self._k8s_master_hostname
         )
 
         try:
@@ -97,15 +98,11 @@ class SparkSession:
         return Client().config.cluster.server
 
     @property
-    def _k8s_master_ip(
+    def _k8s_master_hostname(
         self,
     ) -> str:
         """Return the k8s api server IP address."""
-        return (
-            self._k8s_master.replace("https://", "")
-            .replace("http://", "")
-            .split(":")[0]
-        )
+        return urlparse(self._k8s_master).hostname or ""
 
     @property
     def config(
