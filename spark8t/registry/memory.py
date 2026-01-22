@@ -9,8 +9,6 @@ from spark8t.domain import (
 from spark8t.exceptions import (
     AccountNotFound,
 )
-
-
 from spark8t.registry.base import AbstractServiceAccountRegistry
 
 

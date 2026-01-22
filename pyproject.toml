@@ -70,7 +70,7 @@ target-version = "py310"
 src = ["spark8t", "tests"]
 
 [tool.ruff.lint]
-select = ['B', 'C', 'D', 'E', 'F', 'W', 'B9']
+select = ['B', 'C', 'D', 'E', 'F', 'W', 'B9', 'I001']
 ignore = ["E501", "D107"]
 extend-ignore = [
   # Ignored by black

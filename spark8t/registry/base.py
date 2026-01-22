@@ -2,12 +2,10 @@
 
 from abc import ABC, abstractmethod
 
-
 from spark8t.domain import (
     PropertyFile,
     ServiceAccount,
 )
-
 from spark8t.utils import WithLogging
 
 

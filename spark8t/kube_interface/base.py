@@ -7,11 +7,11 @@ from functools import cached_property
 from typing import Any
 
 from lightkube import KubeConfig, SingleConfig
+from typing_extensions import Self
 
 from spark8t.domain import Defaults, KubernetesResourceType
 from spark8t.exceptions import AccountNotFound
-from spark8t.utils import WithLogging, PropertyFile
-from typing_extensions import Self
+from spark8t.utils import PropertyFile, WithLogging
 
 
 class AbstractKubeInterface(WithLogging, metaclass=ABCMeta):

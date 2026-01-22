@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import Any
 
-
 from spark8t.domain import (
     KubernetesResourceType,
     PropertyFile,
@@ -15,16 +14,15 @@ from spark8t.exceptions import (
     K8sResourceNotFound,
     ResourceAlreadyExists,
 )
+from spark8t.kube_interface.base import AbstractKubeInterface
 from spark8t.literals import (
     HUB_LABEL,
     MANAGED_BY_LABELNAME,
     PRIMARY_LABELNAME,
     SPARK8S_LABEL,
 )
-from spark8t.utils import PercentEncodingSerializer
-
 from spark8t.registry.base import AbstractServiceAccountRegistry
-from spark8t.kube_interface.base import AbstractKubeInterface
+from spark8t.utils import PercentEncodingSerializer
 
 
 class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):

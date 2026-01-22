@@ -1,6 +1,7 @@
 """Kube interface backed by the kubectl CLI command."""
 
 from __future__ import annotations
+
 import base64
 import json
 import os
@@ -8,28 +9,24 @@ import subprocess
 from functools import cached_property
 from typing import Any
 
-
+import yaml
 from lightkube import codecs
 from typing_extensions import deprecated
-import yaml
 
 from spark8t.domain import (
     Defaults,
     KubernetesResourceType,
 )
 from spark8t.exceptions import K8sResourceNotFound
-
+from spark8t.kube_interface.base import AbstractKubeInterface
 from spark8t.utils import (
+    PropertyFile,
     execute_command_output,
     filter_none,
     listify,
     parse_yaml_shell_output,
     umask_named_temporary_file,
-    PropertyFile,
 )
-
-
-from spark8t.kube_interface.base import AbstractKubeInterface
 
 
 @deprecated(
