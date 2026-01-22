@@ -10,12 +10,9 @@ from spark8t.registry.k8s import K8sServiceAccountRegistry
 from spark8t.kube_interface.kubectl import KubeCtlInterface
 from spark8t.kube_interface.lightkube import LightKubeInterface
 
-integration_test_flag = bool(int(os.environ.get("IE_TEST", "0")))
+from .helpers import run_service_account_registry, VALID_BACKENDS
 
-VALID_BACKENDS = [
-    "kubectl",
-    "lightkube",
-]
+integration_test_flag = bool(int(os.environ.get("IE_TEST", "0")))
 
 
 @pytest.fixture
@@ -92,21 +89,6 @@ def namespace():
     yield namespace_name
     destroy_command = ["kubectl", "delete", "namespace", namespace_name]
     subprocess.run(destroy_command, check=True)
-
-
-def run_service_account_registry(*args):
-    """Run service_account_registry CLI command with given set of args
-
-    Returns:
-        Tuple: A tuple with the content of stdout, stderr and the return code
-            obtained when the command is run.
-    """
-    command = ["python3", "-m", "spark8t.cli.service_account_registry", *args]
-    try:
-        output = subprocess.run(command, check=True, capture_output=True)
-        return output.stdout.decode(), output.stderr.decode(), output.returncode
-    except subprocess.CalledProcessError as e:
-        return e.stdout.decode(), e.stderr.decode(), e.returncode
 
 
 @pytest.fixture(params=VALID_BACKENDS)

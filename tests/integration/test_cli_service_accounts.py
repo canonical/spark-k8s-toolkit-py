@@ -14,7 +14,7 @@ from spark8t.literals import (
 )
 from spark8t.utils import umask_named_temporary_file
 
-from .conftest import run_service_account_registry, VALID_BACKENDS
+from .helpers import run_service_account_registry, VALID_BACKENDS
 
 
 ALLOWED_PERMISSIONS = {
