@@ -12,12 +12,12 @@ from copy import deepcopy as copy
 from functools import reduce
 from logging import Logger, config, getLogger
 from tempfile import NamedTemporaryFile
-from typing import Any, Callable, Literal, Mapping, TypedDict, TypeVar, TypeAlias
+from typing import Any, Callable, Literal, Mapping, TypeAlias, TypedDict, TypeVar
 from urllib.parse import quote, unquote
 
-from typing_extensions import Self
 import yaml
 from envyaml import EnvYAML
+from typing_extensions import Self
 
 from spark8t.exceptions import FormatError
 

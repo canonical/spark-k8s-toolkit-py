@@ -6,8 +6,8 @@ import uuid
 import pytest
 
 from spark8t.domain import Defaults, ServiceAccount
-from spark8t.utils import PropertyFile, umask_named_temporary_file
 from spark8t.registry.memory import InMemoryAccountRegistry
+from spark8t.utils import PropertyFile, umask_named_temporary_file
 
 
 def test_defaults():

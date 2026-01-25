@@ -15,17 +15,16 @@ from OpenSSL import crypto
 
 from spark8t.cli import defaults
 from spark8t.domain import KubernetesResourceType, ServiceAccount
-from spark8t.utils import PropertyFile
+from spark8t.kube_interface.kubectl import KubeCtlInterface
+from spark8t.kube_interface.lightkube import LightKubeInterface
 from spark8t.literals import (
+    GENERATED_BY_LABELNAME,
     MANAGED_BY_LABELNAME,
     PRIMARY_LABELNAME,
     SPARK8S_LABEL,
-    GENERATED_BY_LABELNAME,
 )
 from spark8t.registry.k8s import K8sServiceAccountRegistry
-from spark8t.kube_interface.kubectl import KubeCtlInterface
-from spark8t.kube_interface.lightkube import LightKubeInterface
-
+from spark8t.utils import PropertyFile
 
 ####################################################################################################
 # Helpers

@@ -10,9 +10,9 @@ from typing import Any, cast
 
 import yaml
 from lightkube import Client, codecs
+from lightkube.codecs import AnyResource
 from lightkube.core.exceptions import ApiError
 from lightkube.models.meta_v1 import ObjectMeta
-from lightkube.codecs import AnyResource
 from lightkube.resources.core_v1 import Namespace, Secret
 from lightkube.resources.core_v1 import ServiceAccount as LightKubeServiceAccount
 from lightkube.resources.rbac_authorization_v1 import Role, RoleBinding
@@ -22,11 +22,9 @@ from spark8t.domain import (
     KubernetesResourceType,
 )
 from spark8t.exceptions import K8sResourceNotFound
-
-from spark8t.literals import GENERATED_BY_LABELNAME, SPARK8S_LABEL
-from spark8t.utils import filter_none, PropertyFile
-
 from spark8t.kube_interface.base import AbstractKubeInterface
+from spark8t.literals import GENERATED_BY_LABELNAME, SPARK8S_LABEL
+from spark8t.utils import PropertyFile, filter_none
 
 
 class LightKubeInterface(AbstractKubeInterface):

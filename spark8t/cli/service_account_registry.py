@@ -23,10 +23,9 @@ from spark8t.exceptions import (
     PrimaryAccountNotFound,
     ResourceAlreadyExists,
 )
-
 from spark8t.kube_interface.base import AbstractKubeInterface
 from spark8t.registry.k8s import K8sServiceAccountRegistry
-from spark8t.utils import setup_logging, PropertyFile
+from spark8t.utils import PropertyFile, setup_logging
 
 
 def build_service_account_from_args(args, registry) -> ServiceAccount:

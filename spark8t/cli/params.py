@@ -8,7 +8,6 @@ from spark8t.cli import defaults
 from spark8t.kube_interface.base import AbstractKubeInterface
 from spark8t.kube_interface.kubectl import KubeCtlInterface
 from spark8t.kube_interface.lightkube import LightKubeInterface
-
 from spark8t.utils import DEFAULT_LOGGING_FILE, config_from_file, environ
 
 

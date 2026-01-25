@@ -5,23 +5,19 @@ from __future__ import annotations
 import os
 import socket
 from enum import Enum
-
 from typing import Any
-
 
 from spark8t.domain import (
     Defaults,
     PropertyFile,
     ServiceAccount,
 )
-
+from spark8t.kube_interface.base import AbstractKubeInterface
 from spark8t.utils import (
     WithLogging,
     environ,
     umask_named_temporary_file,
 )
-
-from spark8t.kube_interface.base import AbstractKubeInterface
 
 
 class SparkDeployMode(str, Enum):
