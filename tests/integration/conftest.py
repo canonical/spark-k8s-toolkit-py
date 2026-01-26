@@ -10,6 +10,8 @@ from spark8t.kube_interface.kubectl import KubeCtlInterface
 from spark8t.kube_interface.lightkube import LightKubeInterface
 from spark8t.registry.k8s import K8sServiceAccountRegistry
 
+from .helpers import run_service_account_registry, VALID_BACKENDS
+
 integration_test_flag = bool(int(os.environ.get("IE_TEST", "0")))
 
 
@@ -87,3 +89,15 @@ def namespace():
     yield namespace_name
     destroy_command = ["kubectl", "delete", "namespace", namespace_name]
     subprocess.run(destroy_command, check=True)
+
+
+@pytest.fixture(params=VALID_BACKENDS)
+def service_account(namespace, request):
+    """A temporary service account that gets cleaned up automatically."""
+    username = str(uuid.uuid4())
+    backend = request.param
+
+    run_service_account_registry(
+        "create", "--username", username, "--namespace", namespace, "--backend", backend
+    )
+    return username, namespace

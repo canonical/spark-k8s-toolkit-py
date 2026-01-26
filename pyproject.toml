@@ -63,6 +63,7 @@ build-backend = "poetry.core.masonry.api"
 [tool.pytest]
 minversion = "9.0"
 addopts = ["--doctest-modules", "--cov=./spark8t"]
+norecursedirs = ["tests/integration/resources"]
 
 [tool.ruff]
 extend-exclude = ["__pycache__", "*.egg_info"]
@@ -110,5 +111,6 @@ module = [
   "parameterized",
   "envyaml",
   "pytest",
+  "pyspark",
 ]
 ignore_missing_imports = true
