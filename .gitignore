@@ -159,3 +159,5 @@ cython_debug/
 .idea/
 .vscode/
 
+# requirements.txt is to be ignored, we specify dependencies in pyproject.toml
+requirements.txt
