@@ -271,7 +271,7 @@ class KubeCtlInterface(AbstractKubeInterface):
             namespace: namespace where the resource is
         """
         self.exec(
-            f"label {resource_type} {resource_name} {label}",
+            f"label {resource_type} {resource_name} {label} --overwrite",
             namespace=namespace or self.namespace,
         )
 
