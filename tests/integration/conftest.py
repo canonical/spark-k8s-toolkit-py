@@ -10,7 +10,7 @@ from spark8t.kube_interface.kubectl import KubeCtlInterface
 from spark8t.kube_interface.lightkube import LightKubeInterface
 from spark8t.registry.k8s import K8sServiceAccountRegistry
 
-from .helpers import run_service_account_registry, VALID_BACKENDS
+from .helpers import VALID_BACKENDS, run_service_account_registry
 
 integration_test_flag = bool(int(os.environ.get("IE_TEST", "0")))
 

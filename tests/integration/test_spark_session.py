@@ -5,13 +5,13 @@
 """Orchestrator integration tests that deploy SparkSession tests to a pod."""
 
 import os
-import time
 import subprocess
 import tempfile
-import pytest
-import yaml
+import time
 from pathlib import Path
 
+import pytest
+import yaml
 from lightkube import Client
 from lightkube.resources.core_v1 import Pod
 
