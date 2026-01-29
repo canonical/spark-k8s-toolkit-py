@@ -430,6 +430,7 @@ def test_lightkube_set_label_service_account(mocker, tmp_kubeconf):
         name=resource_name,
         namespace=namespace,
         obj=patch,
+        force=True,
     )
 
 
@@ -597,7 +598,7 @@ def test_kube_interface_set_label(mocker, tmp_path):
     with open(kube_config_file, "w") as fid:
         yaml.dump(kubeconfig_yaml, fid, sort_keys=False)
 
-    cmd_set_label = f"kubectl --kubeconfig {kube_config_file} --namespace {namespace} --context {context} label {resource_type} {resource_name} {label} -o yaml"
+    cmd_set_label = f"kubectl --kubeconfig {kube_config_file} --namespace {namespace} --context {context} label {resource_type} {resource_name} {label} --overwrite -o yaml"
 
     output_set_label = "0".encode("utf-8")
     values = {

@@ -14,8 +14,7 @@ from spark8t.literals import (
 )
 from spark8t.utils import umask_named_temporary_file
 
-from .helpers import run_service_account_registry, VALID_BACKENDS
-
+from .helpers import VALID_BACKENDS, run_service_account_registry
 
 ALLOWED_PERMISSIONS = {
     "pods": [

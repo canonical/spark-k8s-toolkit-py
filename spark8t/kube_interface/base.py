@@ -57,7 +57,7 @@ class AbstractKubeInterface(WithLogging, metaclass=ABCMeta):
             )
 
     @cached_property
-    def context_name(self) -> str:
+    def context_name(self) -> str | None:
         """Interface context name."""
         return self._context_name or self.kube_config.current_context
 

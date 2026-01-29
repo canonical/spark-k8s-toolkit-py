@@ -223,20 +223,31 @@ class LightKubeInterface(AbstractKubeInterface):
         label_fragments = label.split("=")
         patch = {"metadata": {"labels": {label_fragments[0]: label_fragments[1]}}}
 
+        # GH#165: We force-patch the label onto the resource, as Juju > 3.6.9 automatically
+        # adds a "managed-by: juju" label in every resource added to a managed namespace.
         if resource_type == KubernetesResourceType.SERVICEACCOUNT:
             self.client.patch(
                 res=LightKubeServiceAccount,
                 name=resource_name,
                 namespace=namespace,
                 obj=patch,
+                force=True,
             )
         elif resource_type == KubernetesResourceType.ROLE:
             self.client.patch(
-                res=Role, name=resource_name, namespace=namespace, obj=patch
+                res=Role,
+                name=resource_name,
+                namespace=namespace,
+                obj=patch,
+                force=True,
             )
         elif resource_type == KubernetesResourceType.ROLEBINDING:
             self.client.patch(
-                res=RoleBinding, name=resource_name, namespace=namespace, obj=patch
+                res=RoleBinding,
+                name=resource_name,
+                namespace=namespace,
+                obj=patch,
+                force=True,
             )
         else:
             raise NotImplementedError(

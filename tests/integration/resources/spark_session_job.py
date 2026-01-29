@@ -5,6 +5,7 @@
 """Simple Spark test that runs inside the pod with real Spark runtime."""
 
 import os
+
 from spark8t.session import SparkSession
 
 # Get namespace and username from environment
