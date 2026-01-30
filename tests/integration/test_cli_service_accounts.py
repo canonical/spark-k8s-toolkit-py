@@ -3,10 +3,12 @@ import os
 import subprocess
 import uuid
 from collections import defaultdict
+from typing import Generator, MutableMapping
 
 import pytest
 
 from spark8t.domain import KubernetesResourceType, PropertyFile
+from spark8t.kube_interface.lightkube import LightKubeInterface
 from spark8t.literals import (
     HUB_LABEL,
     MANAGED_BY_LABELNAME,
@@ -14,7 +16,7 @@ from spark8t.literals import (
 )
 from spark8t.utils import umask_named_temporary_file
 
-from .helpers import VALID_BACKENDS, run_service_account_registry
+from .helpers import run_service_account_registry
 
 ALLOWED_PERMISSIONS = {
     "pods": [
@@ -65,7 +67,9 @@ ALLOWED_PERMISSIONS_HUB_SECRET = ["get"]
 
 
 @pytest.fixture
-def multiple_namespaces_and_service_accounts():
+def multiple_namespaces_and_service_accounts() -> Generator[
+    MutableMapping[str, list[str]], None, None
+]:
     result = defaultdict(list)
     for _ in range(3):
         namespace_name = str(uuid.uuid4())
@@ -86,9 +90,8 @@ def multiple_namespaces_and_service_accounts():
         subprocess.run(destroy_command, check=True)
 
 
-@pytest.mark.parametrize("backend", VALID_BACKENDS)
 @pytest.mark.parametrize("primary", [True, False])
-def test_create_service_account(namespace, backend, primary):
+def test_create_service_account(namespace: str, primary: bool) -> None:
     """Test creation of service account using the CLI.
 
     Verify that the serviceaccount, role and rolebinding resources are created
@@ -108,8 +111,6 @@ def test_create_service_account(namespace, backend, primary):
         username,
         "--namespace",
         namespace,
-        "--backend",
-        backend,
     ]
     if primary:
         create_args.append("--primary")
@@ -265,15 +266,18 @@ def test_create_service_account(namespace, backend, primary):
             assert rbac_check.stdout.strip() == "no"
 
 
-@pytest.mark.parametrize("backend", VALID_BACKENDS)
-def test_create_service_account_when_account_already_exists(service_account, backend):
+def test_create_service_account_when_account_already_exists(service_account) -> None:
     """Test creation of service account when a service account having same name already
     exists in the Kubernetes cluster."""
     username, namespace = service_account
 
     # Create the service account with same username again
     stdout, stderr, ret_code = run_service_account_registry(
-        "create", "--username", username, "--namespace", namespace, "--backend", backend
+        "create",
+        "--username",
+        username,
+        "--namespace",
+        namespace,
     )
 
     assert ret_code != 0
@@ -283,8 +287,7 @@ def test_create_service_account_when_account_already_exists(service_account, bac
     )
 
 
-@pytest.mark.parametrize("backend", VALID_BACKENDS)
-def test_create_service_account_when_namespace_does_not_exist(backend):
+def test_create_service_account_when_namespace_does_not_exist() -> None:
     """Test creation of service account when the namespace does not exist."""
     # Generate random username and namespace names
     username = str(uuid.uuid4())
@@ -292,7 +295,7 @@ def test_create_service_account_when_namespace_does_not_exist(backend):
 
     # Create the service account in a non-existent namespace
     _, _, ret_code = run_service_account_registry(
-        "create", "--username", username, "--namespace", namespace, "--backend", backend
+        "create", "--username", username, "--namespace", namespace
     )
 
     assert ret_code == 0
@@ -308,7 +311,7 @@ def test_create_service_account_when_namespace_does_not_exist(backend):
 
     # delete created service account
     _, _, ret_code = run_service_account_registry(
-        "delete", "--username", username, "--namespace", namespace, "--backend", backend
+        "delete", "--username", username, "--namespace", namespace
     )
 
     assert ret_code == 0
@@ -323,8 +326,7 @@ def test_create_service_account_when_namespace_does_not_exist(backend):
     assert namespace_result.returncode == 0
 
 
-@pytest.mark.parametrize("backend", VALID_BACKENDS)
-def test_delete_service_account(service_account, backend):
+def test_delete_service_account(service_account: tuple[str, str]) -> None:
     """Test deletion of service account using the CLI.
 
     Verify that the serviceaccount, role and rolebinding resources are deleted
@@ -337,7 +339,7 @@ def test_delete_service_account(service_account, backend):
 
     # Delete the service account
     run_service_account_registry(
-        "delete", "--username", username, "--namespace", namespace, "--backend", backend
+        "delete", "--username", username, "--namespace", namespace
     )
 
     # Check if service account has been deleted
@@ -396,19 +398,17 @@ def test_delete_service_account(service_account, backend):
             assert rbac_check.stdout.strip() == "no"
 
 
-@pytest.mark.parametrize("backend", VALID_BACKENDS)
-def test_delete_service_account_that_does_not_exist(namespace, backend):
+def test_delete_service_account_that_does_not_exist(namespace: str) -> None:
     username = str(uuid.uuid4())
 
     stdout, stderr, ret_code = run_service_account_registry(
-        "delete", "--username", username, "--namespace", namespace, "--backend", backend
+        "delete", "--username", username, "--namespace", namespace
     )
     assert ret_code != 0
     assert stdout.strip() == f"Account {username} could not be found."
 
 
-@pytest.mark.parametrize("backend", VALID_BACKENDS)
-def test_service_account_get_primary(namespace, backend):
+def test_service_account_get_primary(namespace: str) -> None:
     """Test retrieval of primary service account using the CLI.
 
     Creates an service account with --primary option provided,
@@ -424,22 +424,16 @@ def test_service_account_get_primary(namespace, backend):
         username,
         "--namespace",
         namespace,
-        "--backend",
-        backend,
         "--primary",
     )
 
     # Attempt to get primary service account, this should be the same
     # as the one created before
-    stdout, stderr, ret_code = run_service_account_registry(
-        "get-primary", "--backend", backend
-    )
+    stdout, _, _ = run_service_account_registry("get-primary")
     assert f"{namespace}:{username}" == stdout.strip()
 
     # Also ensure that the `list` command lists this account as primary
-    stdout, stderr, ret_code = run_service_account_registry(
-        "list", "--backend", backend
-    )
+    stdout, _, _ = run_service_account_registry("list")
     actual_output_lines = [line for line in stdout.split("\n") if line.strip()]
     expected_outout_lines = [f"{namespace}:{username} (Primary)"]
     assert set(actual_output_lines) == set(expected_outout_lines)
@@ -453,19 +447,13 @@ def test_service_account_get_primary(namespace, backend):
         username2,
         "--namespace",
         namespace,
-        "--backend",
-        backend,
         "--primary",
     )
-    stdout, stderr, ret_code = run_service_account_registry(
-        "get-primary", "--backend", backend
-    )
+    stdout, _, _ = run_service_account_registry("get-primary")
     assert f"{namespace}:{username2}" == stdout.strip()
 
     # Also ensure that the `list` command lists the new account as primary
-    stdout, stderr, ret_code = run_service_account_registry(
-        "list", "--backend", backend
-    )
+    stdout, _, _ = run_service_account_registry("list")
     actual_output_lines = [line for line in stdout.split("\n") if line.strip()]
     expected_outout_lines = [
         f"{namespace}:{username}",
@@ -474,8 +462,7 @@ def test_service_account_get_primary(namespace, backend):
     assert set(actual_output_lines) == set(expected_outout_lines)
 
 
-@pytest.mark.parametrize("backend", VALID_BACKENDS)
-def test_service_accounts_listing(namespace, backend):
+def test_service_accounts_listing(namespace: str) -> None:
     """Test listing of service account using the CLI.
 
     Create a few service accounts using CLI, and then call
@@ -496,14 +483,10 @@ def test_service_accounts_listing(namespace, backend):
             username,
             "--namespace",
             namespace,
-            "--backend",
-            backend,
         )
 
     # List the service accounts
-    stdout, stderr, ret_code = run_service_account_registry(
-        "list", "--backend", backend
-    )
+    stdout, _, _ = run_service_account_registry("list")
     actual_output_lines = stdout.split("\n")
     expected_outout_lines = [f"{namespace}:{username}" for username in usernames]
 
@@ -512,10 +495,9 @@ def test_service_accounts_listing(namespace, backend):
         assert line in actual_output_lines
 
 
-@pytest.mark.parametrize("backend", VALID_BACKENDS)
 def test_service_accounts_listing_multiple_namespaces(
-    multiple_namespaces_and_service_accounts, backend
-):
+    multiple_namespaces_and_service_accounts: dict[str, list[str]],
+) -> None:
     """Test listing of service accounts across multiple namespaces using the CLI."""
     expected_output_lines = []
     for namespace, usernames in multiple_namespaces_and_service_accounts.items():
@@ -524,16 +506,15 @@ def test_service_accounts_listing_multiple_namespaces(
         )
 
     # List the service accounts
-    stdout, stderr, ret_code = run_service_account_registry(
-        "list", "--backend", backend
-    )
+    stdout, _, _ = run_service_account_registry("list")
     actual_output_lines = [line for line in stdout.split("\n") if line.strip()]
 
     assert set(expected_output_lines) == set(actual_output_lines)
 
 
-@pytest.mark.parametrize("backend", VALID_BACKENDS)
-def test_service_account_get_config(service_account, backend, request):
+def test_service_account_get_config(
+    service_account: tuple[str, str], kubeinterface: LightKubeInterface
+) -> None:
     """Test retrieval of service account configs using the CLI.
 
     Use a fixture that creates temporary service account, then
@@ -543,14 +524,12 @@ def test_service_account_get_config(service_account, backend, request):
     username, namespace = service_account
 
     # Get the default configs created with a service account
-    stdout, stderr, ret_code = run_service_account_registry(
+    stdout, _, _ = run_service_account_registry(
         "get-config",
         "--username",
         username,
         "--namespace",
         namespace,
-        "--backend",
-        backend,
     )
     actual_configs = set(stdout.splitlines())
 
@@ -566,8 +545,6 @@ def test_service_account_get_config(service_account, backend, request):
 
     property_file = PropertyFile({"key": "value"})
 
-    kubeinterface = request.getfixturevalue("kubeinterface")
-
     with umask_named_temporary_file(
         mode="w",
         prefix="spark-dynamic-conf-k8s-",
@@ -582,6 +559,7 @@ def test_service_account_get_config(service_account, backend, request):
             KubernetesResourceType.SECRET_GENERIC,
             secret_name,
             namespace=namespace,
+            dry_run=False,
             **{"from-env-file": str(t.name)},
         )
 
@@ -591,14 +569,12 @@ def test_service_account_get_config(service_account, backend, request):
 
     # check that integration hub config is there
     # Get the default configs created with a service account
-    stdout, stderr, ret_code = run_service_account_registry(
+    stdout, _, _ = run_service_account_registry(
         "get-config",
         "--username",
         username,
         "--namespace",
         namespace,
-        "--backend",
-        backend,
     )
     actual_configs = set(stdout.splitlines())
     expected_configs_hub = {
@@ -609,22 +585,21 @@ def test_service_account_get_config(service_account, backend, request):
 
     assert actual_configs == expected_configs_hub
 
-    stdout, stderr, ret_code = run_service_account_registry(
+    stdout, _, _ = run_service_account_registry(
         "get-config",
         "--username",
         username,
         "--namespace",
         namespace,
-        "--backend",
-        backend,
         "--ignore-integration-hub",
     )
     actual_configs = set(stdout.splitlines())
     assert actual_configs == expected_configs
 
 
-@pytest.mark.parametrize("backend", VALID_BACKENDS)
-def test_service_account_add_config(service_account, backend, request):
+def test_service_account_add_config(
+    service_account: tuple[str, str], kubeinterface: LightKubeInterface
+) -> None:
     """Test addition of service account config using the CLI.
     Use a fixture that creates temporary service account, add new config,
     and then verify whether `get-config` sub-command returns back the newly
@@ -633,14 +608,12 @@ def test_service_account_add_config(service_account, backend, request):
     username, namespace = service_account
 
     # Get the default config values, store them temporarily
-    stdout, stderr, ret_code = run_service_account_registry(
+    stdout, _, _ = run_service_account_registry(
         "get-config",
         "--username",
         username,
         "--namespace",
         namespace,
-        "--backend",
-        backend,
     )
     original_configs = set(stdout.splitlines())
 
@@ -648,8 +621,6 @@ def test_service_account_add_config(service_account, backend, request):
     secret_name = f"{HUB_LABEL}-{username}"
 
     property_file = PropertyFile({"key": "value"})
-
-    kubeinterface = request.getfixturevalue("kubeinterface")
 
     with umask_named_temporary_file(
         mode="w",
@@ -665,6 +636,7 @@ def test_service_account_add_config(service_account, backend, request):
             KubernetesResourceType.SECRET_GENERIC,
             secret_name,
             namespace=namespace,
+            dry_run=False,
             **{"from-env-file": str(t.name)},
         )
 
@@ -683,19 +655,15 @@ def test_service_account_add_config(service_account, backend, request):
         username,
         "--namespace",
         namespace,
-        "--backend",
-        backend,
     )
 
     # Get the new config values (the default ones, plus newly added ones)
-    stdout, stderr, ret_code = run_service_account_registry(
+    stdout, _, _ = run_service_account_registry(
         "get-config",
         "--username",
         username,
         "--namespace",
         namespace,
-        "--backend",
-        backend,
         "--ignore-integration-hub",
     )
     updated_configs = set(stdout.splitlines())
@@ -706,8 +674,9 @@ def test_service_account_add_config(service_account, backend, request):
     assert added_configs == {config_to_add}
 
 
-@pytest.mark.parametrize("backend", VALID_BACKENDS)
-def test_service_account_remove_config(service_account, backend, request):
+def test_service_account_remove_config(
+    service_account: tuple[str, str], kubeinterface: LightKubeInterface
+) -> None:
     """Test removal of service account config using the CLI.
 
     Use a fixture that creates temporary service account, add new config,
@@ -721,8 +690,6 @@ def test_service_account_remove_config(service_account, backend, request):
     secret_name = f"{HUB_LABEL}-{username}"
 
     property_file = PropertyFile({"key": "value"})
-
-    kubeinterface = request.getfixturevalue("kubeinterface")
 
     with umask_named_temporary_file(
         mode="w",
@@ -738,6 +705,7 @@ def test_service_account_remove_config(service_account, backend, request):
             KubernetesResourceType.SECRET_GENERIC,
             secret_name,
             namespace=namespace,
+            dry_run=False,
             **{"from-env-file": str(t.name)},
         )
 
@@ -756,26 +724,22 @@ def test_service_account_remove_config(service_account, backend, request):
         username,
         "--namespace",
         namespace,
-        "--backend",
-        backend,
     )
 
     # Ensure that the added configs have been successfully created
-    stdout, stderr, ret_code = run_service_account_registry(
+    stdout, _, _ = run_service_account_registry(
         "get-config",
         "--username",
         username,
         "--namespace",
         namespace,
-        "--backend",
-        backend,
     )
     new_configs = set(stdout.splitlines())
     assert config_to_add in new_configs
 
     # Now remove the newly added config
     config_to_remove = "foo"
-    stdout, stderr, ret_code = run_service_account_registry(
+    stdout, _, _ = run_service_account_registry(
         "remove-config",
         "--conf",
         config_to_remove,
@@ -783,8 +747,6 @@ def test_service_account_remove_config(service_account, backend, request):
         username,
         "--namespace",
         namespace,
-        "--backend",
-        backend,
     )
 
     # Ensure the removed configs no longer exist in service account
@@ -792,22 +754,19 @@ def test_service_account_remove_config(service_account, backend, request):
     assert config_to_add not in new_configs
 
     # Ensure that the added configs have been successfully created
-    stdout, stderr, ret_code = run_service_account_registry(
+    stdout, _, _ = run_service_account_registry(
         "get-config",
         "--username",
         username,
         "--namespace",
         namespace,
-        "--backend",
-        backend,
         "--ignore-integration-hub",
     )
     conf = set(stdout.splitlines())
     assert "key=value" not in conf
 
 
-@pytest.mark.parametrize("backend", VALID_BACKENDS)
-def test_service_account_clear_config(service_account, backend):
+def test_service_account_clear_config(service_account: tuple[str, str]) -> None:
     """Test deletion of all configs for a service account using the CLI.
 
     Use a fixture that creates temporary service account, add a few configs,
@@ -830,17 +789,13 @@ def test_service_account_clear_config(service_account, backend):
         username,
         "--namespace",
         namespace,
-        "--backend",
-        backend,
     )
-    stdout, stderr, ret_code = run_service_account_registry(
+    stdout, _, _ = run_service_account_registry(
         "get-config",
         "--username",
         username,
         "--namespace",
         namespace,
-        "--backend",
-        backend,
     )
 
     # Ensure that all new configs are added successfully.
@@ -848,14 +803,12 @@ def test_service_account_clear_config(service_account, backend):
     assert all(config in new_configs for config in configs_to_add)
 
     # Now clear all configs
-    stdout, stderr, ret_code = run_service_account_registry(
+    stdout, _, _ = run_service_account_registry(
         "clear-config",
         "--username",
         username,
         "--namespace",
         namespace,
-        "--backend",
-        backend,
     )
 
     # Ensure that none of the custom configs exist now
@@ -863,8 +816,7 @@ def test_service_account_clear_config(service_account, backend):
     assert not any(config in new_configs for config in configs_to_add)
 
 
-@pytest.mark.parametrize("backend", VALID_BACKENDS)
-def test_service_account_get_manifest(namespace, backend):
+def test_service_account_get_manifest(namespace: str) -> None:
     """Test get-manifest action of the service_account_registry CLI.
 
     Verify that the command indeed returns a manifest of K8s resources,
@@ -884,8 +836,6 @@ def test_service_account_get_manifest(namespace, backend):
         username,
         "--namespace",
         namespace,
-        "--backend",
-        backend,
     ]
 
     # Create the service account
