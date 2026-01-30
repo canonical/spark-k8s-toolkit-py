@@ -566,7 +566,6 @@ def test_lightkube_create_secret(mocker, tmp_kubeconf: str) -> None:
             resource_name,
             namespace,
             dry_run=False,
-            **{"from-env-file": "dummy"},
         )
 
     mock_lightkube_client_create.assert_any_call(
