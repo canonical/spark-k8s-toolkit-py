@@ -2,26 +2,25 @@ import uuid
 
 import pytest
 
-from spark8t.domain import PropertyFile, ServiceAccount
+from spark8t.domain import KubernetesResourceType, PropertyFile, ServiceAccount
+from spark8t.kube_interface.lightkube import LightKubeInterface
+from spark8t.registry.k8s import K8sServiceAccountRegistry
 
 
 @pytest.mark.usefixtures("integration_test")
 @pytest.mark.parametrize(
-    "kubeinterface_name, kuberegistry_name",
-    [
-        ("kubeinterface", "kube_registry"),
-        ("lightkubeinterface", "lightkube_registry"),
-    ],
-)
-@pytest.mark.parametrize(
     "namespace, user",
     [("default-a-namespace", "spark"), ("spark-a-namespace", "spark-user")],
 )
-def test_registry_io(kubeinterface_name, kuberegistry_name, namespace, user, request):
-    kubeinterface = request.getfixturevalue(kubeinterface_name)
-    registry = request.getfixturevalue(kuberegistry_name)
-
-    kubeinterface.create(resource_type="namespace", resource_name=namespace)
+def test_registry_io(
+    kubeinterface: LightKubeInterface,
+    registry: K8sServiceAccountRegistry,
+    namespace: str,
+    user: str,
+) -> None:
+    kubeinterface.create(
+        resource_type=KubernetesResourceType.NAMESPACE, resource_name=namespace
+    )
 
     service_account = ServiceAccount(
         user,
@@ -39,6 +38,7 @@ def test_registry_io(kubeinterface_name, kuberegistry_name, namespace, user, req
 
     retrieved_service_account = registry.get(service_account.id)
 
+    assert retrieved_service_account is not None
     assert service_account.id == retrieved_service_account.id
     assert service_account.name == retrieved_service_account.name
     assert service_account.namespace == retrieved_service_account.namespace
@@ -54,23 +54,18 @@ def test_registry_io(kubeinterface_name, kuberegistry_name, namespace, user, req
 
 @pytest.mark.usefixtures("integration_test")
 @pytest.mark.parametrize(
-    "kubeinterface_name, kuberegistry_name",
-    [
-        ("kubeinterface", "kube_registry"),
-        ("lightkubeinterface", "lightkube_registry"),
-    ],
-)
-@pytest.mark.parametrize(
     "namespace, username",
     [("default-b-namespace", "spark"), ("spark-b-namespace", "spark-user")],
 )
 def test_registry_change_primary_account(
-    kubeinterface_name, kuberegistry_name, namespace, username, request
-):
-    kubeinterface = request.getfixturevalue(kubeinterface_name)
-    registry = request.getfixturevalue(kuberegistry_name)
-
-    kubeinterface.create(resource_type="namespace", resource_name=namespace)
+    kubeinterface: LightKubeInterface,
+    registry: K8sServiceAccountRegistry,
+    namespace: str,
+    username: str,
+) -> None:
+    kubeinterface.create(
+        resource_type=KubernetesResourceType.NAMESPACE, resource_name=namespace
+    )
 
     sa1 = ServiceAccount(
         f"{username}-1",
@@ -89,29 +84,28 @@ def test_registry_change_primary_account(
     registry.create(sa1)
     registry.create(sa2)
 
-    assert registry.get_primary(namespace).id == sa1.id
+    assert (primary := registry.get_primary(namespace)) is not None
+    assert primary.id == sa1.id
 
     registry.set_primary(sa2.id, namespace)
 
-    assert registry.get_primary(namespace).id == sa2.id
+    assert (primary := registry.get_primary(namespace)) is not None
+    assert primary.id == sa2.id
 
 
 @pytest.mark.xfail(
     reason="[BUG]: No namespace means ALL for KubeInterface, 'default' for LightKube..."
 )
-@pytest.mark.parametrize(
-    "kubeinterface_name, kuberegistry_name",
-    [
-        ("kubeinterface", "kube_registry"),
-        ("lightkubeinterface", "lightkube_registry"),
-    ],
-)
-def test_registry_all(kubeinterface_name, kuberegistry_name, request):
-    kubeinterface = request.getfixturevalue(kubeinterface_name)
-    registry = request.getfixturevalue(kuberegistry_name)
-
-    kubeinterface.create(resource_type="namespace", resource_name="namespace-1")
-    kubeinterface.create(resource_type="namespace", resource_name="namespace-2")
+def test_registry_all(
+    kubeinterface: LightKubeInterface,
+    registry: K8sServiceAccountRegistry,
+) -> None:
+    kubeinterface.create(
+        resource_type=KubernetesResourceType.NAMESPACE, resource_name="namespace-1"
+    )
+    kubeinterface.create(
+        resource_type=KubernetesResourceType.NAMESPACE, resource_name="namespace-2"
+    )
 
     sa1 = ServiceAccount(
         "username-1",
@@ -136,7 +130,7 @@ def test_registry_all(kubeinterface_name, kuberegistry_name, request):
 
 
 @pytest.mark.usefixtures("integration_test")
-def test_merge_configurations():
+def test_merge_configurations() -> None:
     k1 = str(uuid.uuid4())
     v11 = str(uuid.uuid4())
     v12 = str(uuid.uuid4())
@@ -169,16 +163,3 @@ def test_merge_configurations():
     )
 
     assert merged_props.props == expected_merged_props.props
-
-
-@pytest.mark.usefixtures("integration_test")
-def test_kube_interface(kubeinterface):
-    context = str(uuid.uuid4())
-
-    k = kubeinterface.autodetect()
-    assert k.context_name == "microk8s"
-    # assert (k.single_config.cluster.server == "https://127.0.0.1:16443")
-
-    k2 = k.select_by_master(k.single_config.cluster.server)
-    assert k2.context_name == "microk8s"
-    assert k.with_context(context).context_name == context

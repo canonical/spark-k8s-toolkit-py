@@ -1,8 +1,8 @@
 import base64
 import io
 import os
-import subprocess
 import uuid
+from typing import Generator
 from unittest.mock import patch
 
 import pytest
@@ -15,7 +15,6 @@ from OpenSSL import crypto
 
 from spark8t.cli import defaults
 from spark8t.domain import KubernetesResourceType, ServiceAccount
-from spark8t.kube_interface.kubectl import KubeCtlInterface
 from spark8t.kube_interface.lightkube import LightKubeInterface
 from spark8t.literals import (
     GENERATED_BY_LABELNAME,
@@ -112,23 +111,23 @@ def generate_kube_config_file(kube_config_file_name: str) -> str:
 
 
 @pytest.fixture
-def tmp_kubeconf():
+def tmp_kubeconf() -> Generator[str, None, None]:
     filename = generate_kube_config_file(TMP_KUBECONF)
     yield filename
     os.remove(filename)
 
 
 def cert_gen(
-    emailAddress="emailAddress",
-    commonName="commonName",
-    countryName="NT",
-    localityName="localityName",
-    stateOrProvinceName="stateOrProvinceName",
-    organizationName="organizationName",
-    organizationUnitName="organizationUnitName",
-    serialNumber=0,
-    validityStartInSeconds=0,
-    validityEndInSeconds=10 * 365 * 24 * 60 * 60,
+    emailAddress: str = "emailAddress",
+    commonName: str = "commonName",
+    countryName: str = "NT",
+    localityName: str = "localityName",
+    stateOrProvinceName: str = "stateOrProvinceName",
+    organizationName: str = "organizationName",
+    organizationUnitName: str = "organizationUnitName",
+    serialNumber: int = 0,
+    validityStartInSeconds: int = 0,
+    validityEndInSeconds: int = 10 * 365 * 24 * 60 * 60,
 ) -> str:
     # can look at generated file using openssl:
     # openssl x509 -inform pem -in selfsigned.crt -noout -text
@@ -167,7 +166,7 @@ def cert_gen(
 ####################################################################################################
 
 
-def test_conf_expansion_cli():
+def test_conf_expansion_cli() -> None:
     home_var = "/this/is/my/home"
 
     parsed_property = PropertyFile.parse_conf_overrides(
@@ -178,100 +177,7 @@ def test_conf_expansion_cli():
     assert parsed_property.props["my-other-conf"] == "/this/does/$NOT/change"
 
 
-def test_kube_interface():
-    # mock logic
-    test_id = str(uuid.uuid4())
-    username1 = str(uuid.uuid4())
-    context1 = str(uuid.uuid4())
-    token1 = str(uuid.uuid4())
-    username2 = str(uuid.uuid4())
-    context2 = str(uuid.uuid4())
-    token2 = str(uuid.uuid4())
-    username3 = str(uuid.uuid4())
-    context3 = str(uuid.uuid4())
-    token3 = str(uuid.uuid4())
-
-    kubeconfig_yaml = {
-        "apiVersion": "v1",
-        "clusters": [
-            {
-                "cluster": {
-                    "certificate-authority-data": f"{test_id}-1",
-                    "server": f"https://0.0.0.0:{test_id}-1",
-                },
-                "name": f"{context1}-cluster",
-            },
-            {
-                "cluster": {
-                    "certificate-authority-data": f"{test_id}-2",
-                    "server": f"https://0.0.0.0:{test_id}-2",
-                },
-                "name": f"{context2}-cluster",
-            },
-            {
-                "cluster": {
-                    "certificate-authority-data": f"{test_id}-3",
-                    "server": f"https://0.0.0.0:{test_id}-3",
-                },
-                "name": f"{context3}-cluster",
-            },
-        ],
-        "contexts": [
-            {
-                "context": {
-                    "cluster": f"{context1}-cluster",
-                    "user": f"{username1}",
-                },
-                "name": f"{context1}",
-            },
-            {
-                "context": {
-                    "cluster": f"{context2}-cluster",
-                    "user": f"{username2}",
-                },
-                "name": f"{context2}",
-            },
-            {
-                "context": {
-                    "cluster": f"{context3}-cluster",
-                    "user": f"{username3}",
-                },
-                "name": f"{context3}",
-            },
-        ],
-        "current-context": f"{context2}",
-        "kind": "Config",
-        "preferences": {},
-        "users": [
-            {"name": f"{username1}", "user": {"token": f"{token1}"}},
-            {"name": f"{username2}", "user": {"token": f"{token2}"}},
-            {"name": f"{username3}", "user": {"token": f"{token3}"}},
-        ],
-    }
-
-    k = KubeCtlInterface(kube_config_file=kubeconfig_yaml, defaults=defaults)
-
-    assert k.context_name == context2
-    assert k.with_context(context3).context_name == context3
-    assert (
-        k.with_context(context3).single_config.context.cluster == f"{context3}-cluster"
-    )
-
-    assert context1 in k.kube_config.contexts
-    assert context2 in k.kube_config.contexts
-    assert context3 in k.kube_config.contexts
-    assert len(k.kube_config.contexts) == 3
-
-    current_context = k.single_config.context
-    assert current_context.cluster == f"{context2}-cluster"
-    assert current_context.user == f"{username2}"
-
-    current_cluster = k.single_config.cluster
-    assert current_cluster.certificate_auth_data == f"{test_id}-2"
-    assert current_cluster.server == f"https://0.0.0.0:{test_id}-2"
-
-
-def test_lightkube(tmp_kubeconf):
+def test_lightkube(tmp_kubeconf: str) -> None:
     # mock logic
     context1 = "context1"
     username2 = "username2"
@@ -285,24 +191,24 @@ def test_lightkube(tmp_kubeconf):
 
     assert k.context_name == context2
     assert k.with_context(context3).context_name == context3
-    assert (
-        k.with_context(context3).single_config.context.cluster == f"{context3}-cluster"
-    )
+    assert (single_config := k.with_context(context3).single_config) is not None
+    assert single_config.context.cluster == f"{context3}-cluster"
 
     assert context1 in k.kube_config.contexts
     assert context2 in k.kube_config.contexts
     assert context3 in k.kube_config.contexts
     assert len(k.kube_config.contexts) == 3
 
-    current_context = k.single_config.context
+    assert (current_config := k.single_config) is not None
+    current_context = current_config.context
     assert current_context.cluster == f"{context2}-cluster"
     assert current_context.user == f"{username2}"
 
-    current_cluster = k.single_config.cluster
+    current_cluster = current_config.cluster
     assert current_cluster.server == "https://0.0.0.1:9090"
 
 
-def test_lightkube_get_secret(mocker, tmp_kubeconf):
+def test_lightkube_get_secret(mocker, tmp_kubeconf: str) -> None:
     mock_lightkube_client_get = mocker.patch("lightkube.Client.get")
     kubeconfig = tmp_kubeconf
     secret_name = str(uuid.uuid4())
@@ -310,7 +216,7 @@ def test_lightkube_get_secret(mocker, tmp_kubeconf):
     conf_key = str(uuid.uuid4())
     conf_value = str(uuid.uuid4())
 
-    def side_effect(*args, **kwargs):
+    def side_effect(*args, **kwargs) -> Secret:
         assert kwargs["name"] == secret_name
         assert kwargs["namespace"] == namespace
         return Secret.from_dict(
@@ -329,87 +235,7 @@ def test_lightkube_get_secret(mocker, tmp_kubeconf):
     assert conf_value == secret_result["data"][conf_key]
 
 
-def test_kube_interface_get_secret(mocker, tmp_path):
-    mock_subprocess = mocker.patch("subprocess.check_output")
-
-    # mock logic
-    def side_effect(*args, **kwargs):
-        return values[args[0]]
-
-    mock_subprocess.side_effect = side_effect
-
-    test_id = str(uuid.uuid4())
-    kubeconfig = str(uuid.uuid4())
-    username = str(uuid.uuid4())
-    namespace = str(uuid.uuid4())
-    secret_name = f"{SPARK8S_LABEL}-sa-conf-{username}"
-    context = str(uuid.uuid4())
-    token = str(uuid.uuid4())
-    conf_key = str(uuid.uuid4())
-    conf_value = str(uuid.uuid4())
-    conf_value_base64_encoded = base64.b64encode(conf_value.encode("utf-8"))
-
-    kubeconfig_yaml = {
-        "apiVersion": "v1",
-        "clusters": [
-            {
-                "cluster": {
-                    "certificate-authority-data": f"{test_id}",
-                    "server": f"https://0.0.0.0:{test_id}",
-                },
-                "name": f"{context}-cluster",
-            }
-        ],
-        "contexts": [
-            {
-                "context": {"cluster": f"{context}-cluster", "user": f"{username}"},
-                "name": f"{context}",
-            }
-        ],
-        "current-context": f"{context}",
-        "kind": "Config",
-        "preferences": {},
-        "users": [{"name": f"{username}", "user": {"token": f"{token}"}}],
-    }
-
-    kube_config_file = os.path.join(tmp_path, kubeconfig)
-
-    with open(kube_config_file, "w") as fid:
-        yaml.dump(kubeconfig_yaml, fid, sort_keys=False)
-
-    cmd_get_secret = f"kubectl --kubeconfig {kube_config_file} --namespace {namespace} --context {context} get secret {secret_name} --ignore-not-found -o yaml"
-    output_get_secret_yaml = {
-        "apiVersion": "v1",
-        "data": {conf_key: conf_value_base64_encoded},
-        "kind": "Secret",
-        "metadata": {
-            "creationTimestamp": "2022-11-21T07:54:51Z",
-            "name": f"{SPARK8S_LABEL}-sa-conf-{username}",
-            "namespace": namespace,
-            "resourceVersion": "292967",
-            "uid": "943b82c3-2891-4332-886c-621ef4f4633f",
-        },
-        "type": "Opaque",
-    }
-    output_get_secret = yaml.dump(output_get_secret_yaml, sort_keys=False).encode(
-        "utf-8"
-    )
-    values = {
-        cmd_get_secret: output_get_secret,
-    }
-
-    secret_mock = mocker.patch("spark8t.utils.parse_yaml_shell_output")
-    secret_mock.side_effect = output_get_secret
-    k = KubeCtlInterface(kube_config_file=kube_config_file, defaults=defaults)
-    secret_result = k.get_secret(secret_name, namespace)
-    assert conf_value == secret_result["data"][conf_key]
-
-    mock_subprocess.assert_any_call(
-        cmd_get_secret, shell=True, stderr=subprocess.STDOUT
-    )
-
-
-def test_lightkube_set_label_service_account(mocker, tmp_kubeconf):
+def test_lightkube_set_label_service_account(mocker, tmp_kubeconf: str) -> None:
     mock_lightkube_client_patch = mocker.patch("lightkube.Client.patch")
     kubeconfig = tmp_kubeconf
     resource_name = str(uuid.uuid4())
@@ -421,7 +247,7 @@ def test_lightkube_set_label_service_account(mocker, tmp_kubeconf):
     mock_lightkube_client_patch.return_value = 0
 
     k = LightKubeInterface(kube_config_file=kubeconfig, defaults=defaults)
-    k.set_label("serviceaccount", resource_name, label, namespace)
+    k.set_label(KubernetesResourceType.SERVICEACCOUNT, resource_name, label, namespace)
 
     patch = {"metadata": {"labels": {label_key: label_value}}}
 
@@ -434,7 +260,7 @@ def test_lightkube_set_label_service_account(mocker, tmp_kubeconf):
     )
 
 
-def test_lightkube_set_label_role(mocker, tmp_kubeconf):
+def test_lightkube_set_label_role(mocker, tmp_kubeconf: str) -> None:
     mock_lightkube_client_patch = mocker.patch("lightkube.Client.patch")
     kubeconfig = tmp_kubeconf
     resource_name = str(uuid.uuid4())
@@ -452,10 +278,10 @@ def test_lightkube_set_label_role(mocker, tmp_kubeconf):
     mock_lightkube_client_patch.return_value = 0
 
     k = LightKubeInterface(kube_config_file=kubeconfig, defaults=defaults)
-    k.set_label("role", resource_name, label, namespace)
+    k.set_label(KubernetesResourceType.ROLE, resource_name, label, namespace)
 
 
-def test_lightkube_set_label_role_binding(mocker, tmp_kubeconf):
+def test_lightkube_set_label_role_binding(mocker, tmp_kubeconf: str) -> None:
     mock_lightkube_client_patch = mocker.patch("lightkube.Client.patch")
     kubeconfig = tmp_kubeconf
     resource_name = str(uuid.uuid4())
@@ -473,10 +299,10 @@ def test_lightkube_set_label_role_binding(mocker, tmp_kubeconf):
     mock_lightkube_client_patch.return_value = 0
 
     k = LightKubeInterface(kube_config_file=kubeconfig, defaults=defaults)
-    k.set_label("rolebinding", resource_name, label, namespace)
+    k.set_label(KubernetesResourceType.ROLEBINDING, resource_name, label, namespace)
 
 
-def test_lightkube_remove_label_service_account(mocker, tmp_kubeconf):
+def test_lightkube_remove_label_service_account(mocker, tmp_kubeconf: str) -> None:
     mock_lightkube_client_patch = mocker.patch("lightkube.Client.patch")
     kubeconfig = tmp_kubeconf
     resource_name = str(uuid.uuid4())
@@ -486,7 +312,9 @@ def test_lightkube_remove_label_service_account(mocker, tmp_kubeconf):
     mock_lightkube_client_patch.return_value = 0
 
     k = LightKubeInterface(kube_config_file=kubeconfig, defaults=defaults)
-    k.remove_label("serviceaccount", resource_name, label_key, namespace)
+    k.remove_label(
+        KubernetesResourceType.SERVICEACCOUNT, resource_name, label_key, namespace
+    )
 
     patch = [
         {"op": "remove", "path": f"/metadata/labels/{label_key.replace('/', '~1')}"}
@@ -501,7 +329,7 @@ def test_lightkube_remove_label_service_account(mocker, tmp_kubeconf):
     )
 
 
-def test_lightkube_remove_label_role(mocker, tmp_kubeconf):
+def test_lightkube_remove_label_role(mocker, tmp_kubeconf: str) -> None:
     mock_lightkube_client_patch = mocker.patch("lightkube.Client.patch")
     kubeconfig = tmp_kubeconf
     resource_name = str(uuid.uuid4())
@@ -511,7 +339,7 @@ def test_lightkube_remove_label_role(mocker, tmp_kubeconf):
     mock_lightkube_client_patch.return_value = 0
 
     k = LightKubeInterface(kube_config_file=kubeconfig, defaults=defaults)
-    k.remove_label("role", resource_name, label_key, namespace)
+    k.remove_label(KubernetesResourceType.ROLE, resource_name, label_key, namespace)
 
     patch = [
         {"op": "remove", "path": f"/metadata/labels/{label_key.replace('/', '~1')}"}
@@ -526,7 +354,7 @@ def test_lightkube_remove_label_role(mocker, tmp_kubeconf):
     )
 
 
-def test_lightkube_remove_label_role_binding(mocker, tmp_kubeconf):
+def test_lightkube_remove_label_role_binding(mocker, tmp_kubeconf: str) -> None:
     mock_lightkube_client_patch = mocker.patch("lightkube.Client.patch")
     kubeconfig = tmp_kubeconf
     resource_name = str(uuid.uuid4())
@@ -536,7 +364,9 @@ def test_lightkube_remove_label_role_binding(mocker, tmp_kubeconf):
     mock_lightkube_client_patch.return_value = 0
 
     k = LightKubeInterface(kube_config_file=kubeconfig, defaults=defaults)
-    k.remove_label("rolebinding", resource_name, label_key, namespace)
+    k.remove_label(
+        KubernetesResourceType.ROLEBINDING, resource_name, label_key, namespace
+    )
 
     patch = [
         {"op": "remove", "path": f"/metadata/labels/{label_key.replace('/', '~1')}"}
@@ -551,69 +381,7 @@ def test_lightkube_remove_label_role_binding(mocker, tmp_kubeconf):
     )
 
 
-def test_kube_interface_set_label(mocker, tmp_path):
-    mock_subprocess = mocker.patch("subprocess.check_output")
-
-    # mock logic
-    def side_effect(*args, **kwargs):
-        return values[args[0]]
-
-    mock_subprocess.side_effect = side_effect
-
-    test_id = str(uuid.uuid4())
-    kubeconfig = str(uuid.uuid4())
-    username = str(uuid.uuid4())
-    namespace = str(uuid.uuid4())
-    context = str(uuid.uuid4())
-    token = str(uuid.uuid4())
-    resource_type = str(uuid.uuid4())
-    resource_name = str(uuid.uuid4())
-    label = str(uuid.uuid4())
-
-    kubeconfig_yaml = {
-        "apiVersion": "v1",
-        "clusters": [
-            {
-                "cluster": {
-                    "certificate-authority-data": f"{test_id}",
-                    "server": f"https://0.0.0.0:{test_id}",
-                },
-                "name": f"{context}-cluster",
-            }
-        ],
-        "contexts": [
-            {
-                "context": {"cluster": f"{context}-cluster", "user": f"{username}"},
-                "name": f"{context}",
-            }
-        ],
-        "current-context": f"{context}",
-        "kind": "Config",
-        "preferences": {},
-        "users": [{"name": f"{username}", "user": {"token": f"{token}"}}],
-    }
-
-    kube_config_file = os.path.join(tmp_path, kubeconfig)
-
-    with open(kube_config_file, "w") as fid:
-        yaml.dump(kubeconfig_yaml, fid, sort_keys=False)
-
-    cmd_set_label = f"kubectl --kubeconfig {kube_config_file} --namespace {namespace} --context {context} label {resource_type} {resource_name} {label} --overwrite -o yaml"
-
-    output_set_label = "0".encode("utf-8")
-    values = {
-        cmd_set_label: output_set_label,
-    }
-
-    set_label_mock = mocker.patch("spark8t.utils.parse_yaml_shell_output")
-    set_label_mock.side_effect = output_set_label
-    k = KubeCtlInterface(kube_config_file=kube_config_file, defaults=defaults)
-    k.set_label(resource_type, resource_name, label, namespace)
-
-    mock_subprocess.assert_any_call(cmd_set_label, shell=True, stderr=subprocess.STDOUT)
-
-
-def test_lightkube_create_service_account(mocker, tmp_kubeconf):
+def test_lightkube_create_service_account(mocker, tmp_kubeconf: str) -> None:
     mock_lightkube_codecs_load_all_yaml = mocker.patch("lightkube.codecs.load_all_yaml")
     mock_open = mocker.patch("builtins.open")
     mock_lightkube_client_create = mocker.patch("lightkube.Client.create")
@@ -635,7 +403,7 @@ def test_lightkube_create_service_account(mocker, tmp_kubeconf):
         }
     )
 
-    def side_effect(*args, **kwargs):
+    def side_effect(*args, **kwargs) -> None:
         # assert kwargs['obj'] == mock_created_resource
         assert kwargs["name"] == resource_name
         assert kwargs["namespace"] == namespace
@@ -660,7 +428,7 @@ def test_lightkube_create_service_account(mocker, tmp_kubeconf):
     )
 
 
-def test_lightkube_create_role(mocker, tmp_kubeconf):
+def test_lightkube_create_role(mocker, tmp_kubeconf: str) -> None:
     mock_lightkube_codecs_load_all_yaml = mocker.patch("lightkube.codecs.load_all_yaml")
     mock_open = mocker.patch("builtins.open")
     mock_lightkube_client_create = mocker.patch("lightkube.Client.create")
@@ -682,7 +450,7 @@ def test_lightkube_create_role(mocker, tmp_kubeconf):
         }
     )
 
-    def side_effect(*args, **kwargs):
+    def side_effect(*args, **kwargs) -> None:
         # assert kwargs['obj'] == mock_created_resource
         assert kwargs["name"] == resource_name
         assert kwargs["namespace"] == namespace
@@ -707,7 +475,7 @@ def test_lightkube_create_role(mocker, tmp_kubeconf):
     )
 
 
-def test_lightkube_create_rolebinding(mocker, tmp_kubeconf):
+def test_lightkube_create_rolebinding(mocker, tmp_kubeconf: str) -> None:
     mock_lightkube_codecs_load_all_yaml = mocker.patch("lightkube.codecs.load_all_yaml")
     mock_open = mocker.patch("builtins.open")
     mock_lightkube_client_create = mocker.patch("lightkube.Client.create")
@@ -730,7 +498,7 @@ def test_lightkube_create_rolebinding(mocker, tmp_kubeconf):
         }
     )
 
-    def side_effect(*args, **kwargs):
+    def side_effect(*args, **kwargs) -> None:
         # assert kwargs['obj'] == mock_created_resource
         assert kwargs["name"] == resource_name
         assert kwargs["namespace"] == namespace
@@ -756,7 +524,7 @@ def test_lightkube_create_rolebinding(mocker, tmp_kubeconf):
     )
 
 
-def test_lightkube_create_secret(mocker, tmp_kubeconf):
+def test_lightkube_create_secret(mocker, tmp_kubeconf: str) -> None:
     mock_lightkube_codecs_load_all_yaml = mocker.patch("lightkube.codecs.load_all_yaml")
     mock_open = mocker.patch("builtins.open")
     mock_lightkube_client_create = mocker.patch("lightkube.Client.create")
@@ -781,7 +549,7 @@ def test_lightkube_create_secret(mocker, tmp_kubeconf):
         }
     )
 
-    def side_effect(*args, **kwargs):
+    def side_effect(*args, **kwargs) -> None:
         # assert kwargs['obj'] == mock_created_resource
         assert kwargs["name"] == resource_name
         assert kwargs["namespace"] == namespace
@@ -797,7 +565,7 @@ def test_lightkube_create_secret(mocker, tmp_kubeconf):
             KubernetesResourceType.SECRET_GENERIC,
             resource_name,
             namespace,
-            **{"from-env-file": "dummy"},
+            dry_run=False,
         )
 
     mock_lightkube_client_create.assert_any_call(
@@ -807,7 +575,7 @@ def test_lightkube_create_secret(mocker, tmp_kubeconf):
     )
 
 
-def test_lightkube_delete_secret(mocker, tmp_kubeconf):
+def test_lightkube_delete_secret(mocker, tmp_kubeconf: str) -> None:
     mock_lightkube_client_delete = mocker.patch("lightkube.Client.delete")
     kubeconfig = tmp_kubeconf
     resource_name = str(uuid.uuid4())
@@ -816,14 +584,14 @@ def test_lightkube_delete_secret(mocker, tmp_kubeconf):
     mock_lightkube_client_delete.return_value = 0
 
     k = LightKubeInterface(kube_config_file=kubeconfig, defaults=defaults)
-    k.delete("secret", resource_name, namespace)
+    k.delete(KubernetesResourceType.SECRET, resource_name, namespace)
 
     mock_lightkube_client_delete.assert_any_call(
         res=Secret, name=resource_name, namespace=namespace
     )
 
 
-def test_lightkube_delete_service_account(mocker, tmp_kubeconf):
+def test_lightkube_delete_service_account(mocker, tmp_kubeconf: str) -> None:
     mock_lightkube_client_delete = mocker.patch("lightkube.Client.delete")
     kubeconfig = tmp_kubeconf
     resource_name = str(uuid.uuid4())
@@ -832,14 +600,14 @@ def test_lightkube_delete_service_account(mocker, tmp_kubeconf):
     mock_lightkube_client_delete.return_value = 0
 
     k = LightKubeInterface(kube_config_file=kubeconfig, defaults=defaults)
-    k.delete("serviceaccount", resource_name, namespace)
+    k.delete(KubernetesResourceType.SERVICEACCOUNT, resource_name, namespace)
 
     mock_lightkube_client_delete.assert_any_call(
         res=LightKubeServiceAccount, name=resource_name, namespace=namespace
     )
 
 
-def test_lightkube_delete_role(mocker, tmp_kubeconf):
+def test_lightkube_delete_role(mocker, tmp_kubeconf: str) -> None:
     mock_lightkube_client_delete = mocker.patch("lightkube.Client.delete")
     kubeconfig = tmp_kubeconf
     resource_name = str(uuid.uuid4())
@@ -848,14 +616,14 @@ def test_lightkube_delete_role(mocker, tmp_kubeconf):
     mock_lightkube_client_delete.return_value = 0
 
     k = LightKubeInterface(kube_config_file=kubeconfig.strip(), defaults=defaults)
-    k.delete("role", resource_name, namespace)
+    k.delete(KubernetesResourceType.ROLE, resource_name, namespace)
 
     mock_lightkube_client_delete.assert_any_call(
         res=Role, name=resource_name, namespace=namespace
     )
 
 
-def test_lightkube_delete_role_binding(mocker, tmp_kubeconf):
+def test_lightkube_delete_role_binding(mocker, tmp_kubeconf: str) -> None:
     mock_lightkube_client_delete = mocker.patch("lightkube.Client.delete")
     kubeconfig = tmp_kubeconf
     resource_name = str(uuid.uuid4())
@@ -864,164 +632,14 @@ def test_lightkube_delete_role_binding(mocker, tmp_kubeconf):
     mock_lightkube_client_delete.return_value = 0
 
     k = LightKubeInterface(kube_config_file=kubeconfig, defaults=defaults)
-    k.delete("rolebinding", resource_name, namespace)
+    k.delete(KubernetesResourceType.ROLEBINDING, resource_name, namespace)
 
     mock_lightkube_client_delete.assert_any_call(
         res=RoleBinding, name=resource_name, namespace=namespace
     )
 
 
-def test_kube_interface_create(mocker, tmp_path):
-    mock_subprocess = mocker.patch("subprocess.check_output")
-
-    # mock logic
-    def side_effect(*args, **kwargs):
-        print(values)
-        return values[args[0]]
-
-    mock_subprocess.side_effect = side_effect
-
-    test_id = str(uuid.uuid4())
-    kubeconfig = str(uuid.uuid4())
-    username = str(uuid.uuid4())
-    namespace = str(uuid.uuid4())
-    context = str(uuid.uuid4())
-    token = str(uuid.uuid4())
-    resource_type = str(uuid.uuid4())
-    resource_name = str(uuid.uuid4())
-
-    kubeconfig_yaml = {
-        "apiVersion": "v1",
-        "clusters": [
-            {
-                "cluster": {
-                    "certificate-authority-data": f"{test_id}",
-                    "server": f"https://0.0.0.0:{test_id}",
-                },
-                "name": f"{context}-cluster",
-            }
-        ],
-        "contexts": [
-            {
-                "context": {"cluster": f"{context}-cluster", "user": f"{username}"},
-                "name": f"{context}",
-            }
-        ],
-        "current-context": f"{context}",
-        "kind": "Config",
-        "preferences": {},
-        "users": [{"name": f"{username}", "user": {"token": f"{token}"}}],
-    }
-
-    kube_config_file = os.path.join(tmp_path, kubeconfig)
-
-    with open(kube_config_file, "w") as fid:
-        yaml.dump(kubeconfig_yaml, fid, sort_keys=False)
-
-    cmd_create = f"kubectl --kubeconfig {kube_config_file} --namespace {namespace} --context {context} create {resource_type} {resource_name} --k1=v1 --k2=v21 --k2=v22  -o yaml"
-    output_create = "0".encode("utf-8")
-    values = {
-        cmd_create: output_create,
-    }
-
-    create_mock = mocker.patch("spark8t.utils.parse_yaml_shell_output")
-    create_mock.side_effect = output_create
-
-    k = KubeCtlInterface(kube_config_file=kube_config_file, defaults=defaults)
-    k.create(
-        resource_type,
-        resource_name,
-        namespace,
-        **{"k1": "v1", "k2": ["v21", "v22"]},
-        dry_run=False,
-    )
-
-    mock_subprocess.assert_any_call(cmd_create, shell=True, stderr=subprocess.STDOUT)
-
-
-def test_kube_interface_delete(mocker, tmp_path):
-    mock_subprocess = mocker.patch("subprocess.check_output")
-
-    # mock logic
-    def side_effect(*args, **kwargs):
-        return values[args[0]]
-
-    mock_subprocess.side_effect = side_effect
-
-    test_id = str(uuid.uuid4())
-    kubeconfig = str(uuid.uuid4())
-    username = str(uuid.uuid4())
-    namespace = str(uuid.uuid4())
-    context = str(uuid.uuid4())
-    token = str(uuid.uuid4())
-    resource_type = str(uuid.uuid4())
-    resource_name = str(uuid.uuid4())
-
-    kubeconfig_yaml = {
-        "apiVersion": "v1",
-        "clusters": [
-            {
-                "cluster": {
-                    "certificate-authority-data": f"{test_id}",
-                    "server": f"https://0.0.0.0:{test_id}",
-                },
-                "name": f"{context}-cluster",
-            }
-        ],
-        "contexts": [
-            {
-                "context": {"cluster": f"{context}-cluster", "user": f"{username}"},
-                "name": f"{context}",
-            }
-        ],
-        "current-context": f"{context}",
-        "kind": "Config",
-        "preferences": {},
-        "users": [{"name": f"{username}", "user": {"token": f"{token}"}}],
-    }
-
-    kube_config_file = os.path.join(tmp_path, kubeconfig)
-
-    with open(kube_config_file, "w") as fid:
-        yaml.dump(kubeconfig_yaml, fid, sort_keys=False)
-
-    cmd_delete = f"kubectl --kubeconfig {kube_config_file} --namespace {namespace} --context {context} delete {resource_type} {resource_name} --ignore-not-found -o name"
-    output_delete = "0".encode("utf-8")
-    values = {
-        cmd_delete: output_delete,
-    }
-
-    delete_mock = mocker.patch("spark8t.utils.parse_yaml_shell_output")
-    delete_mock.side_effect = output_delete
-
-    k = KubeCtlInterface(kube_config_file=kube_config_file, defaults=defaults)
-    k.delete(resource_type, resource_name, namespace)
-
-    mock_subprocess.assert_any_call(cmd_delete, shell=True, stderr=subprocess.STDOUT)
-
-
-def test_kube_interface_delete_no_kubeconfig(mocker):
-    mock_subprocess = mocker.patch("subprocess.check_output")
-
-    # mock logic
-    def side_effect(*args, **kwargs):
-        return "0".encode("utf-8")  # values[args[0]]
-
-    mock_subprocess.side_effect = side_effect
-
-    namespace = str(uuid.uuid4())
-    resource_type = str(uuid.uuid4())
-    resource_name = str(uuid.uuid4())
-
-    cmd_delete = f"kubectl --namespace {namespace} delete {resource_type} {resource_name} --ignore-not-found -o name"
-
-    k = KubeCtlInterface(kube_config_file=None, defaults=defaults)
-    k.delete(resource_type, resource_name, namespace)
-
-    mock_subprocess.assert_any_call(cmd_delete, shell=True, stderr=subprocess.STDOUT)
-
-
-def test_lightkube_get_service_accounts(mocker, tmp_kubeconf):
+def test_lightkube_get_service_accounts(mocker, tmp_kubeconf: str) -> None:
     mock_lightkube_codecs_dump_all_yaml = mocker.patch("lightkube.codecs.dump_all_yaml")
     mock_lightkube_client_list = mocker.patch("lightkube.Client.list")
     kubeconfig = tmp_kubeconf
@@ -1039,7 +657,7 @@ def test_lightkube_get_service_accounts(mocker, tmp_kubeconf):
         }
     )
 
-    def side_effect(*args, **kwargs):
+    def side_effect(*args, **kwargs) -> None:
         assert list(args[0]).__getitem__(0) == mock_service_account
 
     mock_lightkube_client_list.return_value = [mock_service_account]
@@ -1049,7 +667,7 @@ def test_lightkube_get_service_accounts(mocker, tmp_kubeconf):
     k.get_service_accounts(labels=[label])
 
 
-def test_lightkube_get_service_account(mocker, tmp_kubeconf):
+def test_lightkube_get_service_account(mocker, tmp_kubeconf: str) -> None:
     mock_lightkube_codecs_dump_all_yaml = mocker.patch("lightkube.codecs.dump_all_yaml")
     mock_lightkube_client_get = mocker.patch("lightkube.Client.get")
     kubeconfig = tmp_kubeconf
@@ -1064,7 +682,7 @@ def test_lightkube_get_service_account(mocker, tmp_kubeconf):
         }
     )
 
-    def side_effect(*args, **kwargs):
+    def side_effect(*args, **kwargs) -> None:
         assert args[0] == [mock_service_account]
 
     mock_lightkube_client_get.return_value = mock_service_account
@@ -1074,170 +692,9 @@ def test_lightkube_get_service_account(mocker, tmp_kubeconf):
     k.get_service_account(resource_name)
 
 
-def test_kube_interface_get_service_accounts(mocker, tmp_path):
-    mock_subprocess = mocker.patch("subprocess.check_output")
-
-    test_id = str(uuid.uuid4())
-    kubeconfig = str(uuid.uuid4())
-    username = str(uuid.uuid4())
-    namespace = str(uuid.uuid4())
-    context = str(uuid.uuid4())
-    token = str(uuid.uuid4())
-    label1 = str(uuid.uuid4())
-    label2 = str(uuid.uuid4())
-    labels = [label1, label2]
-
-    kubeconfig_yaml = {
-        "apiVersion": "v1",
-        "clusters": [
-            {
-                "cluster": {
-                    "certificate-authority-data": f"{test_id}",
-                    "server": f"https://0.0.0.0:{test_id}",
-                },
-                "name": f"{context}-cluster",
-            }
-        ],
-        "contexts": [
-            {
-                "context": {"cluster": f"{context}-cluster", "user": f"{username}"},
-                "name": f"{context}",
-            }
-        ],
-        "current-context": f"{context}",
-        "kind": "Config",
-        "preferences": {},
-        "users": [{"name": f"{username}", "user": {"token": f"{token}"}}],
-    }
-
-    kube_config_file = os.path.join(tmp_path, kubeconfig)
-
-    with open(kube_config_file, "w") as fid:
-        yaml.dump(kubeconfig_yaml, fid, sort_keys=False)
-
-    cmd_get_sa = f"kubectl --kubeconfig {kube_config_file} --namespace {namespace} --context {context} get serviceaccount -l {label1}  -l {label2} -o yaml"
-    output_get_sa_yaml = {
-        "apiVersion": "v1",
-        "items": [
-            {
-                "apiVersion": "v1",
-                "kind": "ServiceAccount",
-                "metadata": {
-                    "creationTimestamp": "2022-11-21T14:32:06Z",
-                    "labels": {
-                        MANAGED_BY_LABELNAME: SPARK8S_LABEL,
-                        PRIMARY_LABELNAME: "1",
-                    },
-                    "name": f"{username}",
-                    "namespace": f"{namespace}",
-                    "resourceVersion": "321848",
-                    "uid": "87ef7231-8106-4a36-b545-d8cf167788a6",
-                },
-            }
-        ],
-        "kind": "List",
-        "metadata": {"resourceVersion": ""},
-    }
-    output_get_sa = yaml.dump(output_get_sa_yaml, sort_keys=False).encode("utf-8")
-
-    # mock logic
-    def side_effect(*args, **kwargs):
-        return output_get_sa
-
-    mock_subprocess.side_effect = side_effect
-
-    k = KubeCtlInterface(kube_config_file=kube_config_file, defaults=defaults)
-    sa_list = k.get_service_accounts(namespace, labels)
-    assert sa_list[0].get("metadata").get("name") == username
-    assert sa_list[0].get("metadata").get("namespace") == namespace
-
-    mock_subprocess.assert_any_call(cmd_get_sa, shell=True, stderr=subprocess.STDOUT)
-
-
-def test_kube_interface_autodetect(mocker, tmp_path):
-    mock_subprocess = mocker.patch("subprocess.check_output")
-
-    kubeconfig = str(uuid.uuid4())
-
-    test_id = str(uuid.uuid4())
-    username = str(uuid.uuid4())
-    namespace = str(uuid.uuid4())
-    context = str(uuid.uuid4())
-    token = str(uuid.uuid4())
-
-    kubeconfig_yaml = {
-        "apiVersion": "v1",
-        "clusters": [
-            {
-                "cluster": {
-                    "certificate-authority-data": f"{test_id}",
-                    "server": f"https://0.0.0.0:{test_id}",
-                },
-                "name": f"{context}-cluster",
-            }
-        ],
-        "contexts": [
-            {
-                "context": {"cluster": f"{context}-cluster", "user": f"{username}"},
-                "name": f"{context}",
-            }
-        ],
-        "current-context": f"{context}",
-        "kind": "Config",
-        "preferences": {},
-        "users": [{"name": f"{username}", "user": {"token": f"{token}"}}],
-    }
-
-    kube_config_file = os.path.join(tmp_path, kubeconfig)
-
-    with open(kube_config_file, "w") as fid:
-        yaml.dump(kubeconfig_yaml, fid, sort_keys=False)
-
-    cmd_autodetect = f"kubectl --context {context} config view --raw --minify -o yaml"
-    output_autodetect_yaml = {
-        "apiVersion": "v1",
-        "items": [
-            {
-                "apiVersion": "v1",
-                "kind": "ServiceAccount",
-                "metadata": {
-                    "creationTimestamp": "2022-11-21T14:32:06Z",
-                    "labels": {
-                        MANAGED_BY_LABELNAME: SPARK8S_LABEL,
-                        PRIMARY_LABELNAME: "1",
-                    },
-                    "name": f"{username}",
-                    "namespace": f"{namespace}",
-                    "resourceVersion": "321848",
-                    "uid": "87ef7231-8106-4a36-b545-d8cf167788a6",
-                },
-            }
-        ],
-        "kind": "List",
-        "metadata": {"resourceVersion": ""},
-    }
-    output_autodetect = yaml.dump(output_autodetect_yaml, sort_keys=False).encode(
-        "utf-8"
-    )
-
-    # mock logic
-    def side_effect(*args, **kwargs):
-        return output_autodetect
-
-    mock_subprocess.side_effect = side_effect
-
-    ki = KubeCtlInterface.autodetect(context, defaults)
-    assert ki.context_name == context
-    assert ki.kubectl_cmd == "kubectl"
-
-    mock_subprocess.assert_any_call(
-        cmd_autodetect, shell=True, stderr=subprocess.STDOUT
-    )
-
-
-def test_k8s_registry_secret_account_configurations(mocker):
+def test_k8s_registry_secret_account_configurations(mocker) -> None:
     mock_kube_interface = mocker.patch(
-        "spark8t.kube_interface.kubectl.KubeCtlInterface"
+        "spark8t.kube_interface.lightkube.LightKubeInterface"
     )
     data = {"k": "v"}
     mock_kube_interface.get_secret.return_value = {"data": data}
@@ -1250,9 +707,9 @@ def test_k8s_registry_secret_account_configurations(mocker):
     )
 
 
-def test_k8s_registry_all(mocker):
+def test_k8s_registry_all(mocker) -> None:
     mock_kube_interface = mocker.patch(
-        "spark8t.kube_interface.kubectl.KubeCtlInterface"
+        "spark8t.kube_interface.lightkube.LightKubeInterface"
     )
     data = {"k": "v"}
     mock_kube_interface.get_secret.return_value = {"data": data}
@@ -1292,9 +749,9 @@ def test_k8s_registry_all(mocker):
     assert output[1].primary is False
 
 
-def test_k8s_registry_set_primary(mocker):
+def test_k8s_registry_set_primary(mocker) -> None:
     mock_kube_interface = mocker.patch(
-        "spark8t.kube_interface.kubectl.KubeCtlInterface"
+        "spark8t.kube_interface.lightkube.LightKubeInterface"
     )
     data = {"k": "v"}
     mock_kube_interface.get_secret.return_value = {"data": data}
@@ -1360,9 +817,9 @@ def test_k8s_registry_set_primary(mocker):
 
 
 @pytest.mark.parametrize("dry_run", [True, False])
-def test_k8s_registry_create(mocker, dry_run):
+def test_k8s_registry_create(mocker, dry_run: bool) -> None:
     mock_kube_interface = mocker.patch(
-        "spark8t.kube_interface.kubectl.KubeCtlInterface"
+        "spark8t.kube_interface.lightkube.LightKubeInterface"
     )
     data = {"k": "v"}
     mock_kube_interface.get_secret.return_value = {"data": data}
@@ -1495,9 +952,9 @@ def test_k8s_registry_create(mocker, dry_run):
         )
 
 
-def test_k8s_registry_delete(mocker):
+def test_k8s_registry_delete(mocker) -> None:
     mock_kube_interface = mocker.patch(
-        "spark8t.kube_interface.kubectl.KubeCtlInterface"
+        "spark8t.kube_interface.lightkube.LightKubeInterface"
     )
     data = {"k": "v"}
     mock_kube_interface.get_secret.return_value = {"data": data}

@@ -4,12 +4,10 @@ from time import sleep
 import pytest
 
 from spark8t.domain import KubernetesResourceType, PropertyFile
+from spark8t.kube_interface.lightkube import LightKubeInterface
 from spark8t.utils import umask_named_temporary_file
 
 
-@pytest.mark.parametrize(
-    "kubeinterface_name", [("kubeinterface"), ("lightkubeinterface")]
-)
 @pytest.mark.parametrize(
     "resource_type, resource_name, namespace",
     [
@@ -18,9 +16,11 @@ from spark8t.utils import umask_named_temporary_file
     ],
 )
 def test_create_exists_delete(
-    kubeinterface_name, resource_type, resource_name, namespace, request
-):
-    kubeinterface = request.getfixturevalue(kubeinterface_name)
+    kubeinterface: LightKubeInterface,
+    resource_type: KubernetesResourceType,
+    resource_name: str,
+    namespace: str,
+) -> None:
     kubeinterface.create(resource_type, resource_name, namespace)
 
     assert kubeinterface.exists(resource_type, resource_name, namespace)
@@ -33,15 +33,12 @@ def test_create_exists_delete(
     assert not kubeinterface.exists(resource_type, resource_name, namespace)
 
 
-@pytest.mark.parametrize(
-    "kubeinterface_name", [("kubeinterface"), ("lightkubeinterface")]
-)
-def test_create_exists_delete_secret(kubeinterface_name, request, namespace):
+def test_create_exists_delete_secret(
+    kubeinterface: LightKubeInterface, namespace: str
+) -> None:
     secret_name = "my-secret"
 
     property_file = PropertyFile({"key": "value"})
-
-    kubeinterface = request.getfixturevalue(kubeinterface_name)
 
     with umask_named_temporary_file(
         mode="w",
@@ -57,6 +54,7 @@ def test_create_exists_delete_secret(kubeinterface_name, request, namespace):
             KubernetesResourceType.SECRET_GENERIC,
             secret_name,
             namespace=namespace,
+            dry_run=False,
             **{"from-env-file": str(t.name)},
         )
 
@@ -71,15 +69,12 @@ def test_create_exists_delete_secret(kubeinterface_name, request, namespace):
     )
 
 
-@pytest.mark.parametrize(
-    "kubeinterface_name", [("kubeinterface"), ("lightkubeinterface")]
-)
-def test_delete_secret_content(kubeinterface_name, request, namespace):
+def test_delete_secret_content(
+    kubeinterface: LightKubeInterface, namespace: str
+) -> None:
     secret_name = "my-secret"
 
     property_file = PropertyFile({"key": "value"})
-
-    kubeinterface = request.getfixturevalue(kubeinterface_name)
 
     with umask_named_temporary_file(
         mode="w",
@@ -95,6 +90,7 @@ def test_delete_secret_content(kubeinterface_name, request, namespace):
             KubernetesResourceType.SECRET_GENERIC,
             secret_name,
             namespace=namespace,
+            dry_run=False,
             **{"from-env-file": str(t.name)},
         )
 
