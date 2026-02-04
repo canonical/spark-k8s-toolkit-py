@@ -1,5 +1,4 @@
 import json
-import os
 import subprocess
 import uuid
 from collections import defaultdict
@@ -7,7 +6,7 @@ from typing import Generator, MutableMapping
 
 import pytest
 
-from spark8t.domain import KubernetesResourceType, PropertyFile
+from spark8t.domain import KubernetesResourceType
 from spark8t.kube_interface.lightkube import LightKubeInterface
 from spark8t.literals import (
     HUB_LABEL,
@@ -607,25 +606,13 @@ def test_service_account_add_config(
     # add integration hub secret for the test service account
     secret_name = f"{HUB_LABEL}-{username}"
 
-    property_file = PropertyFile({"key": "value"})
-
-    with umask_named_temporary_file(
-        mode="w",
-        prefix="spark-dynamic-conf-k8s-",
-        suffix=".conf",
-        dir=os.path.expanduser("~"),
-    ) as t:
-        property_file.write(t.file)
-
-        t.flush()
-
-        kubeinterface.create(
-            KubernetesResourceType.SECRET_GENERIC,
-            secret_name,
-            namespace=namespace,
-            dry_run=False,
-            **{"from-env-file": str(t.name)},
-        )
+    kubeinterface.create(
+        KubernetesResourceType.SECRET_GENERIC,
+        secret_name,
+        namespace=namespace,
+        dry_run=False,
+        key="value",
+    )
 
     assert kubeinterface.exists(
         KubernetesResourceType.SECRET_GENERIC, secret_name, namespace
@@ -676,25 +663,13 @@ def test_service_account_remove_config(
     # add integration hub secret for the test service account
     secret_name = f"{HUB_LABEL}-{username}"
 
-    property_file = PropertyFile({"key": "value"})
-
-    with umask_named_temporary_file(
-        mode="w",
-        prefix="spark-dynamic-conf-k8s-",
-        suffix=".conf",
-        dir=os.path.expanduser("~"),
-    ) as t:
-        property_file.write(t.file)
-
-        t.flush()
-
-        kubeinterface.create(
-            KubernetesResourceType.SECRET_GENERIC,
-            secret_name,
-            namespace=namespace,
-            dry_run=False,
-            **{"from-env-file": str(t.name)},
-        )
+    kubeinterface.create(
+        KubernetesResourceType.SECRET_GENERIC,
+        secret_name,
+        namespace=namespace,
+        dry_run=False,
+        key="value",
+    )
 
     assert kubeinterface.exists(
         KubernetesResourceType.SECRET_GENERIC, secret_name, namespace

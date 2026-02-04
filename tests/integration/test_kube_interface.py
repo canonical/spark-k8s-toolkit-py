@@ -1,11 +1,9 @@
-import os
 from time import sleep
 
 import pytest
 
 from spark8t.domain import KubernetesResourceType, PropertyFile
 from spark8t.kube_interface.lightkube import LightKubeInterface
-from spark8t.utils import umask_named_temporary_file
 
 
 @pytest.mark.parametrize(
@@ -38,25 +36,13 @@ def test_create_exists_delete_secret(
 ) -> None:
     secret_name = "my-secret"
 
-    property_file = PropertyFile({"key": "value"})
-
-    with umask_named_temporary_file(
-        mode="w",
-        prefix="spark-dynamic-conf-k8s-",
-        suffix=".conf",
-        dir=os.path.expanduser("~"),
-    ) as t:
-        property_file.write(t.file)
-
-        t.flush()
-
-        kubeinterface.create(
-            KubernetesResourceType.SECRET_GENERIC,
-            secret_name,
-            namespace=namespace,
-            dry_run=False,
-            **{"from-env-file": str(t.name)},
-        )
+    kubeinterface.create(
+        KubernetesResourceType.SECRET_GENERIC,
+        secret_name,
+        namespace=namespace,
+        dry_run=False,
+        key="value",
+    )
 
     assert kubeinterface.exists(
         KubernetesResourceType.SECRET_GENERIC, secret_name, namespace
@@ -74,25 +60,16 @@ def test_delete_secret_content(
 ) -> None:
     secret_name = "my-secret"
 
-    property_file = PropertyFile({"key": "value"})
+    secret_content = {"key": "value"}
+    property_file = PropertyFile(secret_content)
 
-    with umask_named_temporary_file(
-        mode="w",
-        prefix="spark-dynamic-conf-k8s-",
-        suffix=".conf",
-        dir=os.path.expanduser("~"),
-    ) as t:
-        property_file.write(t.file)
-
-        t.flush()
-
-        kubeinterface.create(
-            KubernetesResourceType.SECRET_GENERIC,
-            secret_name,
-            namespace=namespace,
-            dry_run=False,
-            **{"from-env-file": str(t.name)},
-        )
+    kubeinterface.create(
+        KubernetesResourceType.SECRET_GENERIC,
+        secret_name,
+        namespace=namespace,
+        dry_run=False,
+        **secret_content,
+    )
 
     assert kubeinterface.exists(
         KubernetesResourceType.SECRET_GENERIC, secret_name, namespace
