@@ -1,12 +1,9 @@
 """Parameters module."""
 
 import logging
-from argparse import ArgumentParser, Namespace
+from argparse import ArgumentParser
 from typing import Callable
 
-from spark8t.cli import defaults
-from spark8t.kube_interface.base import AbstractKubeInterface
-from spark8t.kube_interface.lightkube import LightKubeInterface
 from spark8t.utils import DEFAULT_LOGGING_FILE, config_from_file, environ
 
 
@@ -136,13 +133,6 @@ def add_deploy_arguments(parser: ArgumentParser) -> ArgumentParser:
         choices=["client", "cluster"],
     )
     return parser
-
-
-def get_kube_interface(args: Namespace) -> AbstractKubeInterface:
-    """Get configured kube interface."""
-    return LightKubeInterface(
-        args.kubeconfig or defaults.kube_config, defaults, context_name=args.context
-    )
 
 
 def setup_logging(

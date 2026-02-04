@@ -8,10 +8,10 @@ from logging import Logger
 
 from lightkube import ApiError
 
+from spark8t.cli import defaults
 from spark8t.cli.params import (
     add_config_arguments,
     add_logging_arguments,
-    get_kube_interface,
     k8s_parser,
     parse_arguments_with,
     spark_user_parser,
@@ -24,6 +24,7 @@ from spark8t.exceptions import (
     ResourceAlreadyExists,
 )
 from spark8t.kube_interface.base import AbstractKubeInterface
+from spark8t.kube_interface.lightkube import LightKubeInterface
 from spark8t.registry.k8s import K8sServiceAccountRegistry
 from spark8t.utils import PropertyFile, setup_logging
 
@@ -146,7 +147,9 @@ def create_service_account_registry_parser(parser: ArgumentParser):
 
 def main(args: Namespace, logger: Logger):
     """Service account main entrypoint."""
-    kube_interface = get_kube_interface(args)
+    kube_interface = LightKubeInterface(
+        args.kubeconfig or defaults.kube_config, defaults, context_name=args.context
+    )
     context = args.context or kube_interface.context_name
 
     logger.debug(f"Using K8s context: {context}")
