@@ -13,11 +13,6 @@ def check_compliance(input_string: str) -> bool:
     return False
 
 
-@pytest.fixture
-def serializer():
-    return PercentEncodingSerializer()
-
-
 @pytest.mark.parametrize(
     "input_string",
     [
@@ -30,7 +25,8 @@ def serializer():
         "spark%_property",
     ],
 )
-def test_serializer(serializer, input_string):
+def test_serializer(input_string: str) -> None:
+    serializer = PercentEncodingSerializer()
     serialized = serializer.serialize(input_string)
     assert check_compliance(serialized)
     assert serializer.deserialize(serialized) == input_string

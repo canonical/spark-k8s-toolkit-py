@@ -384,6 +384,12 @@ class LightKubeInterface(AbstractKubeInterface):
                             "namespace": namespace,
                             "labels": {GENERATED_BY_LABELNAME: SPARK8S_LABEL},
                         },
+                        "data": {
+                            k: base64.b64encode(v.encode()).decode()
+                            for k, v in extra_args.items()
+                        }
+                        if extra_args
+                        else None,
                     }
                 )
             )

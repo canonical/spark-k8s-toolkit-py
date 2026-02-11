@@ -5,19 +5,19 @@ import re
 from argparse import Namespace
 from logging import Logger
 
+from spark8t.cli import defaults
 from spark8t.cli.params import (
     add_config_arguments,
     add_deploy_arguments,
     add_ignore_integration_hub,
     add_logging_arguments,
-    defaults,
-    get_kube_interface,
     k8s_parser,
     parse_arguments_with,
     spark_user_parser,
 )
 from spark8t.domain import ServiceAccount
 from spark8t.exceptions import AccountNotFound, PrimaryAccountNotFound
+from spark8t.kube_interface.lightkube import LightKubeInterface
 from spark8t.registry.k8s import K8sServiceAccountRegistry
 from spark8t.spark_interface import SparkInterface
 from spark8t.utils import PropertyFile, setup_logging
@@ -25,7 +25,9 @@ from spark8t.utils import PropertyFile, setup_logging
 
 def main(args: Namespace, logger: Logger):
     """Submit main entrypoint."""
-    kube_interface = get_kube_interface(args)
+    kube_interface = LightKubeInterface(
+        args.kubeconfig or defaults.kube_config, defaults, context_name=args.context
+    )
 
     registry = K8sServiceAccountRegistry(
         kube_interface.select_by_master(re.compile("^k8s://").sub("", args.master))

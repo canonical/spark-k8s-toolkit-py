@@ -4,11 +4,6 @@
 
 import subprocess
 
-VALID_BACKENDS = [
-    "kubectl",
-    "lightkube",
-]
-
 
 def run_service_account_registry(*args):
     """Run service_account_registry CLI command with given set of args

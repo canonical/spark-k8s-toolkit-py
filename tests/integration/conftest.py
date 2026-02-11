@@ -6,11 +6,10 @@ import pytest
 from lightkube.resources.core_v1 import Namespace
 
 from spark8t.domain import Defaults
-from spark8t.kube_interface.kubectl import KubeCtlInterface
 from spark8t.kube_interface.lightkube import LightKubeInterface
 from spark8t.registry.k8s import K8sServiceAccountRegistry
 
-from .helpers import VALID_BACKENDS, run_service_account_registry
+from .helpers import run_service_account_registry
 
 integration_test_flag = bool(int(os.environ.get("IE_TEST", "0")))
 
@@ -33,27 +32,12 @@ def defs_with_kubeconf(kubeconfig):
     return Defaults(dict(os.environ) | kubeconfig)
 
 
-def _get_kube_namespaces(interface):
-    ns_data = interface.exec("get namespaces --no-headers -o name")
-    return [item["metadata"]["name"] for item in ns_data["items"]]
-
-
-@pytest.fixture
-def kubeinterface(defs_with_kubeconf):
-    interface = KubeCtlInterface(defs_with_kubeconf.kube_config, defs_with_kubeconf)
-    ns_before = _get_kube_namespaces(interface)
-    yield interface
-    ns_after = _get_kube_namespaces(interface)
-    for ns in set(ns_after) - set(ns_before):
-        interface.delete("namespace", ns)
-
-
 def _get_lightkube_namespaces(iface):
     return [ns.metadata.name for ns in iface.client.list(Namespace)]
 
 
 @pytest.fixture
-def lightkubeinterface(defs_with_kubeconf):
+def kubeinterface(defs_with_kubeconf):
     interface = LightKubeInterface(defs_with_kubeconf.kube_config, defs_with_kubeconf)
     ns_before = _get_lightkube_namespaces(interface)
     yield interface
@@ -67,15 +51,8 @@ def _clearnup_registry(registry):
 
 
 @pytest.fixture
-def kube_registry(kubeinterface):
+def registry(kubeinterface):
     registry = K8sServiceAccountRegistry(kubeinterface)
-    yield registry
-    _clearnup_registry(registry)
-
-
-@pytest.fixture
-def lightkube_registry(lightkubeinterface):
-    registry = K8sServiceAccountRegistry(lightkubeinterface)
     yield registry
     _clearnup_registry(registry)
 
@@ -91,13 +68,12 @@ def namespace():
     subprocess.run(destroy_command, check=True)
 
 
-@pytest.fixture(params=VALID_BACKENDS)
-def service_account(namespace, request):
+@pytest.fixture()
+def service_account(namespace: str) -> tuple[str, str]:
     """A temporary service account that gets cleaned up automatically."""
     username = str(uuid.uuid4())
-    backend = request.param
 
     run_service_account_registry(
-        "create", "--username", username, "--namespace", namespace, "--backend", backend
+        "create", "--username", username, "--namespace", namespace
     )
     return username, namespace
