@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import socket
 from enum import Enum
-from subprocess import run
 from typing import Any
 
 from spark8t.domain import (
@@ -16,6 +15,7 @@ from spark8t.kube_interface.base import AbstractKubeInterface
 from spark8t.utils import (
     WithLogging,
     environ,
+    execute_command_output,
     umask_named_temporary_file,
 )
 
@@ -120,7 +120,7 @@ class SparkInterface(WithLogging):
                 envs["KUBECONFIG"] = self.kube_interface.kube_config_file
 
             with environ(**envs):
-                run(submit_cmd.split(" "), shell=True)
+                execute_command_output(submit_cmd)
 
     def spark_shell(
         self, confs: list[str], cli_property: str | None, extra_args: list[str]
@@ -175,8 +175,8 @@ class SparkInterface(WithLogging):
                 envs["KUBECONFIG"] = self.kube_interface.kube_config_file
 
             with environ(**envs):
-                run(["touch", f"{self.defaults.scala_history_file}"], shell=True)
-                run(submit_cmd.split(" "), shell=True)
+                execute_command_output(f"touch {self.defaults.scala_history_file}")
+                execute_command_output(submit_cmd)
 
     def pyspark_shell(
         self, confs: list[str], cli_property: str | None, extra_args: list[str]
@@ -226,7 +226,7 @@ class SparkInterface(WithLogging):
                 envs["KUBECONFIG"] = self.kube_interface.kube_config_file
 
             with environ(**envs):
-                run(submit_cmd.split(" "), shell=True)
+                execute_command_output(submit_cmd)
 
     def spark_sql(
         self,
@@ -279,7 +279,7 @@ class SparkInterface(WithLogging):
                 envs["KUBECONFIG"] = self.kube_interface.kube_config_file
 
             with environ(**envs):
-                run(submit_cmd.split(" "), shell=True)
+                execute_command_output(submit_cmd)
 
     def prefix_optional_detected_driver_host(self, conf: PropertyFile):
         """Get prefix for driver host."""
