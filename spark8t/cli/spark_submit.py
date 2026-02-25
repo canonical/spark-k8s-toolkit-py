@@ -27,9 +27,7 @@ from spark8t.utils import PropertyFile, setup_logging
 def main(args: Namespace, logger: Logger):
     """Submit main entrypoint."""
     # Expand environment variables in arguments
-    kubeconfig = (
-        os.path.expandvars(args.kubeconfig) if args.kubeconfig else defaults.kube_config
-    )
+    kubeconfig = os.path.expandvars(args.kubeconfig) if args.kubeconfig else None
     context_name = os.path.expandvars(args.context) if args.context else None
     master = os.path.expandvars(args.master) if args.master else ""
     namespace = os.path.expandvars(args.namespace) if args.namespace else None

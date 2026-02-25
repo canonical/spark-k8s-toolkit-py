@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Service account module."""
 
+import os
 import subprocess
 from argparse import ArgumentParser, Namespace
 from enum import Enum
@@ -32,8 +33,8 @@ from spark8t.utils import PropertyFile, setup_logging
 def build_service_account_from_args(args, registry) -> ServiceAccount:
     """Create service account resource interface."""
     return ServiceAccount(
-        name=args.username,
-        namespace=args.namespace,
+        name=os.path.expandvars(args.username),
+        namespace=os.path.expandvars(args.namespace),
         api_server=registry.kube_interface.api_server,
         primary=args.primary if hasattr(args, "primary") else False,
     )
@@ -147,10 +148,17 @@ def create_service_account_registry_parser(parser: ArgumentParser):
 
 def main(args: Namespace, logger: Logger):
     """Service account main entrypoint."""
-    kube_interface = LightKubeInterface(
-        args.kubeconfig or defaults.kube_config, defaults, context_name=args.context
+    kubeconfig = os.path.expandvars(args.kubeconfig) if args.kubeconfig else None
+    context_name = os.path.expandvars(args.context) if args.context else None
+    confs = [os.path.expandvars(conf) for conf in args.conf] if args.conf else []
+    properties_file = (
+        os.path.expandvars(args.properties_file) if args.properties_file else None
     )
-    context = args.context or kube_interface.context_name
+
+    kube_interface = LightKubeInterface(
+        kubeconfig or defaults.kube_config, defaults, context_name=context_name
+    )
+    context = context_name or kube_interface.context_name
 
     logger.debug(f"Using K8s context: {context}")
 
@@ -165,10 +173,10 @@ def main(args: Namespace, logger: Logger):
         create_namespace_if_missing(kube_interface, service_account.namespace)
 
         service_account.extra_confs = (
-            PropertyFile.read(args.properties_file)
-            if args.properties_file is not None
+            PropertyFile.read(properties_file)
+            if properties_file is not None
             else PropertyFile.empty()
-        ) + PropertyFile.parse_conf_overrides(args.conf)
+        ) + PropertyFile.parse_conf_overrides(confs)
         registry.create(service_account)
 
     elif args.action == Actions.GET_MANIFEST:
@@ -192,11 +200,11 @@ def main(args: Namespace, logger: Logger):
         account_configuration = (
             service_account_in_registry.extra_confs
             + (
-                PropertyFile.read(args.properties_file)
-                if args.properties_file is not None
+                PropertyFile.read(properties_file)
+                if properties_file is not None
                 else PropertyFile.empty()
             )
-            + PropertyFile.parse_conf_overrides(args.conf)
+            + PropertyFile.parse_conf_overrides(confs)
         )
 
         registry.set_configurations(input_service_account.id, account_configuration)
@@ -211,7 +219,7 @@ def main(args: Namespace, logger: Logger):
 
         registry.set_configurations(
             input_service_account.id,
-            service_account_in_registry.extra_confs.remove(args.conf),
+            service_account_in_registry.extra_confs.remove(confs),
         )
 
     elif args.action == Actions.GET_CONFIG:
