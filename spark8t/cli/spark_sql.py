@@ -27,7 +27,7 @@ def main(args: Namespace, logger: Logger):
     """Define SQL main entrypoint."""
     kubeconfig = os.path.expandvars(args.kubeconfig) if args.kubeconfig else None
     context_name = os.path.expandvars(args.context) if args.context else None
-    master = os.path.expandvars(args.master) if args.master else ""
+    master = os.path.expandvars(args.master) if args.master else None
     namespace = os.path.expandvars(args.namespace) if args.namespace else None
     username = os.path.expandvars(args.username) if args.username else None
     confs = [os.path.expandvars(conf) for conf in args.conf] if args.conf else []
