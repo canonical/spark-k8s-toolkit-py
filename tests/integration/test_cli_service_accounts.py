@@ -309,10 +309,10 @@ def test_create_service_account_when_namespace_does_not_exist() -> None:
     assert service_account_result.returncode == 0
 
     # delete created service account
-    stdout, stderr, ret_code = run_service_account_registry(
+    _, _, ret_code = run_service_account_registry(
         "delete", "--username", username, "--namespace", namespace
     )
-    print(f"Service account deletion stdout: {stdout} err: {stderr}")
+
     assert ret_code == 0
 
     # delete created namespace
@@ -322,9 +322,7 @@ def test_create_service_account_when_namespace_does_not_exist() -> None:
         capture_output=True,
         text=True,
     )
-    print(
-        f"Namespace deletion stdout: {namespace_result.stdout} err: {namespace_result.stderr}"
-    )
+
     assert namespace_result.returncode == 0
 
 
