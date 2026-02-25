@@ -27,7 +27,7 @@ def main(args: Namespace, logger: Logger):
     """Pyspark main entrypoint."""
     kubeconfig = os.path.expandvars(args.kubeconfig) if args.kubeconfig else None
     context_name = os.path.expandvars(args.context) if args.context else None
-    master = os.path.expandvars(args.master) if args.master else ""
+    master = os.path.expandvars(args.master) if args.master else None
     namespace = os.path.expandvars(args.namespace) if args.namespace else None
     username = os.path.expandvars(args.username) if args.username else None
     confs = [os.path.expandvars(conf) for conf in args.conf] if args.conf else []
@@ -46,14 +46,15 @@ def main(args: Namespace, logger: Logger):
     kube_interface = LightKubeInterface(
         kubeconfig or defaults.kube_config, defaults, context_name=context_name
     )
-    kube_interface = LightKubeInterface(
-        kubeconfig or defaults.kube_config, defaults, context_name=context_name
-    )
 
     registry = K8sServiceAccountRegistry(
         kube_interface.select_by_master(re.compile("^k8s://").sub("", master))
         if master is not None
         else kube_interface
+    )
+    print(f"Using kube interface with API server: {registry.kube_interface.api_server}")
+    logger.info(
+        f"Using kube interface with API server: {registry.kube_interface.api_server}"
     )
 
     service_account: ServiceAccount | None = (
@@ -61,6 +62,9 @@ def main(args: Namespace, logger: Logger):
         if username is None and namespace is None
         else registry.get(f"{namespace or 'default'}:{username or 'spark'}")
     )
+
+    print(f"Retrieved service account: {service_account}")
+    logger.info(f"Retrieved service account: {service_account}")
 
     if service_account is None:
         raise (AccountNotFound(username) if username else PrimaryAccountNotFound())
