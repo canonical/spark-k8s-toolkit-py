@@ -150,10 +150,6 @@ def main(args: Namespace, logger: Logger):
     """Service account main entrypoint."""
     kubeconfig = os.path.expandvars(args.kubeconfig) if args.kubeconfig else None
     context_name = os.path.expandvars(args.context) if args.context else None
-    confs = [os.path.expandvars(conf) for conf in args.conf] if args.conf else []
-    properties_file = (
-        os.path.expandvars(args.properties_file) if args.properties_file else None
-    )
 
     kube_interface = LightKubeInterface(
         kubeconfig or defaults.kube_config, defaults, context_name=context_name
@@ -171,12 +167,14 @@ def main(args: Namespace, logger: Logger):
 
         # check if namespace exist otherwise create it if permissions allow it.
         create_namespace_if_missing(kube_interface, service_account.namespace)
-
+        properties_file = (
+            os.path.expandvars(args.properties_file) if args.properties_file else None
+        )
         service_account.extra_confs = (
             PropertyFile.read(properties_file)
             if properties_file is not None
             else PropertyFile.empty()
-        ) + PropertyFile.parse_conf_overrides(confs)
+        ) + PropertyFile.parse_conf_overrides(args.conf)
         registry.create(service_account)
 
     elif args.action == Actions.GET_MANIFEST:
@@ -196,7 +194,9 @@ def main(args: Namespace, logger: Logger):
 
         if service_account_in_registry is None:
             raise AccountNotFound(input_service_account.id)
-
+        properties_file = (
+            os.path.expandvars(args.properties_file) if args.properties_file else None
+        )
         account_configuration = (
             service_account_in_registry.extra_confs
             + (
@@ -204,7 +204,7 @@ def main(args: Namespace, logger: Logger):
                 if properties_file is not None
                 else PropertyFile.empty()
             )
-            + PropertyFile.parse_conf_overrides(confs)
+            + PropertyFile.parse_conf_overrides(args.conf)
         )
 
         registry.set_configurations(input_service_account.id, account_configuration)
@@ -219,7 +219,7 @@ def main(args: Namespace, logger: Logger):
 
         registry.set_configurations(
             input_service_account.id,
-            service_account_in_registry.extra_confs.remove(confs),
+            service_account_in_registry.extra_confs.remove(args.conf),
         )
 
     elif args.action == Actions.GET_CONFIG:
