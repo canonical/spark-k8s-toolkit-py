@@ -31,6 +31,14 @@ def main(args: Namespace, logger: Logger):
     namespace = os.path.expandvars(args.namespace) if args.namespace else None
     username = os.path.expandvars(args.username) if args.username else None
     confs = [os.path.expandvars(conf) for conf in args.conf] if args.conf else []
+
+    print(
+        f"Expanded args: kubeconfig={kubeconfig}, context={context_name}, master={master}, namespace={namespace}, username={username}, confs={confs}"
+    )
+    logger.info(
+        f"Expanded args: kubeconfig={kubeconfig}, context={context_name}, master={master}, namespace={namespace}, username={username}, confs={confs}"
+    )
+
     properties_file = (
         os.path.expandvars(args.properties_file) if args.properties_file else None
     )
