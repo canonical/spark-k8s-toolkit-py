@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Spark submit module."""
 
+import os
 import re
 from argparse import Namespace
 from logging import Logger
@@ -25,28 +26,37 @@ from spark8t.utils import PropertyFile, setup_logging
 
 def main(args: Namespace, logger: Logger):
     """Submit main entrypoint."""
+    # Expand environment variables in arguments
+    kubeconfig = os.path.expandvars(args.kubeconfig) if args.kubeconfig else None
+    context_name = os.path.expandvars(args.context) if args.context else None
+    master = os.path.expandvars(args.master) if args.master else None
+    namespace = os.path.expandvars(args.namespace) if args.namespace else None
+    username = os.path.expandvars(args.username) if args.username else None
+
+    deploy_mode = os.path.expandvars(args.deploy_mode)
+    confs = [os.path.expandvars(conf) for conf in args.conf] if args.conf else []
+    properties_file = (
+        os.path.expandvars(args.properties_file) if args.properties_file else None
+    )
+
     kube_interface = LightKubeInterface(
-        args.kubeconfig or defaults.kube_config, defaults, context_name=args.context
+        kubeconfig or defaults.kube_config, defaults, context_name=context_name
     )
 
     registry = K8sServiceAccountRegistry(
-        kube_interface.select_by_master(re.compile("^k8s://").sub("", args.master))
-        if args.master is not None
+        kube_interface.select_by_master(re.compile("^k8s://").sub("", master))
+        if master is not None
         else kube_interface
     )
 
     service_account: ServiceAccount | None = (
         registry.get_primary()
-        if args.username is None and args.namespace is None
-        else registry.get(f"{args.namespace or 'default'}:{args.username or 'spark'}")
+        if username is None and namespace is None
+        else registry.get(f"{namespace or 'default'}:{username or 'spark'}")
     )
 
     if service_account is None:
-        raise (
-            AccountNotFound(args.username)
-            if args.username
-            else PrimaryAccountNotFound()
-        )
+        raise (AccountNotFound(username) if username else PrimaryAccountNotFound())
 
     if args.ignore_integration_hub:
         service_account.integration_hub_confs = PropertyFile.empty()
@@ -56,9 +66,9 @@ def main(args: Namespace, logger: Logger):
         kube_interface=kube_interface,
         defaults=defaults,
     ).spark_submit(
-        args.deploy_mode,
-        args.conf,
-        args.properties_file,
+        deploy_mode,
+        confs,
+        properties_file,
         extra_args,
     )
 
