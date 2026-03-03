@@ -322,6 +322,7 @@ def test_create_service_account_when_namespace_does_not_exist() -> None:
         capture_output=True,
         text=True,
     )
+
     assert namespace_result.returncode == 0
 
 
