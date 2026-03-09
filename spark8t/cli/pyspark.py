@@ -23,7 +23,7 @@ from spark8t.spark_interface import SparkInterface
 from spark8t.utils import PropertyFile, setup_logging
 
 
-def main(args: Namespace, logger: Logger):
+def entrypoint(args: Namespace, logger: Logger, extra_args: list[str]) -> None:
     """Pyspark main entrypoint."""
     kubeconfig = os.path.expandvars(args.kubeconfig) if args.kubeconfig else None
     context_name = os.path.expandvars(args.context) if args.context else None
@@ -64,7 +64,8 @@ def main(args: Namespace, logger: Logger):
     ).pyspark_shell(confs, properties_file, extra_args)
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """CLI entrypoint."""
     args, extra_args = parse_arguments_with(
         [
             add_logging_arguments,
@@ -78,10 +79,14 @@ if __name__ == "__main__":
     logger = setup_logging(args.log_level, args.log_conf_file, "spark8t.cli.pyspark")
 
     try:
-        main(args, logger)
+        entrypoint(args, logger, extra_args)
         exit(0)
     except (AccountNotFound, PrimaryAccountNotFound) as e:
         logger.error(str(e))
         exit(1)
     except Exception as e:
         raise e
+
+
+if __name__ == "__main__":
+    main()

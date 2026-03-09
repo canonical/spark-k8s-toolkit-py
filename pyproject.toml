@@ -1,12 +1,20 @@
-[tool.poetry]
+[project]
 name = "spark8t"
 version = "1.3.1"
 description = "This project provides some utilities function and CLI commands to run Spark on K8s."
-authors = [
-  "Canonical Data Platform <data-platform@lists.launchpad.net>",
-]
+authors = [{ name = "Canonical Processing team" }]
+urls = { contact = "https://matrix.to/#/%23charmhub-analytics%3Aubuntu.com" }
 license = "Apache-2.0"
 readme = "README.md"
+
+[project.scripts]
+pyspark = "spark8t.cli.pyspark:main"
+service-account-registry = "spark8t.cli.service_account_registry:main"
+spark-shell = "spark8t.cli.spark_shell:main"
+spark-sql = "spark8t.cli.spark_sql:main"
+spark-submit = "spark8t.cli.spark_submit:main"
+
+[tool.poetry]
 requires-poetry = ">=2.0.0"
 
 [tool.poetry.requires-plugins]
