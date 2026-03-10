@@ -77,7 +77,7 @@ def create_namespace_if_missing(kube_interface: AbstractKubeInterface, namespace
             raise NamespaceNotFound(namespace) from err
 
 
-def create_service_account_registry_parser(parser: ArgumentParser):
+def create_service_account_registry_parser(parser: ArgumentParser) -> ArgumentParser:
     """Create parser for service account CLI."""
     base_parser = parse_arguments_with(
         [add_logging_arguments, k8s_parser],
@@ -146,7 +146,7 @@ def create_service_account_registry_parser(parser: ArgumentParser):
     return parser
 
 
-def main(args: Namespace, logger: Logger):
+def entrypoint(args: Namespace, logger: Logger) -> None:
     """Service account main entrypoint."""
     kubeconfig = os.path.expandvars(args.kubeconfig) if args.kubeconfig else None
     context_name = os.path.expandvars(args.context) if args.context else None
@@ -255,7 +255,8 @@ def main(args: Namespace, logger: Logger):
             print(print_line)
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """CLI entrypoint."""
     args = create_service_account_registry_parser(
         ArgumentParser(description="Spark Client Setup")
     ).parse_args()
@@ -265,10 +266,14 @@ if __name__ == "__main__":
     )
 
     try:
-        main(args, logger)
+        entrypoint(args, logger)
         exit(0)
     except (AccountNotFound, PrimaryAccountNotFound, ResourceAlreadyExists) as e:
         print(str(e))
         exit(1)
     except Exception as e:
         raise e
+
+
+if __name__ == "__main__":
+    main()

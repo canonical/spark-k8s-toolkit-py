@@ -24,7 +24,7 @@ from spark8t.spark_interface import SparkInterface
 from spark8t.utils import PropertyFile, setup_logging
 
 
-def main(args: Namespace, logger: Logger):
+def main_entrypoint(args: Namespace, logger: Logger, extra_args: list[str]) -> None:
     """Submit main entrypoint."""
     # Expand environment variables in arguments
     kubeconfig = os.path.expandvars(args.kubeconfig) if args.kubeconfig else None
@@ -73,7 +73,8 @@ def main(args: Namespace, logger: Logger):
     )
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """CLI entrypoint."""
     args, extra_args = parse_arguments_with(
         [
             add_logging_arguments,
@@ -90,10 +91,14 @@ if __name__ == "__main__":
     )
 
     try:
-        main(args, logger)
+        main_entrypoint(args, logger, extra_args)
         exit(0)
     except (AccountNotFound, PrimaryAccountNotFound) as e:
         logger.error(str(e))
         exit(1)
     except Exception as e:
         raise e
+
+
+if __name__ == "__main__":
+    main()
