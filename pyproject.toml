@@ -31,15 +31,15 @@ typing-extensions = "^4.15.0"
 optional = true
 
 [tool.poetry.group.fmt.dependencies]
-ruff = "^0.15.9"
+ruff = "^0.15.12"
 
 [tool.poetry.group.lint]
 optional = true
 
 [tool.poetry.group.lint.dependencies]
-ruff = "^0.15.9"
+ruff = "^0.15.12"
 codespell = "^2.4.2"
-mypy = "^1.20.0"
+mypy = "^1.20.2"
 pytest-mypy = ">=1.0.1"
 types-pyyaml = "^6.0.12.20241230"
 types-pygments = "^2.19.0.20250107"
@@ -51,18 +51,18 @@ optional = true
 
 [tool.poetry.group.unit.dependencies]
 pytest-cov = ">=7.1.0"
-pytest = "^9.0.2"
+pytest = "^9.0.3"
 pytest-mock = ">=3.15.1"
-pyOpenSSL = ">=26.0.0"
-tox = "^4.52.0"
+pyOpenSSL = ">=26.1.0"
+tox = "^4.53.0"
 
 [tool.poetry.group.integration]
 optional = true
 
 [tool.poetry.group.integration.dependencies]
 pytest-cov = ">=7.1.0"
-pytest = "^9.0.2"
-tox = "^4.52.0"
+pytest = "^9.0.3"
+tox = "^4.53.0"
 
 [build-system]
 requires = ["poetry-core"]
