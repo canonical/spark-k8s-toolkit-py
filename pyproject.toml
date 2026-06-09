@@ -39,7 +39,7 @@ optional = true
 [tool.poetry.group.lint.dependencies]
 ruff = "^0.15.12"
 codespell = "^2.4.2"
-mypy = "^1.20.2"
+mypy = "^2.1.0"
 pytest-mypy = ">=1.0.1"
 types-pyyaml = "^6.0.12.20241230"
 types-pygments = "^2.19.0.20250107"
