@@ -3,6 +3,9 @@ name: Build snap and run tests
 on:
   workflow_call
 
+permissions:
+  contents: read
+
 jobs:
   checks:
     name: Code checks
@@ -17,13 +20,15 @@ jobs:
     steps:
       - id: checkout
         name: Checkout repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
+
       - id: setup-python
         name: Setup Python
         uses: actions/setup-python@v6.0.0
         with:
           python-version: ${{matrix.python-version}}
           architecture: x64
+
       - id: code-checks
         name: Make sure the code follows conventions and tests correctly
         run: |

@@ -66,9 +66,6 @@ $(setup_tag): $(pre_deps_tag) pyproject.toml
 
 setup: $(setup_tag)
 
-requirements.txt: poetry.lock pyproject.toml
-	poetry export -f requirements.txt --output requirements.txt --without dev
-
 format: setup $(files)
 	${PYTHON} tox -e fmt
 
@@ -97,6 +94,5 @@ integration-tests: setup microk8s
 clean:
 	@echo "==Cleaning environment=="
 	pip freeze | grep -v "^-e" | grep -v "^#" | xargs pip uninstall -y
-	rm -rf requirements.txt
 	rm -rf *.egg-info .mypy_cache .mypy .tox .pytest_cache .make_cache .coverage .kube
 	rm -rf $(shell find . -name "*.pyc") $(shell find . -name "__pycache__")
