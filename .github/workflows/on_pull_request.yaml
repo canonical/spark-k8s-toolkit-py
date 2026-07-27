@@ -7,6 +7,9 @@ concurrency:
 on:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   tests:
     uses: ./.github/workflows/ci-tests.yaml

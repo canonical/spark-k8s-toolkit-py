@@ -5,6 +5,9 @@ on:
     - cron: "53 0 * * *" # Daily at 00:53 UTC
   workflow_call:
 
+permissions:
+  contents: read
+
 jobs:
   checks:
     uses: ./.github/workflows/ci-checks.yaml
@@ -23,17 +26,20 @@ jobs:
       - checks
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
+
       - id: setup-python
         name: Setup Python
         uses: actions/setup-python@v6.0.0
         with:
           python-version: ${{matrix.python-version}}
           architecture: x64
+
       - id: tests-unit
         name: Run Unittests
         run: |
           make unittests
+
       - id: tests-integration
         name: Run Integration Tests
         run: |
