@@ -45,5 +45,4 @@ jobs:
           ticsAuthToken: ${{ secrets.TICSAUTHTOKEN }}
           installTics: true
           calc: ALL
-    permissions:
-      pull-requests: write
+    permissions: {}
