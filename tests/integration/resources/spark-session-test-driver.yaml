@@ -11,7 +11,7 @@ spec:
   restartPolicy: Never
   containers:
   - name: test-runner
-    image: ghcr.io/canonical/charmed-spark:3.5.5-22.04_edge
+    image: ghcr.io/canonical/charmed-spark:3.5-22.04_edge
     imagePullPolicy: Always
     command:
       - bash
