@@ -47,11 +47,11 @@ types-pyopenssl = "^24.1.0.20240722"
 optional = true
 
 [tool.poetry.group.unit.dependencies]
-pytest-cov = ">=7.1.0"
 pytest = "^9.0.3"
 pytest-mock = ">=3.15.1"
 pyOpenSSL = ">=26.1.0"
 tox = "^4.53.0"
+coverage = "^7.15.4"
 
 [tool.poetry.group.integration]
 optional = true
@@ -67,7 +67,6 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.pytest]
 minversion = "9.0"
-addopts = ["--doctest-modules", "--cov=./spark8t"]
 norecursedirs = ["tests/integration/resources"]
 
 [tool.ruff]
