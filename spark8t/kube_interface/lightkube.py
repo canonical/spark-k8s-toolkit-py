@@ -374,24 +374,27 @@ class LightKubeInterface(AbstractKubeInterface):
             resource_type == KubernetesResourceType.SECRET
             or resource_type == KubernetesResourceType.SECRET_GENERIC
         ):
-            res = Secret.from_dict(
-                filter_none(
-                    {
-                        "apiVersion": "v1",
-                        "kind": "Secret",
-                        "metadata": {
-                            "name": resource_name,
-                            "namespace": namespace,
-                            "labels": {GENERATED_BY_LABELNAME: SPARK8S_LABEL},
-                        },
-                        "data": {
-                            k: base64.b64encode(v.encode()).decode()
-                            for k, v in extra_args.items()
+            res = cast(
+                AnyResource,
+                Secret.from_dict(
+                    filter_none(
+                        {
+                            "apiVersion": "v1",
+                            "kind": "Secret",
+                            "metadata": {
+                                "name": resource_name,
+                                "namespace": namespace,
+                                "labels": {GENERATED_BY_LABELNAME: SPARK8S_LABEL},
+                            },
+                            "data": {
+                                k: base64.b64encode(v.encode()).decode()
+                                for k, v in extra_args.items()
+                            }
+                            if extra_args
+                            else None,
                         }
-                        if extra_args
-                        else None,
-                    }
-                )
+                    )
+                ),
             )
         elif resource_type == KubernetesResourceType.NAMESPACE:
             res = cast(AnyResource, Namespace(metadata=ObjectMeta(name=resource_name)))
