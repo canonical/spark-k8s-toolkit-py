@@ -226,7 +226,11 @@ def test_lightkube_get_secret(mocker, tmp_kubeconf: str) -> None:
                     "apiVersion": "v1",
                     "kind": "Secret",
                     "metadata": {"name": secret_name, "namespace": namespace},
-                    "data": {conf_key: base64.b64encode(conf_value.encode("utf-8"))},
+                    "data": {
+                        conf_key: base64.b64encode(conf_value.encode("utf-8")).decode(
+                            "utf-8"
+                        )
+                    },
                 }
             ),
         )
@@ -495,9 +499,11 @@ def test_lightkube_create_rolebinding(mocker, tmp_kubeconf: str) -> None:
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "RoleBinding",
             "metadata": {"name": resource_name, "labels": {label_key: label_value}},
-            "name": resource_name,
-            "roleRef": resource_name,
-            "namespace": namespace,
+            "roleRef": {
+                "apiGroup": "rbac.authorization.k8s.io",
+                "kind": "Role",
+                "name": resource_name,
+            },
         }
     )
 
