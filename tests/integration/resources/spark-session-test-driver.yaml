@@ -21,7 +21,7 @@ spec:
         
         echo "Installing spark8t..."
         cd /workspace
-        python3 -m pip install .
+        python3 -m pip install --upgrade .
 
         user_site_packages_path=$(python3 -c 'import site;print(site.getusersitepackages())')  
         export PYTHONPATH=$user_site_packages_path:$PYTHONPATH
