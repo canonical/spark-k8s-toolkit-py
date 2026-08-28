@@ -19,9 +19,9 @@ requires-poetry = ">=2.0.0"
 
 [tool.poetry.dependencies]
 python = ">=3.10,<4.0"
-lightkube = ">=0.19.1"
-jinja2 = ">=3.1.6"
-envyaml = ">=1.10.211231"
+lightkube = "^1.0.1"
+jinja2 = "^3.1.6"
+envyaml = "^1.10.211231"
 typing-extensions = "^4.15.0"
 
 [tool.poetry.group.fmt]

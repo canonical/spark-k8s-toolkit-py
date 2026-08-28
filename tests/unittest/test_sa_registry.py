@@ -2,7 +2,7 @@ import base64
 import io
 import os
 import uuid
-from typing import Generator
+from typing import Generator, cast
 from unittest.mock import patch
 
 import pytest
@@ -219,13 +219,20 @@ def test_lightkube_get_secret(mocker, tmp_kubeconf: str) -> None:
     def side_effect(*args, **kwargs) -> Secret:
         assert kwargs["name"] == secret_name
         assert kwargs["namespace"] == namespace
-        return Secret.from_dict(
-            {
-                "apiVersion": "v1",
-                "kind": "Secret",
-                "metadata": {"name": secret_name, "namespace": namespace},
-                "data": {conf_key: base64.b64encode(conf_value.encode("utf-8"))},
-            }
+        return cast(
+            Secret,
+            Secret.from_dict(
+                {
+                    "apiVersion": "v1",
+                    "kind": "Secret",
+                    "metadata": {"name": secret_name, "namespace": namespace},
+                    "data": {
+                        conf_key: base64.b64encode(conf_value.encode("utf-8")).decode(
+                            "utf-8"
+                        )
+                    },
+                }
+            ),
         )
 
     mock_lightkube_client_get.side_effect = side_effect
@@ -492,9 +499,11 @@ def test_lightkube_create_rolebinding(mocker, tmp_kubeconf: str) -> None:
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "RoleBinding",
             "metadata": {"name": resource_name, "labels": {label_key: label_value}},
-            "name": resource_name,
-            "roleRef": resource_name,
-            "namespace": namespace,
+            "roleRef": {
+                "apiGroup": "rbac.authorization.k8s.io",
+                "kind": "Role",
+                "name": resource_name,
+            },
         }
     )
 
