@@ -17,7 +17,7 @@ from urllib.parse import quote, unquote
 
 import yaml
 from envyaml import EnvYAML
-from typing_extensions import Self
+from typing_extensions import Self, deprecated
 
 from spark8t.exceptions import FormatError
 
@@ -319,8 +319,14 @@ def listify(value: Any) -> list[str]:
     return [str(v) for v in value] if isinstance(value, list) else [str(value)]
 
 
+@deprecated(
+    "PercentEncodingSerializer is deprecated; use K8sSecretKeySerializer instead."
+)
 class PercentEncodingSerializer:
     """This class provides a way to serialize and de-serialize keys to be stored in k8s.
+
+    Deprecated:
+        Use K8sSecretKeySerializer instead.
 
     Keys in kubernetes need to comply with some format (described by the regex '[-._a-zA-Z0-9]+').
     In order to extend the range of keys that can be stored, we use a serialization based on
@@ -352,6 +358,53 @@ class PercentEncodingSerializer:
             .replace(self.percent_char, "%")
             .replace(self._SPECIAL, self.percent_char)
         )
+
+
+class K8sSecretKeySerializer:
+    """This class provides a way to serialize and de-serialize keys to be stored in k8s.
+
+    Keys in kubernetes need to comply with some format (described by the regex '[-._a-zA-Z0-9]+').
+    In order to extend the range of keys that can be stored, we use a serialization based on replacing
+    certain characters with safe placeholders before storing them in K8s.
+
+    This class is intended to be a safer and more flexible alternative to the deprecated PercentEncodingSerializer,
+    while also being compatible with the deprecated PercentEncodingSerializer (meaning that keys serialized with the
+    old serializer can still be deserialized correctly and vice versa).
+    """
+
+    SPECIAL_CHAR = "§"
+
+    # This map defines the characters that need to be serialized and their corresponding placeholders.
+    # Only the characters that are valid in URL but not as K8s Secret key need to be manually treated,
+    # the rest will be handled by URL quoting itself.
+    SERIALIZATION_MAP = {
+        "%": "_",
+        "/": "-",
+    }
+
+    def serialize(self, input_string: str) -> str:
+        """Serialize the given input into a format that can be safely stored as a K8s secret key."""
+        # First URL-quote the given string. This will already escape most special characters.
+        # Manual treatment is only required for the characters that are valid in URL, but not as K8s Secret key
+        result = quote(input_string)
+        for key, value in self.SERIALIZATION_MAP.items():
+            # First save the placeholder characters on their own, by duplicating them.
+            result = result.replace(value, value * 2)
+            # Now replace the actual characters with their placeholders.
+            result = result.replace(key, value)
+        return result
+
+    def deserialize(self, input_string: str) -> str:
+        """Deserialize the given input back to its original format."""
+        result = input_string
+        for key, value in self.SERIALIZATION_MAP.items():
+            # First replace the placeholders (which were duplicated) with an special character.
+            result = result.replace(value * 2, self.SPECIAL_CHAR)
+            # Now replace the placeholders back to the original characters.
+            result = result.replace(value, key)
+            # Finally replace the special character back to the original placeholder.
+            result = result.replace(self.SPECIAL_CHAR, value)
+        return unquote(result)
 
 
 class PropertyFile(WithLogging):
