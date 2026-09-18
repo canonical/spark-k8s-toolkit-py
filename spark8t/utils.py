@@ -320,13 +320,13 @@ def listify(value: Any) -> list[str]:
 
 
 @deprecated(
-    "PercentEncodingSerializer is deprecated; use PropertyEncodingSerializer instead."
+    "PercentEncodingSerializer is deprecated; use K8sSecretKeySerializer instead."
 )
 class PercentEncodingSerializer:
     """This class provides a way to serialize and de-serialize keys to be stored in k8s.
 
     Deprecated:
-        Use PropertyEncodingSerializer instead.
+        Use K8sSecretKeySerializer instead.
 
     Keys in kubernetes need to comply with some format (described by the regex '[-._a-zA-Z0-9]+').
     In order to extend the range of keys that can be stored, we use a serialization based on
@@ -360,7 +360,7 @@ class PercentEncodingSerializer:
         )
 
 
-class PropertyEncodingSerializer:
+class K8sSecretKeySerializer:
     """This class provides a way to serialize and de-serialize keys to be stored in k8s.
 
     Keys in kubernetes need to comply with some format (described by the regex '[-._a-zA-Z0-9]+').
@@ -383,7 +383,7 @@ class PropertyEncodingSerializer:
     }
 
     def serialize(self, input_string: str) -> str:
-        """Serialize the given input into something that can be stored in K8s secret."""
+        """Serialize the given input into a format that can be safely stored as a K8s secret key."""
         # First URL-quote the given string. This will already escape most special characters.
         # Manual treatment is only required for the characters that are valid in URL, but not as K8s Secret key
         result = quote(input_string)
@@ -395,7 +395,7 @@ class PropertyEncodingSerializer:
         return result
 
     def deserialize(self, input_string: str) -> str:
-        """Deserialize the given input from something stored in K8s secret."""
+        """Deserialize the given input back to its original format."""
         result = input_string
         for key, value in self.SERIALIZATION_MAP.items():
             # First replace the placeholders (which were duplicated) with an special character.
