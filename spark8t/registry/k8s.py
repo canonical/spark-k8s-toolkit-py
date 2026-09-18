@@ -22,13 +22,13 @@ from spark8t.literals import (
     SPARK8S_LABEL,
 )
 from spark8t.registry.base import AbstractServiceAccountRegistry
-from spark8t.utils import PercentEncodingSerializer
+from spark8t.utils import PropertyEncodingSerializer
 
 
 class K8sServiceAccountRegistry(AbstractServiceAccountRegistry):
     """Class implementing a ServiceAccountRegistry, based on K8s."""
 
-    _kubernetes_key_serializer = PercentEncodingSerializer("_")
+    _kubernetes_key_serializer = PropertyEncodingSerializer()
 
     def __init__(self, kube_interface: AbstractKubeInterface):
         self.kube_interface = kube_interface
