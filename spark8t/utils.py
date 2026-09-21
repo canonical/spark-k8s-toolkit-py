@@ -6,6 +6,7 @@ import json
 import logging
 import os
 import re
+import string
 import subprocess
 from contextlib import contextmanager
 from copy import deepcopy as copy
@@ -364,47 +365,53 @@ class K8sSecretKeySerializer:
     """This class provides a way to serialize and de-serialize keys to be stored in k8s.
 
     Keys in kubernetes need to comply with some format (described by the regex '[-._a-zA-Z0-9]+').
-    In order to extend the range of keys that can be stored, we use a serialization based on replacing
-    certain characters with safe placeholders before storing them in K8s.
+    This serializer keeps every k8s-safe character literal and escapes anything else as the
+    introducer ``_`` followed by the two-digit hex of each UTF-8 byte (percent-encoding, but with
+    a k8s-legal escape character). The literal introducer is itself escaped, which makes the
+    encoding self-delimiting.
 
-    This class is intended to be a safer and more flexible alternative to the deprecated PercentEncodingSerializer,
-    while also being compatible with the deprecated PercentEncodingSerializer (meaning that keys serialized with the
-    old serializer can still be deserialized correctly and vice versa).
+    This is a true bijection: ``deserialize(serialize(x)) == x`` for any input, and ``serialize``
+    always matches the k8s key regex, while common keys such as ``spark.driver.memory`` remain
+    human-readable.
+
+    For backward compatibility, ``deserialize`` falls back to the deprecated
+    PercentEncodingSerializer when the input is not a valid hex-escape sequence, so that keys
+    stored by older deployments can still be read.
     """
 
-    SPECIAL_CHAR = "§"
-
-    # This map defines the characters that need to be serialized and their corresponding placeholders.
-    # Only the characters that are valid in URL but not as K8s Secret key need to be manually treated,
-    # the rest will be handled by URL quoting itself.
-    SERIALIZATION_MAP = {
-        "%": "_",
-        "/": "-",
-    }
+    _ESCAPE_CHAR = "_"
+    _SAFE_CHARS = frozenset(string.ascii_letters + string.digits + "-.")
 
     def serialize(self, input_string: str) -> str:
         """Serialize the given input into a format that can be safely stored as a K8s secret key."""
-        # First URL-quote the given string. This will already escape most special characters.
-        # Manual treatment is only required for the characters that are valid in URL, but not as K8s Secret key
-        result = quote(input_string)
-        for key, value in self.SERIALIZATION_MAP.items():
-            # First save the placeholder characters on their own, by duplicating them.
-            result = result.replace(value, value * 2)
-            # Now replace the actual characters with their placeholders.
-            result = result.replace(key, value)
-        return result
+        out = []
+        for byte in input_string.encode("utf-8"):
+            char = chr(byte)
+            out.append(
+                char if char in self._SAFE_CHARS else f"{self._ESCAPE_CHAR}{byte:02x}"
+            )
+        return "".join(out)
 
     def deserialize(self, input_string: str) -> str:
         """Deserialize the given input back to its original format."""
-        result = input_string
-        for key, value in self.SERIALIZATION_MAP.items():
-            # First replace the placeholders (which were duplicated) with an special character.
-            result = result.replace(value * 2, self.SPECIAL_CHAR)
-            # Now replace the placeholders back to the original characters.
-            result = result.replace(value, key)
-            # Finally replace the special character back to the original placeholder.
-            result = result.replace(self.SPECIAL_CHAR, value)
-        return unquote(result)
+        try:
+            return self._deserialize_hex(input_string)
+        except (ValueError, UnicodeDecodeError):
+            # Legacy keys were percent-encoded and are not valid hex-escape sequences, so they
+            # land here and are decoded by the deprecated scheme.
+            return PercentEncodingSerializer().deserialize(input_string)
+
+    def _deserialize_hex(self, input_string: str) -> str:
+        out = bytearray()
+        i = 0
+        while i < len(input_string):
+            if input_string[i] == self._ESCAPE_CHAR:
+                out.append(int(input_string[i + 1 : i + 3], 16))
+                i += 3
+            else:
+                out.append(ord(input_string[i]))
+                i += 1
+        return out.decode("utf-8")
 
 
 class PropertyFile(WithLogging):
