@@ -6,6 +6,7 @@ import json
 import logging
 import os
 import re
+import string
 import subprocess
 from contextlib import contextmanager
 from copy import deepcopy as copy
@@ -17,7 +18,7 @@ from urllib.parse import quote, unquote
 
 import yaml
 from envyaml import EnvYAML
-from typing_extensions import Self
+from typing_extensions import Self, deprecated
 
 from spark8t.exceptions import FormatError
 
@@ -319,8 +320,14 @@ def listify(value: Any) -> list[str]:
     return [str(v) for v in value] if isinstance(value, list) else [str(value)]
 
 
+@deprecated(
+    "PercentEncodingSerializer is deprecated; use K8sSecretKeySerializer instead."
+)
 class PercentEncodingSerializer:
     """This class provides a way to serialize and de-serialize keys to be stored in k8s.
+
+    Deprecated:
+        Use K8sSecretKeySerializer instead.
 
     Keys in kubernetes need to comply with some format (described by the regex '[-._a-zA-Z0-9]+').
     In order to extend the range of keys that can be stored, we use a serialization based on
@@ -352,6 +359,59 @@ class PercentEncodingSerializer:
             .replace(self.percent_char, "%")
             .replace(self._SPECIAL, self.percent_char)
         )
+
+
+class K8sSecretKeySerializer:
+    """This class provides a way to serialize and de-serialize keys to be stored in k8s.
+
+    Keys in kubernetes need to comply with some format (described by the regex '[-._a-zA-Z0-9]+').
+    This serializer keeps every k8s-safe character literal and escapes anything else as the
+    introducer ``_`` followed by the two-digit hex of each UTF-8 byte (percent-encoding, but with
+    a k8s-legal escape character). The literal introducer is itself escaped, which makes the
+    encoding self-delimiting.
+
+    This is a true bijection: ``deserialize(serialize(x)) == x`` for any input, and ``serialize``
+    always matches the k8s key regex, while common keys such as ``spark.driver.memory`` remain
+    human-readable.
+
+    For backward compatibility, ``deserialize`` falls back to the deprecated
+    PercentEncodingSerializer when the input is not a valid hex-escape sequence, so that keys
+    stored by older deployments can still be read.
+    """
+
+    _ESCAPE_CHAR = "_"
+    _SAFE_CHARS = frozenset(string.ascii_letters + string.digits + "-.")
+
+    def serialize(self, input_string: str) -> str:
+        """Serialize the given input into a format that can be safely stored as a K8s secret key."""
+        out = []
+        for byte in input_string.encode("utf-8"):
+            char = chr(byte)
+            out.append(
+                char if char in self._SAFE_CHARS else f"{self._ESCAPE_CHAR}{byte:02x}"
+            )
+        return "".join(out)
+
+    def deserialize(self, input_string: str) -> str:
+        """Deserialize the given input back to its original format."""
+        try:
+            return self._deserialize_hex(input_string)
+        except (ValueError, UnicodeDecodeError):
+            # Legacy keys were percent-encoded and are not valid hex-escape sequences, so they
+            # land here and are decoded by the deprecated scheme.
+            return PercentEncodingSerializer().deserialize(input_string)
+
+    def _deserialize_hex(self, input_string: str) -> str:
+        out = bytearray()
+        i = 0
+        while i < len(input_string):
+            if input_string[i] == self._ESCAPE_CHAR:
+                out.append(int(input_string[i + 1 : i + 3], 16))
+                i += 3
+            else:
+                out.append(ord(input_string[i]))
+                i += 1
+        return out.decode("utf-8")
 
 
 class PropertyFile(WithLogging):

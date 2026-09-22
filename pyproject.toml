@@ -42,6 +42,7 @@ types-pyyaml = "^6.0.12.20241230"
 types-pygments = "^2.19.0.20250107"
 types-colorama = "^0.4.15.20240311"
 types-pyopenssl = "^24.1.0.20240722"
+hypothesis = "^6.140.3"
 
 [tool.poetry.group.unit]
 optional = true
@@ -52,6 +53,7 @@ pytest-mock = ">=3.15.1"
 pyOpenSSL = ">=26.1.0"
 tox = "^4.53.0"
 coverage = "^7.15.4"
+hypothesis = "^6.140.3"
 
 [tool.poetry.group.integration]
 optional = true
