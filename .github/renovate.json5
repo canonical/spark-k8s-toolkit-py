@@ -16,9 +16,29 @@
   enabledManagers: ["github-actions", "poetry"],
   packageRules: [
     {
-      description: "Require manual approval on Dashboard for major updates",
-      matchUpdateTypes: ["major"],
-      dependencyDashboardApproval: true,
+      description: "Disable CI ubuntu version bumps",
+      matchDatasources: ["github-runners"],
+      enabled: false,
+    },
+    {
+      description: "Disable Python version bumps in setup-python step",
+      matchManagers: ["github-actions"],
+      matchDatasources: ["python-version"],
+      enabled: false,
+    },
+    {
+      matchManagers: ["poetry"],
+      rangeStrategy: "bump",
+      groupName: "Python dependencies",
+    },
+    // Disable Python updates in pyproject.toml
+    // (Python version should be updated when Ubuntu version is updated)
+    {
+      matchManagers: ["poetry"],
+      // Renovate uses "dependencies" instead of "main" for top-level dependency group
+      matchDepTypes: ["dependencies"],
+      matchDepNames: ["python"],
+      enabled: false,
     },
   ],
 }
