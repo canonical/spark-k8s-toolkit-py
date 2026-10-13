@@ -62,6 +62,7 @@ optional = true
 pytest-cov = ">=7.1.0"
 pytest = "^9.0.3"
 tox = "^4.53.0"
+tenacity = "^9.0.0"
 
 [build-system]
 requires = ["poetry-core"]

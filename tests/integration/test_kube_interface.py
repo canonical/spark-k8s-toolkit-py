@@ -1,6 +1,11 @@
+import uuid
 from time import sleep
 
 import pytest
+from lightkube.models.meta_v1 import ObjectMeta, OwnerReference
+from lightkube.resources.core_v1 import Secret
+from lightkube.resources.core_v1 import ServiceAccount as LightKubeServiceAccount
+from tenacity import Retrying, stop_after_delay, wait_fixed
 
 from spark8t.domain import KubernetesResourceType, PropertyFile
 from spark8t.kube_interface.lightkube import LightKubeInterface
@@ -109,3 +114,58 @@ def test_delete_secret_content(
     assert not kubeinterface.exists(
         KubernetesResourceType.SECRET_GENERIC, secret_name, namespace
     )
+
+
+def test_delete_service_account_cascades_owner_references(
+    kubeinterface: LightKubeInterface, namespace: str
+) -> None:
+    sa_name = f"sa-{uuid.uuid4()}"
+    kubeinterface.create(KubernetesResourceType.SERVICEACCOUNT, sa_name, namespace)
+
+    assert kubeinterface.exists(
+        KubernetesResourceType.SERVICEACCOUNT, sa_name, namespace
+    )
+
+    sa = kubeinterface.client.get(
+        res=LightKubeServiceAccount, name=sa_name, namespace=namespace
+    )
+    assert sa.metadata is not None
+    assert sa.metadata.uid is not None
+
+    owner_ref = OwnerReference(
+        apiVersion="v1",
+        kind="ServiceAccount",
+        name=sa_name,
+        uid=sa.metadata.uid,
+    )
+
+    dependent_secret_name = f"dep-secret-{uuid.uuid4()}"
+    dependent_secret = Secret(
+        metadata=ObjectMeta(
+            name=dependent_secret_name,
+            namespace=namespace,
+            ownerReferences=[owner_ref],
+        ),
+        data={},
+    )
+    kubeinterface.client.create(dependent_secret)
+
+    assert kubeinterface.exists(
+        KubernetesResourceType.SECRET_GENERIC, dependent_secret_name, namespace
+    )
+
+    # Deleting the service account should cascade in the background
+    # and delete dependent resources referencing it via ownerReferences
+    kubeinterface.delete(KubernetesResourceType.SERVICEACCOUNT, sa_name, namespace)
+
+    assert not kubeinterface.exists(
+        KubernetesResourceType.SERVICEACCOUNT, sa_name, namespace
+    )
+
+    for attempt in Retrying(
+        stop=stop_after_delay(30), wait=wait_fixed(1), reraise=True
+    ):
+        with attempt:
+            assert not kubeinterface.exists(
+                KubernetesResourceType.SECRET_GENERIC, dependent_secret_name, namespace
+            ), f"Dependent resource {dependent_secret_name} was not garbage collected"
