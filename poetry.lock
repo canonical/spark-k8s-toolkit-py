@@ -1556,7 +1556,7 @@ version = "9.2.1"
 description = "Retry code until it succeeds"
 optional = false
 python-versions = ">=3.10"
-groups = ["integration"]
+groups = ["integration", "lint"]
 files = [
     {file = "tenacity-9.2.1-py3-none-any.whl", hash = "sha256:9e56f17539296baab7beabb08b92f6ee3d7be92d8be72d763360677c2ad6580e"},
     {file = "tenacity-9.2.1.tar.gz", hash = "sha256:a606b5c808d0cded4a359d5b9932d867ff2a6a6b64d37350260fd01bbdf83839"},
@@ -1812,4 +1812,4 @@ h11 = ">=0.16.0,<1"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4.0"
-content-hash = "692ea425ab9031c3d6bc4880d4a6c8ca32dbe039f8185d37caf68e0674f2c737"
+content-hash = "333a0fcec8a71a7cbe32a77d4d54c1c158d37d4b161df27793ed0d913e8c550b"
