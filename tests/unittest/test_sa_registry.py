@@ -10,7 +10,7 @@ import yaml
 from lightkube.resources.core_v1 import Secret
 from lightkube.resources.core_v1 import ServiceAccount as LightKubeServiceAccount
 from lightkube.resources.rbac_authorization_v1 import Role, RoleBinding
-from lightkube.types import PatchType
+from lightkube.types import CascadeType, PatchType
 from OpenSSL import crypto
 
 from spark8t.cli import defaults
@@ -596,7 +596,10 @@ def test_lightkube_delete_secret(mocker, tmp_kubeconf: str) -> None:
     k.delete(KubernetesResourceType.SECRET, resource_name, namespace)
 
     mock_lightkube_client_delete.assert_any_call(
-        res=Secret, name=resource_name, namespace=namespace
+        res=Secret,
+        name=resource_name,
+        namespace=namespace,
+        cascade=CascadeType.BACKGROUND,
     )
 
 
@@ -612,7 +615,36 @@ def test_lightkube_delete_service_account(mocker, tmp_kubeconf: str) -> None:
     k.delete(KubernetesResourceType.SERVICEACCOUNT, resource_name, namespace)
 
     mock_lightkube_client_delete.assert_any_call(
-        res=LightKubeServiceAccount, name=resource_name, namespace=namespace
+        res=LightKubeServiceAccount,
+        name=resource_name,
+        namespace=namespace,
+        cascade=CascadeType.BACKGROUND,
+    )
+
+
+def test_lightkube_delete_service_account_with_cascade(
+    mocker, tmp_kubeconf: str
+) -> None:
+    mock_lightkube_client_delete = mocker.patch("lightkube.Client.delete")
+    kubeconfig = tmp_kubeconf
+    resource_name = str(uuid.uuid4())
+    namespace = str(uuid.uuid4())
+
+    mock_lightkube_client_delete.return_value = 0
+
+    k = LightKubeInterface(kube_config_file=kubeconfig, defaults=defaults)
+    k.delete(
+        KubernetesResourceType.SERVICEACCOUNT,
+        resource_name,
+        namespace,
+        cascade=CascadeType.FOREGROUND,
+    )
+
+    mock_lightkube_client_delete.assert_any_call(
+        res=LightKubeServiceAccount,
+        name=resource_name,
+        namespace=namespace,
+        cascade=CascadeType.FOREGROUND,
     )
 
 
@@ -628,7 +660,10 @@ def test_lightkube_delete_role(mocker, tmp_kubeconf: str) -> None:
     k.delete(KubernetesResourceType.ROLE, resource_name, namespace)
 
     mock_lightkube_client_delete.assert_any_call(
-        res=Role, name=resource_name, namespace=namespace
+        res=Role,
+        name=resource_name,
+        namespace=namespace,
+        cascade=CascadeType.BACKGROUND,
     )
 
 
@@ -644,7 +679,10 @@ def test_lightkube_delete_role_binding(mocker, tmp_kubeconf: str) -> None:
     k.delete(KubernetesResourceType.ROLEBINDING, resource_name, namespace)
 
     mock_lightkube_client_delete.assert_any_call(
-        res=RoleBinding, name=resource_name, namespace=namespace
+        res=RoleBinding,
+        name=resource_name,
+        namespace=namespace,
+        cascade=CascadeType.BACKGROUND,
     )
 
 

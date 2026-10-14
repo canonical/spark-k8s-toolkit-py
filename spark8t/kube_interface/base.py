@@ -7,6 +7,7 @@ from functools import cached_property
 from typing import Any
 
 from lightkube import KubeConfig, SingleConfig
+from lightkube.types import CascadeType
 from typing_extensions import Self
 
 from spark8t.domain import Defaults, KubernetesResourceType
@@ -180,6 +181,7 @@ class AbstractKubeInterface(WithLogging, metaclass=ABCMeta):
         resource_type: KubernetesResourceType,
         resource_name: str,
         namespace: str | None = None,
+        cascade: CascadeType | None = CascadeType.BACKGROUND,
     ):
         """Delete a K8s resource.
 
@@ -187,6 +189,7 @@ class AbstractKubeInterface(WithLogging, metaclass=ABCMeta):
             resource_type: type of the resource to be deleted, e.g. service account, rolebindings, etc.
             resource_name: name of the resource to be deleted
             namespace: namespace where the resource is
+            cascade: whether and how garbage collection will be performed
         """
         pass
 

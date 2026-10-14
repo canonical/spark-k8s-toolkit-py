@@ -5,6 +5,7 @@ from collections import defaultdict
 from typing import Generator, MutableMapping
 
 import pytest
+from tenacity import Retrying, stop_after_delay, wait_fixed
 
 from spark8t.domain import KubernetesResourceType
 from spark8t.kube_interface.lightkube import LightKubeInterface
@@ -396,6 +397,81 @@ def test_delete_service_account(service_account: tuple[str, str]) -> None:
             )
             assert rbac_check.returncode != 0
             assert rbac_check.stdout.strip() == "no"
+
+
+def test_delete_service_account_cascades_owner_references(
+    service_account: tuple[str, str],
+) -> None:
+    """Test that deleting a service account cascades to dependent resources via ownerReferences."""
+    username, namespace = service_account
+
+    # 1. Get the UID of the service account created by spark8t
+    sa_json = json.loads(
+        subprocess.check_output(
+            [
+                "kubectl",
+                "get",
+                "serviceaccount",
+                username,
+                "-n",
+                namespace,
+                "-o",
+                "json",
+            ]
+        )
+    )
+    sa_uid = sa_json["metadata"]["uid"]
+
+    # 2. Create a dummy Secret with ownerReferences pointing to the ServiceAccount
+    dummy_secret_name = f"dummy-secret-{uuid.uuid4()}"
+    manifest = {
+        "apiVersion": "v1",
+        "kind": "Secret",
+        "metadata": {
+            "name": dummy_secret_name,
+            "namespace": namespace,
+            "ownerReferences": [
+                {
+                    "apiVersion": "v1",
+                    "kind": "ServiceAccount",
+                    "name": username,
+                    "uid": sa_uid,
+                }
+            ],
+        },
+        "data": {},
+    }
+    subprocess.run(
+        ["kubectl", "apply", "-n", namespace, "-f", "-"],
+        input=json.dumps(manifest),
+        text=True,
+        check=True,
+    )
+
+    # Verify dummy secret exists
+    secret_get = subprocess.run(
+        ["kubectl", "get", "secret", dummy_secret_name, "-n", namespace],
+        capture_output=True,
+    )
+    assert secret_get.returncode == 0
+
+    # 3. Delete the service account via spark8t CLI
+    run_service_account_registry(
+        "delete", "--username", username, "--namespace", namespace
+    )
+
+    # 4. Verify the dummy Secret is garbage-collected by Kubernetes
+    for attempt in Retrying(
+        stop=stop_after_delay(30), wait=wait_fixed(1), reraise=True
+    ):
+        with attempt:
+            res = subprocess.run(
+                ["kubectl", "get", "secret", dummy_secret_name, "-n", namespace],
+                capture_output=True,
+            )
+            assert res.returncode != 0, (
+                f"Secret {dummy_secret_name} was not cascade-deleted by Kubernetes GC"
+            )
 
 
 def test_delete_service_account_that_does_not_exist(namespace: str) -> None:

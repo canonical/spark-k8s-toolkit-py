@@ -43,6 +43,7 @@ types-pygments = "^2.19.0.20250107"
 types-colorama = "^0.4.15.20240311"
 types-pyopenssl = "^24.1.0.20240722"
 hypothesis = "^6.140.3"
+tenacity = "^9.0.0"
 
 [tool.poetry.group.unit]
 optional = true
@@ -62,6 +63,7 @@ optional = true
 pytest-cov = ">=7.1.0"
 pytest = "^9.0.3"
 tox = "^4.53.0"
+tenacity = "^9.0.0"
 
 [build-system]
 requires = ["poetry-core"]

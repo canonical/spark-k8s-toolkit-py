@@ -16,7 +16,7 @@ from lightkube.models.meta_v1 import ObjectMeta
 from lightkube.resources.core_v1 import Namespace, Secret
 from lightkube.resources.core_v1 import ServiceAccount as LightKubeServiceAccount
 from lightkube.resources.rbac_authorization_v1 import Role, RoleBinding
-from lightkube.types import PatchType
+from lightkube.types import CascadeType, PatchType
 
 from spark8t.domain import (
     KubernetesResourceType,
@@ -414,6 +414,7 @@ class LightKubeInterface(AbstractKubeInterface):
         resource_type: KubernetesResourceType,
         resource_name: str,
         namespace: str | None = None,
+        cascade: CascadeType | None = CascadeType.BACKGROUND,
     ):
         """Delete a K8s resource.
 
@@ -421,22 +422,35 @@ class LightKubeInterface(AbstractKubeInterface):
             resource_type: type of the resource to be deleted, e.g. service account, rolebindings, etc.
             resource_name: name of the resource to be deleted
             namespace: namespace where the resource is
+            cascade: whether and how garbage collection will be performed
         """
         if resource_type == KubernetesResourceType.SERVICEACCOUNT:
             self.client.delete(
-                res=LightKubeServiceAccount, name=resource_name, namespace=namespace
+                res=LightKubeServiceAccount,
+                name=resource_name,
+                namespace=namespace,
+                cascade=cascade,
             )
         elif resource_type == KubernetesResourceType.ROLE:
-            self.client.delete(res=Role, name=resource_name, namespace=namespace)
+            self.client.delete(
+                res=Role, name=resource_name, namespace=namespace, cascade=cascade
+            )
         elif resource_type == KubernetesResourceType.ROLEBINDING:
-            self.client.delete(res=RoleBinding, name=resource_name, namespace=namespace)
+            self.client.delete(
+                res=RoleBinding,
+                name=resource_name,
+                namespace=namespace,
+                cascade=cascade,
+            )
         elif (
             resource_type == KubernetesResourceType.SECRET
             or resource_type == KubernetesResourceType.SECRET_GENERIC
         ):
-            self.client.delete(res=Secret, name=resource_name, namespace=namespace)
+            self.client.delete(
+                res=Secret, name=resource_name, namespace=namespace, cascade=cascade
+            )
         elif resource_type == KubernetesResourceType.NAMESPACE:
-            self.client.delete(res=Namespace, name=resource_name)
+            self.client.delete(res=Namespace, name=resource_name, cascade=cascade)
         else:
             raise NotImplementedError(
                 f"Label setting for resource name {resource_type} not supported yet."
