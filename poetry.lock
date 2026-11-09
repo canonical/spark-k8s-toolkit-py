@@ -89,18 +89,6 @@ files = [
 ]
 
 [[package]]
-name = "cachetools"
-version = "7.2.0"
-description = "Extensible memoizing collections and decorators"
-optional = false
-python-versions = ">=3.10"
-groups = ["integration", "unit"]
-files = [
-    {file = "cachetools-7.2.0-py3-none-any.whl", hash = "sha256:3045213f186b89fdd95d94441354c4bd87c570b7a38d8c3fd1d9dd37f6dc90d8"},
-    {file = "cachetools-7.2.0.tar.gz", hash = "sha256:bcac1a1b8da6909994a2957238a57b8140dab7c5c5c69a43669654fe87a33c1d"},
-]
-
-[[package]]
 name = "cffi"
 version = "2.1.1"
 description = "Foreign Function Interface for Python calling C code."
@@ -237,11 +225,11 @@ description = "Cross-platform colored terminal text."
 optional = false
 python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,!=3.6.*,>=2.7"
 groups = ["integration", "lint", "unit"]
+markers = "sys_platform == \"win32\""
 files = [
     {file = "colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6"},
     {file = "colorama-0.4.6.tar.gz", hash = "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44"},
 ]
-markers = {lint = "sys_platform == \"win32\""}
 
 [[package]]
 name = "coverage"
@@ -457,18 +445,6 @@ typing-extensions = {version = ">=4.13.2", markers = "python_full_version < \"3.
 ssh = ["bcrypt (>=3.1.5)"]
 
 [[package]]
-name = "distlib"
-version = "0.4.3"
-description = "Distribution utilities"
-optional = false
-python-versions = "*"
-groups = ["integration", "unit"]
-files = [
-    {file = "distlib-0.4.3-py2.py3-none-any.whl", hash = "sha256:4b0ce306c966eb73bc3a7b6abad017c556dadd92c44701562cd528ac7fde4d5b"},
-    {file = "distlib-0.4.3.tar.gz", hash = "sha256:f152097224a0ae24be5a0f6bae1b9359af82133bce63f98a95f86cae1aede9ed"},
-]
-
-[[package]]
 name = "envyaml"
 version = "1.10.211231"
 description = "Simple YAML configuration file parser with easy access for structured data"
@@ -508,7 +484,7 @@ version = "4.0.9"
 description = "A platform independent file lock."
 optional = false
 python-versions = ">=3.10"
-groups = ["integration", "lint", "unit"]
+groups = ["lint"]
 files = [
     {file = "filelock-4.0.9-py3-none-any.whl", hash = "sha256:9287fd61b99a806e5202be29a83034c0808a1b9830e820537c2f5773981f7eeb"},
     {file = "filelock-4.0.9.tar.gz", hash = "sha256:635e7d67fa92654eed444e75e9ca18426d34e77ad9c469bf4373f75a932f7b22"},
@@ -1292,18 +1268,6 @@ optional = ["typing-extensions (>=4)"]
 re2 = ["google-re2 (>=1.1)"]
 
 [[package]]
-name = "platformdirs"
-version = "4.12.2"
-description = "A small Python package for determining appropriate platform-specific dirs, e.g. a `user data dir`."
-optional = false
-python-versions = ">=3.10"
-groups = ["integration", "unit"]
-files = [
-    {file = "platformdirs-4.12.2-py3-none-any.whl", hash = "sha256:29dbf06d96c500bc6bdbce75fb0a14d63279c93b1842f97e72a135b33e856983"},
-    {file = "platformdirs-4.12.2.tar.gz", hash = "sha256:eab5f70271a490ef74618bb314fbb86e3c7e82fa3b9c922c2ea0e0a1a155d329"},
-]
-
-[[package]]
 name = "pluggy"
 version = "1.6.0"
 description = "plugin and hook calling mechanisms for python"
@@ -1368,22 +1332,6 @@ docs = ["sphinx (!=5.2.0,!=5.2.0.post0,!=7.2.5)", "sphinx_rtd_theme"]
 test = ["pretend", "pytest (>=3.0.1)", "pytest-rerunfailures"]
 
 [[package]]
-name = "pyproject-api"
-version = "1.11.2"
-description = "API to interact with the python pyproject.toml based projects"
-optional = false
-python-versions = ">=3.10"
-groups = ["integration", "unit"]
-files = [
-    {file = "pyproject_api-1.11.2-py3-none-any.whl", hash = "sha256:69040bb421a3d502217bf9d5f92a94e65e1db3fe25b641d6064b2b5b9880428b"},
-    {file = "pyproject_api-1.11.2.tar.gz", hash = "sha256:7bff8690a101f5f0bac3221475d214018f196ae5eea3af9c9879f4d682a3fd60"},
-]
-
-[package.dependencies]
-packaging = ">=25"
-tomli = {version = ">=2.3", markers = "python_version < \"3.11\""}
-
-[[package]]
 name = "pytest"
 version = "9.1.1"
 description = "pytest: simple powerful testing with Python"
@@ -1429,14 +1377,14 @@ testing = ["process-tests", "pytest-xdist", "virtualenv"]
 
 [[package]]
 name = "pytest-mock"
-version = "3.16.0"
+version = "3.17.0"
 description = "Thin-wrapper around the mock package for easier use with pytest"
 optional = false
 python-versions = ">=3.10"
 groups = ["unit"]
 files = [
-    {file = "pytest_mock-3.16.0-py3-none-any.whl", hash = "sha256:007cfeb257801d88d9c0b2a7b5a15a15e73b71968dfd72e7bf8c4a2f8393aec8"},
-    {file = "pytest_mock-3.16.0.tar.gz", hash = "sha256:5a8395528b8f498205f3718f575228d0edaed7425fff638f87d1a6c3e0383636"},
+    {file = "pytest_mock-3.17.0-py3-none-any.whl", hash = "sha256:1b82aa4b37137248bd687055e109723debeb07b489de1565297dc9589c5f2d6b"},
+    {file = "pytest_mock-3.17.0.tar.gz", hash = "sha256:e36576e0985e01027e999891e7a966c67822d40c89ef1b4c8b6e22737e3590b4"},
 ]
 
 [package.dependencies]
@@ -1461,21 +1409,6 @@ files = [
 filelock = ">=3.0"
 mypy = ">=1.0"
 pytest = ">=7.0"
-
-[[package]]
-name = "python-discovery"
-version = "1.6.1"
-description = "Python interpreter discovery"
-optional = false
-python-versions = ">=3.8"
-groups = ["integration", "unit"]
-files = [
-    {file = "python_discovery-1.6.1-py3-none-any.whl", hash = "sha256:d43fcdef879fe795352bd13ccf8d185ba5a9f86f36cfcd00529f596e737442b3"},
-    {file = "python_discovery-1.6.1.tar.gz", hash = "sha256:cf87d3627dfb4412437fdd5b13eae402607722998d21567993aedbc59b23c15e"},
-]
-
-[package.dependencies]
-filelock = ">=3.15.4"
 
 [[package]]
 name = "pyyaml"
@@ -1675,48 +1608,6 @@ files = [
 markers = {integration = "python_full_version <= \"3.11.0a6\"", lint = "python_version == \"3.10\"", unit = "python_version == \"3.10\""}
 
 [[package]]
-name = "tomli-w"
-version = "1.2.0"
-description = "A lil' TOML writer"
-optional = false
-python-versions = ">=3.9"
-groups = ["integration", "unit"]
-files = [
-    {file = "tomli_w-1.2.0-py3-none-any.whl", hash = "sha256:188306098d013b691fcadc011abd66727d3c414c571bb01b1a174ba8c983cf90"},
-    {file = "tomli_w-1.2.0.tar.gz", hash = "sha256:2dd14fac5a47c27be9cd4c976af5a12d87fb1f0b4512f81d69cce3b35ae25021"},
-]
-
-[[package]]
-name = "tox"
-version = "4.64.7"
-description = "tox is a generic virtualenv management and test command line tool"
-optional = false
-python-versions = ">=3.10"
-groups = ["integration", "unit"]
-files = [
-    {file = "tox-4.64.7-py3-none-any.whl", hash = "sha256:4e7a906f26b72fa9bf11577d02bde492c6d0ad8e690921a801893354d05d35fe"},
-    {file = "tox-4.64.7.tar.gz", hash = "sha256:b8033a00945a02493adebdc337e4e45136e21a7083c00b2ae27c998370b72af3"},
-]
-
-[package.dependencies]
-cachetools = ">=7.0.3"
-colorama = ">=0.4.6"
-filelock = ">=3.25"
-packaging = ">=26"
-platformdirs = ">=4.9.4"
-pluggy = ">=1.6"
-pyproject-api = ">=1.10"
-python-discovery = ">=1.4.4"
-tomli = {version = ">=2.4", markers = "python_version < \"3.11\""}
-tomli-w = ">=1.2"
-typing-extensions = {version = ">=4.15", markers = "python_version < \"3.13\""}
-virtualenv = ">=21.1"
-
-[package.extras]
-completion = ["argcomplete (>=3.6.3)"]
-testing = ["devpi-process (>=1.1.1)", "pytest (>=9.0.2)", "pytest-mock (>=3.15.1)"]
-
-[[package]]
 name = "truststore"
 version = "0.10.4"
 description = "Verify certificates using native system trust stores"
@@ -1823,27 +1714,7 @@ files = [
     {file = "typing_extensions-4.16.0-py3-none-any.whl", hash = "sha256:481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8"},
     {file = "typing_extensions-4.16.0.tar.gz", hash = "sha256:dc983d19a509c94dba722ee6abd33940f7c05a89e243c47e907eb4db6f1a43e5"},
 ]
-markers = {integration = "python_version < \"3.13\"", unit = "python_version < \"3.13\""}
-
-[[package]]
-name = "virtualenv"
-version = "21.14.3"
-description = "Virtual Python Environment builder"
-optional = false
-python-versions = ">=3.9"
-groups = ["integration", "unit"]
-files = [
-    {file = "virtualenv-21.14.3-py3-none-any.whl", hash = "sha256:4acc848a57a3bdb2ae0873d0689664bccad2230784de3753f57128eb126d3934"},
-    {file = "virtualenv-21.14.3.tar.gz", hash = "sha256:cb5cd3a87f12a6cfdc0cef6bc8bead6138221767f7718e0c00fee5fb907f9858"},
-]
-
-[package.dependencies]
-distlib = ">=0.3.7,<1"
-filelock = {version = ">=3.24.2,<5", markers = "python_version >= \"3.10\""}
-packaging = ">=23.1"
-platformdirs = ">=3.9.1,<5"
-python-discovery = ">=1.6"
-typing-extensions = {version = ">=4.13.2", markers = "python_version < \"3.11\""}
+markers = {integration = "python_version == \"3.10\"", unit = "python_version < \"3.13\""}
 
 [[package]]
 name = "wsproto"
@@ -1863,4 +1734,4 @@ h11 = ">=0.16.0,<1"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4.0"
-content-hash = "333a0fcec8a71a7cbe32a77d4d54c1c158d37d4b161df27793ed0d913e8c550b"
+content-hash = "fbd761bffff3f2801a65a2eeae5d0b2eadf8deb855290ed3da9bfdaa25642b14"
